@@ -1,0 +1,6 @@
+node_modules
+dist
+.vercel
+pnpm-lock.yaml
+prisma/generated
+web/dist

@@ -1,0 +1,72 @@
+{
+  "name": "dnd-manager",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "vercel:dev": "vercel dev",
+    "dev:server": "tsx watch server/index.ts",
+    "build": "pnpm --filter @dnd-manager/web build",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "pnpm -r --parallel run typecheck && tsc -p tsconfig.json --noEmit",
+    "db:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "db:studio": "prisma studio --schema prisma/schema.prisma",
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepare": "husky"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@dnd-manager/shared": "workspace:*",
+    "@prisma/client": "^5.19.1",
+    "@vercel/blob": "^0.27.0",
+    "argon2": "^0.41.1",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "js-yaml": "^4.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.7",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/js-yaml": "^4.0.9",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@eslint/js": "^9.9.0",
+    "@types/node": "^20.14.15",
+    "@vercel/node": "^3.2.7",
+    "eslint": "^9.9.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "eslint-plugin-react-refresh": "^0.4.9",
+    "husky": "^9.1.4",
+    "lint-staged": "^15.2.9",
+    "prettier": "^3.3.3",
+    "prisma": "^5.19.1",
+    "tsx": "^4.17.0",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.0.1",
+    "vercel": "^37.4.1",
+    "vitest": "^2.0.5"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ],
+    "*.{ts,tsx,js,jsx,json,md}": [
+      "prettier --write"
+    ]
+  }
+}

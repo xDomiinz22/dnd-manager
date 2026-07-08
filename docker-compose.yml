@@ -1,0 +1,17 @@
+# Solo para desarrollo local. En producción se usa Neon (ver Fase 8); Vercel no ejecuta
+# contenedores Docker en runtime, así que esto nunca se despliega.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dnd
+      POSTGRES_PASSWORD: dnd
+      POSTGRES_DB: dnd_manager
+    ports:
+      - "5432:5432"
+    volumes:
+      - dnd_manager_pgdata:/var/lib/postgresql/data
+
+volumes:
+  dnd_manager_pgdata:

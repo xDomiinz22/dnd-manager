@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+
+  ownedGroups Group[]          @relation("GroupMaster")
+  memberships GroupMember[]
+  characters  CharacterSheet[]
+  assets      Asset[]
+}
+
+model Group {
+  id         String   @id @default(cuid())
+  name       String
+  inviteCode String   @unique
+  masterId   String
+  master     User     @relation("GroupMaster", fields: [masterId], references: [id])
+  createdAt  DateTime @default(now())
+
+  members      GroupMember[]
+  characters   CharacterSheet[]
+  groupJournal JournalEntry?    @relation("GroupJournal")
+}
+
+enum GroupRole {
+  MASTER
+  PLAYER
+}
+
+model GroupMember {
+  id       String    @id @default(cuid())
+  groupId  String
+  userId   String
+  role     GroupRole @default(PLAYER)
+  joinedAt DateTime  @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+enum AssetKind {
+  IMAGE
+  PDF
+  OTHER
+}
+
+model Asset {
+  id           String    @id @default(cuid())
+  ownerId      String
+  owner        User      @relation(fields: [ownerId], references: [id])
+  kind         AssetKind
+  storageKey   String
+  url          String
+  mime         String
+  size         Int
+  originalName String?
+  createdAt    DateTime  @default(now())
+
+  // Retrato activo de estos personajes (Asset.kind = IMAGE)
+  portraitOf        CharacterSheet[]
+  // Embeds ![[...]] resueltos en páginas de journal
+  journalPageAssets JournalPageAsset[]
+}
+
+model CharacterSheet {
+  id      String @id @default(cuid())
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  // Columnas indexadas para listados / cabecera:
+  name         String
+  level        Int     @default(1)
+  className    String?
+  subclassName String?
+  species      String?
+  background   String?
+  alignment    String?
+
+  portraitAssetId String?
+  portraitAsset   Asset?  @relation(fields: [portraitAssetId], references: [id])
+
+  // Datos crudos y derivados:
+  rawSystem    Json
+  items        Json
+  derived      Json?
+  sourceMdHash String?
+
+  personalJournal JournalEntry? @relation("CharacterJournal")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([ownerId, groupId, name])
+}
+
+enum JournalScope {
+  GROUP
+  CHARACTER
+}
+
+model JournalEntry {
+  id    String       @id @default(cuid())
+  scope JournalScope
+  title String
+
+  groupId String? @unique
+  group   Group?  @relation("GroupJournal", fields: [groupId], references: [id], onDelete: Cascade)
+
+  characterId String?         @unique
+  character   CharacterSheet? @relation("CharacterJournal", fields: [characterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  pages JournalPage[]
+}
+
+model JournalPage {
+  id             String       @id @default(cuid())
+  journalEntryId String
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+
+  parentId String?
+  parent   JournalPage?  @relation("PageTree", fields: [parentId], references: [id])
+  children JournalPage[] @relation("PageTree")
+
+  title        String
+  bodyMarkdown String  @db.Text
+  order        Int     @default(0)
+  foundryId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assets   JournalPageAsset[]
+  linksOut JournalPageLink[]  @relation("LinkFrom")
+  linksIn  JournalPageLink[]  @relation("LinkTo")
+}
+
+model JournalPageAsset {
+  id      String      @id @default(cuid())
+  pageId  String
+  page    JournalPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  assetId String
+  asset   Asset       @relation(fields: [assetId], references: [id])
+  order   Int         @default(0)
+}
+
+model JournalPageLink {
+  id         String  @id @default(cuid())
+  fromPageId String
+  toPageId   String
+  label      String?
+
+  fromPage JournalPage @relation("LinkFrom", fields: [fromPageId], references: [id], onDelete: Cascade)
+  toPage   JournalPage @relation("LinkTo", fields: [toPageId], references: [id], onDelete: Cascade)
+}
