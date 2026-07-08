@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { Prisma } from "../../prisma/generated/client";
+import { Prisma } from "@prisma/client";
 import type { GroupRoleValue, GroupDetail, GroupSummary } from "@dnd-manager/shared";
 import { prisma } from "../../lib/prisma";
 import { getMembership } from "./authorization";
@@ -53,7 +53,11 @@ export async function createGroup(masterId: string, name: string): Promise<Group
       throw err;
     }
   }
-  throw new AppError(500, "INVITE_CODE_COLLISION", "No se pudo generar un código de invitación único");
+  throw new AppError(
+    500,
+    "INVITE_CODE_COLLISION",
+    "No se pudo generar un código de invitación único",
+  );
 }
 
 export async function listGroupsForUser(userId: string): Promise<GroupSummary[]> {
@@ -150,7 +154,11 @@ export async function regenerateInviteCode(groupId: string): Promise<string> {
       throw err;
     }
   }
-  throw new AppError(500, "INVITE_CODE_COLLISION", "No se pudo generar un código de invitación único");
+  throw new AppError(
+    500,
+    "INVITE_CODE_COLLISION",
+    "No se pudo generar un código de invitación único",
+  );
 }
 
 export async function removeMember(

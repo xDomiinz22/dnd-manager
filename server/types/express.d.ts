@@ -1,4 +1,4 @@
-import type { GroupMember } from "../../prisma/generated/client";
+import type { GroupMember } from "@prisma/client";
 import type { CharacterWithPortrait } from "../services/characterService";
 
 declare global {

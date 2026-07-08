@@ -1,4 +1,4 @@
-import type { Asset } from "../../prisma/generated/client";
+import type { Asset } from "@prisma/client";
 
 /**
  * Modo Neon-only: los bytes viven en Postgres y se sirven por nuestra propia

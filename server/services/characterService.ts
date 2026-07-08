@@ -1,9 +1,14 @@
-import type { CharacterFull, ImportCharacterInput } from "@dnd-manager/shared";
-import { Prisma } from "../../prisma/generated/client";
-import type { Asset, CharacterSheet } from "../../prisma/generated/client";
+import type {
+  CharacterFull,
+  CharacterListItem,
+  CharacterView,
+  ImportCharacterInput,
+} from "@dnd-manager/shared";
+import { Prisma } from "@prisma/client";
+import type { Asset, CharacterSheet } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { parseFoundryMd } from "./foundryParser";
-import { getMembership } from "./authorization";
+import { getMembership, resolveCharacterAccess } from "./authorization";
 import { resolveAssetUrl } from "./assetUrl";
 import { AppError } from "../errors/AppError";
 
@@ -44,7 +49,11 @@ async function assertValidPortraitAsset(assetId: string | undefined): Promise<vo
   if (!assetId) return;
   const asset = await prisma.asset.findUnique({ where: { id: assetId } });
   if (!asset || asset.kind !== "IMAGE") {
-    throw new AppError(422, "INVALID_PORTRAIT_ASSET", "El asset indicado no existe o no es una imagen");
+    throw new AppError(
+      422,
+      "INVALID_PORTRAIT_ASSET",
+      "El asset indicado no existe o no es una imagen",
+    );
   }
 }
 
@@ -57,7 +66,11 @@ export async function importCharacter(
 
   const membership = await getMembership(groupId, ownerId);
   if (!membership) {
-    throw new AppError(422, "OWNER_NOT_GROUP_MEMBER", "El propietario indicado no pertenece al grupo");
+    throw new AppError(
+      422,
+      "OWNER_NOT_GROUP_MEMBER",
+      "El propietario indicado no pertenece al grupo",
+    );
   }
 
   await assertValidPortraitAsset(input.portraitAssetId);
@@ -168,4 +181,94 @@ export async function changePortrait(id: string, assetId: string): Promise<Chara
     include: { portraitAsset: true },
   });
   return toCharacterFull(character);
+}
+
+export async function getCharacterView(
+  userId: string,
+  characterId: string,
+): Promise<CharacterView> {
+  const character = await getCharacterOrThrow(characterId);
+  const access = await resolveCharacterAccess(userId, character);
+
+  if (access === "NONE") {
+    throw new AppError(403, "NOT_ALLOWED", "No tienes acceso a este personaje");
+  }
+  if (access === "FULL") {
+    return { access: "FULL", character: toCharacterFull(character) };
+  }
+  return {
+    access: "LIMITED",
+    character: {
+      id: character.id,
+      name: character.name,
+      portraitUrl: character.portraitAsset ? resolveAssetUrl(character.portraitAsset) : null,
+    },
+  };
+}
+
+export async function listMyCharacters(userId: string): Promise<CharacterListItem[]> {
+  const characters = await prisma.characterSheet.findMany({
+    where: { ownerId: userId },
+    include: { portraitAsset: true, group: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return characters.map((c) => ({
+    id: c.id,
+    name: c.name,
+    level: c.level,
+    className: c.className,
+    groupId: c.groupId,
+    groupName: c.group.name,
+    portraitUrl: c.portraitAsset ? resolveAssetUrl(c.portraitAsset) : null,
+  }));
+}
+
+export async function duplicateCharacter(
+  userId: string,
+  characterId: string,
+  targetGroupId: string,
+): Promise<CharacterFull> {
+  const existing = await getCharacterOrThrow(characterId);
+  if (existing.ownerId !== userId) {
+    throw new AppError(403, "NOT_CHARACTER_OWNER", "Solo el dueño del personaje puede duplicarlo");
+  }
+
+  const membership = await getMembership(targetGroupId, userId);
+  if (!membership) {
+    throw new AppError(422, "NOT_TARGET_GROUP_MEMBER", "No perteneces al grupo destino");
+  }
+
+  try {
+    const character = await prisma.characterSheet.create({
+      data: {
+        ownerId: userId,
+        groupId: targetGroupId,
+        name: existing.name,
+        level: existing.level,
+        className: existing.className,
+        subclassName: existing.subclassName,
+        species: existing.species,
+        background: existing.background,
+        alignment: existing.alignment,
+        portraitAssetId: existing.portraitAssetId,
+        rawSystem: existing.rawSystem as Prisma.InputJsonValue,
+        items: existing.items as Prisma.InputJsonValue,
+        derived: existing.derived as Prisma.InputJsonValue,
+        sourceMdHash: existing.sourceMdHash,
+        personalJournal: { create: { scope: "CHARACTER", title: existing.name } },
+      },
+      include: { portraitAsset: true },
+    });
+    return toCharacterFull(character);
+  } catch (err) {
+    if (isUniqueConstraintOn(err, "name")) {
+      throw new AppError(
+        409,
+        "CHARACTER_NAME_TAKEN",
+        "Ya tienes un personaje con ese nombre en el grupo destino",
+      );
+    }
+    throw err;
+  }
 }

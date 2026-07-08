@@ -16,6 +16,9 @@ export function AppLayout() {
           <Link to="/groups" className="text-slate-300 hover:text-amber-400">
             Grupos
           </Link>
+          <Link to="/characters" className="text-slate-300 hover:text-amber-400">
+            Mis personajes
+          </Link>
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-slate-300">{user?.username}</span>

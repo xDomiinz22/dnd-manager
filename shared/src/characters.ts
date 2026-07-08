@@ -80,3 +80,35 @@ export const characterFullSchema = z.object({
   updatedAt: z.string(),
 });
 export type CharacterFull = z.infer<typeof characterFullSchema>;
+
+export const characterLimitedSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  portraitUrl: z.string().nullable(),
+});
+export type CharacterLimited = z.infer<typeof characterLimitedSchema>;
+
+// GET /characters/:id: FULL para el Master del grupo o el dueño, LIMITED para
+// el resto de miembros (solo nombre + foto). `access` deja explícito cuál es
+// para que el frontend no tenga que adivinarlo por la forma del objeto.
+export const characterViewSchema = z.discriminatedUnion("access", [
+  z.object({ access: z.literal("FULL"), character: characterFullSchema }),
+  z.object({ access: z.literal("LIMITED"), character: characterLimitedSchema }),
+]);
+export type CharacterView = z.infer<typeof characterViewSchema>;
+
+export const characterListItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  level: z.number(),
+  className: z.string().nullable(),
+  groupId: z.string(),
+  groupName: z.string(),
+  portraitUrl: z.string().nullable(),
+});
+export type CharacterListItem = z.infer<typeof characterListItemSchema>;
+
+export const duplicateCharacterSchema = z.object({
+  targetGroupId: z.string(),
+});
+export type DuplicateCharacterInput = z.infer<typeof duplicateCharacterSchema>;

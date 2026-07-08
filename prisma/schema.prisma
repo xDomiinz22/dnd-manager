@@ -1,6 +1,9 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "./generated/client"
+  provider      = "prisma-client-js"
+  // Ubicación por defecto (node_modules/.prisma/client): es la mejor soportada
+  // por el node-file-tracing de Vercel. binaryTargets incluye el engine de
+  // Linux que usa el runtime serverless además del nativo para desarrollo.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

@@ -2,7 +2,7 @@ import type { RequestHandler } from "express";
 import { assetKindSchema } from "@dnd-manager/shared";
 import type { Asset as AssetDto } from "@dnd-manager/shared";
 import { prisma } from "../../lib/prisma";
-import type { Asset as PrismaAsset } from "../../prisma/generated/client";
+import type { Asset as PrismaAsset } from "@prisma/client";
 import { resolveAssetUrl } from "../services/assetUrl";
 import { AppError } from "../errors/AppError";
 
@@ -23,7 +23,8 @@ export const uploadAssetHandler: RequestHandler = async (req, res, next) => {
     const kind = assetKindSchema.parse(req.query.kind);
     const originalName = typeof req.query.name === "string" ? req.query.name : null;
     const contentType = req.headers["content-type"];
-    const mime = (Array.isArray(contentType) ? contentType[0] : contentType) ?? "application/octet-stream";
+    const mime =
+      (Array.isArray(contentType) ? contentType[0] : contentType) ?? "application/octet-stream";
 
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
       throw new AppError(400, "INVALID_UPLOAD", "Cuerpo de subida vacío");

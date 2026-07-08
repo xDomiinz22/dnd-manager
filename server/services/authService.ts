@@ -1,4 +1,4 @@
-import type { User } from "../../prisma/generated/client";
+import type { User } from "@prisma/client";
 import type { LoginInput, RegisterInput, UserProfile } from "@dnd-manager/shared";
 import { prisma } from "../../lib/prisma";
 import {

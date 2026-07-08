@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma";
-import type { GroupMember } from "../../prisma/generated/client";
+import type { GroupMember } from "@prisma/client";
 
 export type CharacterAccessLevel = "FULL" | "LIMITED" | "NONE";
 
