@@ -9,7 +9,7 @@
     "vercel:dev": "vercel dev",
     "dev:server": "pnpm run build:shared && tsx watch server/index.ts",
     "build:shared": "pnpm --filter @dnd-manager/shared build",
-    "build": "pnpm run build:shared && pnpm --filter @dnd-manager/web build",
+    "build": "prisma generate --schema prisma/schema.prisma && pnpm run build:shared && pnpm --filter @dnd-manager/web build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "pnpm -r --parallel run typecheck && tsc -p tsconfig.json --noEmit",
