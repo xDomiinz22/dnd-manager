@@ -3,6 +3,7 @@ import { Prisma } from "../../prisma/generated/client";
 import type { GroupRoleValue, GroupDetail, GroupSummary } from "@dnd-manager/shared";
 import { prisma } from "../../lib/prisma";
 import { getMembership } from "./authorization";
+import { resolveAssetUrl } from "./assetUrl";
 import { AppError } from "../errors/AppError";
 
 // Sin 0/O/1/I/L: evita confusiones al transcribir el código a mano.
@@ -104,7 +105,7 @@ export async function getGroupDetail(userId: string, groupId: string): Promise<G
       return {
         id: c.id,
         name: c.name,
-        portraitUrl: c.portraitAsset?.url ?? null,
+        portraitUrl: c.portraitAsset ? resolveAssetUrl(c.portraitAsset) : null,
         ownerId: fullAccess ? c.ownerId : null,
         ownerUsername: fullAccess ? c.owner.username : null,
         level: fullAccess ? c.level : null,

@@ -1,4 +1,3 @@
-import path from "node:path";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -18,10 +17,6 @@ export function createApp() {
   // al límite de ~4.5 MB del body en funciones serverless de Vercel.
   app.use(express.json({ limit: "2mb" }));
   app.use(cookieParser());
-
-  // Archivos del storage local de desarrollo (ver lib/storage.ts). En prod con
-  // Vercel Blob esta carpeta no existe y la ruta simplemente no sirve nada.
-  app.use("/api/assets/local", express.static(path.join(process.cwd(), "storage")));
 
   app.use("/api", apiRouter);
 

@@ -65,8 +65,11 @@ model Asset {
   ownerId      String
   owner        User      @relation(fields: [ownerId], references: [id])
   kind         AssetKind
-  storageKey   String
-  url          String
+  // Bytes del archivo guardados en Postgres (modo Neon-only). Si en el futuro
+  // se activa Vercel Blob, `data` queda null y `url` apunta al Blob real.
+  data         Bytes?
+  storageKey   String?
+  url          String?
   mime         String
   size         Int
   originalName String?

@@ -4,6 +4,7 @@ import type { Asset, CharacterSheet } from "../../prisma/generated/client";
 import { prisma } from "../../lib/prisma";
 import { parseFoundryMd } from "./foundryParser";
 import { getMembership } from "./authorization";
+import { resolveAssetUrl } from "./assetUrl";
 import { AppError } from "../errors/AppError";
 
 export type CharacterWithPortrait = CharacterSheet & { portraitAsset: Asset | null };
@@ -20,7 +21,7 @@ function toCharacterFull(character: CharacterWithPortrait): CharacterFull {
     species: character.species,
     background: character.background,
     alignment: character.alignment,
-    portraitUrl: character.portraitAsset?.url ?? null,
+    portraitUrl: character.portraitAsset ? resolveAssetUrl(character.portraitAsset) : null,
     rawSystem: character.rawSystem,
     items: character.items,
     // Guardamos exactamente lo que genera deriveCharacterStats, así que el shape coincide con DerivedStats.

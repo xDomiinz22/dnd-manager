@@ -1,3 +1,9 @@
+// NO SE USA ACTUALMENTE. El proyecto guarda los assets como bytes en Postgres
+// (ver server/controllers/assetController.ts) para evitar depender de disco
+// persistente en serverless. Este archivo se conserva tal cual por si más
+// adelante hace falta reactivar Vercel Blob (o el fallback local para dev);
+// antes de reengancharlo, revisar que `LocalDiskStorageService` no se use en
+// producción (no hay filesystem persistente en las funciones de Vercel).
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import path from "node:path";

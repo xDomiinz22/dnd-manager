@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Asset" ADD COLUMN     "data" BYTEA,
+ALTER COLUMN "storageKey" DROP NOT NULL,
+ALTER COLUMN "url" DROP NOT NULL;
