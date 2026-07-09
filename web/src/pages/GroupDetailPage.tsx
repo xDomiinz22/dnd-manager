@@ -83,7 +83,7 @@ export function GroupDetailPage() {
       </div>
       <p className="mb-6 text-sm text-slate-400">Master: {group.master.username}</p>
 
-      <Card className="mb-6 flex items-center gap-3">
+      <Card className="mb-6 flex flex-wrap items-center gap-3">
         <span className="text-sm text-slate-400">Código de invitación</span>
         <code className="rounded bg-slate-800 px-2 py-1 font-mono tracking-widest text-amber-400">
           {group.inviteCode}
@@ -97,7 +97,7 @@ export function GroupDetailPage() {
             onClick={handleRegenerate}
             isLoading={regenerate.isPending}
             loadingText="Regenerando..."
-            className="ml-auto"
+            className="sm:ml-auto"
           >
             Regenerar
           </Button>

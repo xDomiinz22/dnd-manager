@@ -217,6 +217,14 @@ Parser del `.md`, cálculo de derivados (con tests contra el fixture real), Stor
 - Reutiliza el mismo Client ID de OAuth que **AI Pulse** (es público, no un secreto) — solo hubo que añadir los orígenes autorizados del dominio de producción y de dev en Google Cloud Console.
 - Verificado: login/registro por contraseña sin regresión, botón se renderiza en Login y Register, error controlado con token inválido (401) y con cuenta Google-only intentando login por contraseña (401 con mensaje claro, sin crash), `typecheck`/`lint`/`test`/`build` limpios.
 
+### ✅ Revisión de mobile
+
+Pasada completa en viewport 375×812 (móvil) y 768×1024 (tablet) por todas las páginas: login/registro, home, grupos, detalle de grupo, mis personajes, ficha de personaje (todas las pestañas), journal de grupo y personal (árbol, vista y edición de página).
+
+- **Bug encontrado y arreglado**: la tarjeta del código de invitación en `GroupDetailPage` (`Código de invitación` + code + Copiar + Regenerar) no envolvía en una fila flex sin `flex-wrap`, y el label se partía en 3 líneas verticales apretadas en móvil. Ahora envuelve limpiamente a una segunda fila (`flex-wrap`, y `Regenerar` con `sm:ml-auto` en vez de `ml-auto`).
+- **Riesgo latente encontrado y arreglado**: las clases `prose-sm` (descripciones de items/biografía en la ficha) y `journal-prose` (contenido del journal) se usaban en todo el código para el HTML insertado vía `dangerouslySetInnerHTML`, pero **no tenían ninguna definición CSS real** (no hay plugin de tipografía de Tailwind instalado) — eran clases inertes. Una palabra larga sin espacios en una descripción de Foundry o una página de journal desbordaba el layout horizontalmente en móvil (confirmado con una prueba sintética: 200 caracteres sin espacio pasaban de 375px a 1469px de ancho). Se añadió un reset mínimo en `web/src/index.css` (`overflow-wrap: anywhere`, `img { max-width: 100% }`, `table { overflow-x: auto }`) para esas dos clases.
+- Resto de páginas ya estaban bien: header con `flex-wrap`, journal con sidebar apilable (`flex-col sm:flex-row`, de la Fase 7), tabs de la ficha envuelven, tabla de habilidades cabe en su contenedor `overflow-x-auto`, grid de características en 3 columnas se ve bien en 375px.
+
 ---
 
 ## Qué queda por hacer

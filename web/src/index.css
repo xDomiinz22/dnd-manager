@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Reset mínimo para el HTML dinámico (descripciones de Foundry, journal
+ * markdown) que se inserta vía dangerouslySetInnerHTML: sin esto, una palabra
+ * larga o una tabla ancha puede desbordar el layout en móvil.
+ */
+.prose-sm,
+.journal-prose {
+  overflow-wrap: anywhere;
+}
+
+.prose-sm img,
+.journal-prose img {
+  max-width: 100%;
+  height: auto;
+}
+
+.prose-sm table,
+.journal-prose table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
