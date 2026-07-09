@@ -1,10 +1,13 @@
 import type {
+  Asset,
+  ChangePortraitInput,
   CharacterFull,
   CharacterListItem,
   CharacterView,
   DuplicateCharacterInput,
   ImportCharacterInput,
   ImportCharacterMdInput,
+  UploadCharacterImageResponse,
 } from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
 
@@ -26,4 +29,21 @@ export const charactersApi = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
+  changePortrait: (id: string, input: ChangePortraitInput) =>
+    apiFetch<CharacterFull>(`/characters/${id}/portrait`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  listImages: (id: string) => apiFetch<Asset[]>(`/characters/${id}/images`),
+  uploadImage: (id: string, file: File) =>
+    apiFetch<UploadCharacterImageResponse>(
+      `/characters/${id}/images?name=${encodeURIComponent(file.name)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      },
+    ),
+  deleteImage: (id: string, assetId: string) =>
+    apiFetch<void>(`/characters/${id}/images/${assetId}`, { method: "DELETE" }),
 };

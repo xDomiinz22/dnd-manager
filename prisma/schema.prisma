@@ -81,7 +81,13 @@ model Asset {
   createdAt    DateTime  @default(now())
 
   // Retrato activo de estos personajes (Asset.kind = IMAGE)
-  portraitOf        CharacterSheet[]
+  portraitOf CharacterSheet[] @relation("CharacterPortrait")
+
+  // Galería de imágenes subidas para un personaje (atuendos, etc.); portraitOf
+  // apunta a cuál de estas está activa como retrato principal.
+  characterId String?
+  character   CharacterSheet? @relation("CharacterImages", fields: [characterId], references: [id])
+
   // Embeds ![[...]] resueltos en páginas de journal
   journalPageAssets JournalPageAsset[]
 }
@@ -103,7 +109,8 @@ model CharacterSheet {
   alignment    String?
 
   portraitAssetId String?
-  portraitAsset   Asset?  @relation(fields: [portraitAssetId], references: [id])
+  portraitAsset   Asset?  @relation("CharacterPortrait", fields: [portraitAssetId], references: [id])
+  images          Asset[] @relation("CharacterImages")
 
   // Datos crudos y derivados:
   rawSystem    Json

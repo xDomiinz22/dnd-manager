@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import { requireAuth } from "../middlewares/requireAuth";
 import { requireGroupMaster } from "../middlewares/groupAuth";
 import {
@@ -7,12 +7,15 @@ import {
 } from "../middlewares/characterAuth";
 import {
   changePortraitHandler,
+  deleteCharacterImageHandler,
   duplicateCharacterHandler,
   getCharacterViewHandler,
   importCharacterHandler,
   importCharacterMdHandler,
+  listCharacterImagesHandler,
   listMyCharactersHandler,
   reassignOwnerHandler,
+  uploadCharacterImageHandler,
 } from "../controllers/characterController";
 
 export const charactersRouter = Router();
@@ -45,3 +48,23 @@ charactersRouter.patch(
   changePortraitHandler,
 );
 charactersRouter.post("/characters/:id/duplicate", requireAuth, duplicateCharacterHandler);
+
+charactersRouter.post(
+  "/characters/:id/images",
+  requireAuth,
+  requireCharacterMasterOrOwner,
+  raw({ type: "*/*", limit: "4mb" }),
+  uploadCharacterImageHandler,
+);
+charactersRouter.get(
+  "/characters/:id/images",
+  requireAuth,
+  requireCharacterMasterOrOwner,
+  listCharacterImagesHandler,
+);
+charactersRouter.delete(
+  "/characters/:id/images/:assetId",
+  requireAuth,
+  requireCharacterMasterOrOwner,
+  deleteCharacterImageHandler,
+);

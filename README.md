@@ -225,6 +225,19 @@ Pasada completa en viewport 375×812 (móvil) y 768×1024 (tablet) por todas las
 - **Riesgo latente encontrado y arreglado**: las clases `prose-sm` (descripciones de items/biografía en la ficha) y `journal-prose` (contenido del journal) se usaban en todo el código para el HTML insertado vía `dangerouslySetInnerHTML`, pero **no tenían ninguna definición CSS real** (no hay plugin de tipografía de Tailwind instalado) — eran clases inertes. Una palabra larga sin espacios en una descripción de Foundry o una página de journal desbordaba el layout horizontalmente en móvil (confirmado con una prueba sintética: 200 caracteres sin espacio pasaban de 375px a 1469px de ancho). Se añadió un reset mínimo en `web/src/index.css` (`overflow-wrap: anywhere`, `img { max-width: 100% }`, `table { overflow-x: auto }`) para esas dos clases.
 - Resto de páginas ya estaban bien: header con `flex-wrap`, journal con sidebar apilable (`flex-col sm:flex-row`, de la Fase 7), tabs de la ficha envuelven, tabla de habilidades cabe en su contenedor `overflow-x-auto`, grid de características en 3 columnas se ve bien en 375px.
 
+### ✅ Galería de imágenes de personaje + selector de retrato
+
+Antes solo existía el backend para fijar un retrato (`PATCH /characters/:id/portrait`), sin ninguna forma de subir una imagen desde el frontend. Ahora un personaje puede tener varias imágenes (atuendos, etc.) y elegir cuál es la principal:
+
+- Prisma: `Asset.characterId` (relación `"CharacterImages"`, distinta de la relación existente `"CharacterPortrait"` para el retrato activo) — migración `20260709194617_character_images`.
+- Backend (`server/services/characterService.ts`, gateado por el mismo `requireCharacterMasterOrOwner` que ya protegía el cambio de retrato):
+  - `POST /characters/:id/images` — sube una imagen a la galería (mismo patrón de bytes-en-body que `POST /assets`). Si el personaje todavía no tiene retrato, la primera imagen subida se marca automáticamente como principal.
+  - `GET /characters/:id/images` — lista la galería.
+  - `DELETE /characters/:id/images/:assetId` — borra una imagen; si es la que está activa como retrato, rechaza con `409 CANNOT_DELETE_ACTIVE_PORTRAIT` (hay que elegir otra como principal antes de poder borrarla).
+  - `toAssetDto` se movió de `assetController.ts` a `services/assetUrl.ts` para reutilizarlo entre ambos controllers. `CharacterFull` ahora expone `portraitAssetId` para que el frontend sepa qué imagen de la galería está activa sin comparar URLs.
+- Frontend: `CharacterImageManager.tsx` (nuevo, en `components/character/`), montado junto al retrato circular en la cabecera de la ficha — solo se renderiza cuando el usuario ya ve la ficha completa (`access === "FULL"`, que coincide exactamente con "Master o dueño"). Miniaturas en grid, la activa con borde ámbar; click en una no-activa la marca como principal; botón de borrar (oculto en la activa) por miniatura; botón "Añadir imagen" con `<input type="file">` oculto.
+- Verificado con imágenes PNG sintéticas subidas vía `fetch` autenticado (no hay forma de rellenar un `<input type="file">` con las herramientas de automatización): primera imagen se auto-selecciona como retrato, segunda no lo hace, cambiar de principal funciona y refleja el borde ámbar correcto, borrar la no-activa funciona, borrar la activa se bloquea con el mensaje esperado (tanto a nivel API como en la UI, donde ni siquiera se muestra el botón). `typecheck`/`lint`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer

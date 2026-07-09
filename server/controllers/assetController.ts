@@ -1,22 +1,8 @@
 import type { RequestHandler } from "express";
 import { assetKindSchema } from "@dnd-manager/shared";
-import type { Asset as AssetDto } from "@dnd-manager/shared";
 import { prisma } from "../../lib/prisma";
-import type { Asset as PrismaAsset } from "@prisma/client";
-import { resolveAssetUrl } from "../services/assetUrl";
+import { toAssetDto } from "../services/assetUrl";
 import { AppError } from "../errors/AppError";
-
-function toAssetDto(asset: PrismaAsset): AssetDto {
-  return {
-    id: asset.id,
-    url: resolveAssetUrl(asset),
-    kind: asset.kind,
-    mime: asset.mime,
-    size: asset.size,
-    originalName: asset.originalName,
-    createdAt: asset.createdAt.toISOString(),
-  };
-}
 
 export const uploadAssetHandler: RequestHandler = async (req, res, next) => {
   try {

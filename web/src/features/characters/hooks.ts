@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  ChangePortraitInput,
   DuplicateCharacterInput,
   ImportCharacterInput,
   ImportCharacterMdInput,
@@ -50,6 +51,44 @@ export function useImportCharacterMd(id: string, groupId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: characterKey(id) });
       queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) });
+    },
+  });
+}
+
+export function useCharacterImages(id: string) {
+  return useQuery({
+    queryKey: [...characterKey(id), "images"],
+    queryFn: () => charactersApi.listImages(id),
+    enabled: !!id,
+  });
+}
+
+export function useUploadCharacterImage(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => charactersApi.uploadImage(id, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: characterKey(id) });
+      queryClient.invalidateQueries({ queryKey: [...characterKey(id), "images"] });
+    },
+  });
+}
+
+export function useChangePortrait(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ChangePortraitInput) => charactersApi.changePortrait(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: characterKey(id) }),
+  });
+}
+
+export function useDeleteCharacterImage(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (assetId: string) => charactersApi.deleteImage(id, assetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: characterKey(id) });
+      queryClient.invalidateQueries({ queryKey: [...characterKey(id), "images"] });
     },
   });
 }

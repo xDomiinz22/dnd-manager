@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import type { AbilityKey, CharacterFull } from "@dnd-manager/shared";
 import { useCharacter } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
+import { CharacterImageManager } from "../components/character/CharacterImageManager";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import {
   ABILITY_FULL_LABELS,
@@ -80,7 +81,13 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
     <div className="mx-auto max-w-4xl px-6 py-10">
       {/* Cabecera hero */}
       <div className="mb-6 flex flex-col items-center gap-4 rounded-lg border border-slate-800 bg-slate-900 p-6 sm:flex-row sm:items-start">
-        <PortraitCircle url={character.portraitUrl} name={character.name} size={112} />
+        <div className="flex flex-col items-center">
+          <PortraitCircle url={character.portraitUrl} name={character.name} size={112} />
+          <CharacterImageManager
+            characterId={character.id}
+            portraitAssetId={character.portraitAssetId}
+          />
+        </div>
         <div className="flex-1 text-center sm:text-left">
           <h1 className="text-2xl font-semibold text-amber-400">{character.name}</h1>
           <p className="text-slate-300">

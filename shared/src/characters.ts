@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { assetSchema } from "./assets";
 
 export const abilityKeySchema = z.enum(["str", "dex", "con", "int", "wis", "cha"]);
 export type AbilityKey = z.infer<typeof abilityKeySchema>;
@@ -72,6 +73,7 @@ export const characterFullSchema = z.object({
   background: z.string().nullable(),
   alignment: z.string().nullable(),
   portraitUrl: z.string().nullable(),
+  portraitAssetId: z.string().nullable(),
   rawSystem: z.unknown(),
   items: z.unknown(),
   derived: derivedStatsSchema,
@@ -112,3 +114,9 @@ export const duplicateCharacterSchema = z.object({
   targetGroupId: z.string(),
 });
 export type DuplicateCharacterInput = z.infer<typeof duplicateCharacterSchema>;
+
+export const uploadCharacterImageResponseSchema = z.object({
+  asset: assetSchema,
+  character: characterFullSchema,
+});
+export type UploadCharacterImageResponse = z.infer<typeof uploadCharacterImageResponseSchema>;

@@ -27,6 +27,7 @@ function toCharacterFull(character: CharacterWithPortrait): CharacterFull {
     background: character.background,
     alignment: character.alignment,
     portraitUrl: character.portraitAsset ? resolveAssetUrl(character.portraitAsset) : null,
+    portraitAssetId: character.portraitAssetId,
     rawSystem: character.rawSystem,
     items: character.items,
     // Guardamos exactamente lo que genera deriveCharacterStats, así que el shape coincide con DerivedStats.
@@ -181,6 +182,65 @@ export async function changePortrait(id: string, assetId: string): Promise<Chara
     include: { portraitAsset: true },
   });
   return toCharacterFull(character);
+}
+
+/**
+ * Sube una imagen a la galería del personaje. Si todavía no tiene retrato
+ * principal (primera imagen), esta se marca como tal automáticamente.
+ */
+export async function addCharacterImage(
+  characterId: string,
+  uploaderId: string,
+  data: Buffer,
+  mime: string,
+  originalName: string | null,
+): Promise<{ asset: Asset; character: CharacterFull }> {
+  const existing = await getCharacterOrThrow(characterId);
+
+  const asset = await prisma.asset.create({
+    data: {
+      ownerId: uploaderId,
+      kind: "IMAGE",
+      mime,
+      size: data.length,
+      data,
+      originalName,
+      characterId,
+    },
+  });
+
+  if (!existing.portraitAssetId) {
+    await prisma.characterSheet.update({
+      where: { id: characterId },
+      data: { portraitAssetId: asset.id },
+    });
+  }
+
+  const character = await getCharacterOrThrow(characterId);
+  return { asset, character: toCharacterFull(character) };
+}
+
+export function listCharacterImages(characterId: string): Promise<Asset[]> {
+  return prisma.asset.findMany({
+    where: { characterId, kind: "IMAGE" },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function deleteCharacterImage(characterId: string, assetId: string): Promise<void> {
+  const character = await getCharacterOrThrow(characterId);
+  const asset = await prisma.asset.findUnique({ where: { id: assetId } });
+  if (!asset || asset.characterId !== characterId) {
+    throw new AppError(404, "IMAGE_NOT_FOUND", "Imagen no encontrada");
+  }
+  if (character.portraitAssetId === assetId) {
+    throw new AppError(
+      409,
+      "CANNOT_DELETE_ACTIVE_PORTRAIT",
+      "No puedes borrar la imagen principal; elige otra como principal primero",
+    );
+  }
+  await prisma.asset.delete({ where: { id: assetId } });
 }
 
 export async function getCharacterView(
