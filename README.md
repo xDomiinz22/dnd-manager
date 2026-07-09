@@ -4,7 +4,7 @@ App web para gestionar grupos de **Dungeons & Dragons 5e** (sistema Foundry `dnd
 
 - **Producción:** https://dnd-manager-web.vercel.app
 - **Repo:** privado en `github.com/xDomiinz22/dnd-manager`
-- **Estado:** Fases 0–7 completas y verificadas. Desplegado y operativo. Pendiente: Fase 8 (docs despliegue).
+- **Estado:** Fases 0–8 completas y verificadas. Desplegado y operativo.
 
 ---
 
@@ -62,13 +62,13 @@ pnpm --filter @dnd-manager/web dev   # Vite en :5173
 
 ### Scripts útiles
 
-| Script               | Qué hace                                                                 |
-| -------------------- | ------------------------------------------------------------------------ |
-| `pnpm run typecheck` | tsc en shared, web y raíz                                                |
-| `pnpm run lint`      | ESLint en todo el repo                                                   |
-| `pnpm run test`      | Vitest (22 tests: dnd5e-derive + foundryParser contra el fixture real)   |
-| `pnpm run build`     | `prisma generate` + build de shared + build de web (lo que corre Vercel) |
-| `pnpm run db:studio` | Prisma Studio                                                            |
+| Script               | Qué hace                                                                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `pnpm run typecheck` | tsc en shared, web y raíz                                                                          |
+| `pnpm run lint`      | ESLint en todo el repo                                                                             |
+| `pnpm run test`      | Vitest (22 tests: dnd5e-derive + foundryParser contra el fixture real)                             |
+| `pnpm run build`     | `prisma generate` + `prisma migrate deploy` + build de shared + build de web (lo que corre Vercel) |
+| `pnpm run db:studio` | Prisma Studio                                                                                      |
 
 ### Variables de entorno (`.env`)
 
@@ -81,6 +81,33 @@ BLOB_READ_WRITE_TOKEN   # vacío por ahora (ver "Assets")
 ```
 
 En Vercel estas variables están configuradas en Production+Preview (Settings → Environment Variables).
+
+---
+
+## Despliegue
+
+La app está desplegada en Vercel como **un solo proyecto** (frontend estático + función serverless bajo el mismo dominio). Checklist para desplegarla desde cero:
+
+1. **Base de datos**: crear un proyecto en [Neon](https://neon.tech) (o cualquier Postgres). Copiar el endpoint **pooled** (con `-pooler`, va en `DATABASE_URL`) y el endpoint **directo** (sin pooler, va en `DIRECT_URL`, lo usan las migraciones).
+2. **Repo en GitHub**: importar el repo en Vercel (New Project → Import Git Repository).
+3. **Configuración del proyecto en Vercel**:
+   - **Root Directory**: vacío (raíz del repo). No hay que tocarlo ni poner overrides manuales de Output Directory — todo lo define `vercel.json` (`buildCommand`, `installCommand`, `outputDirectory: web/dist`, rewrites de `/api/*`).
+   - **Install Command** / **Build Command**: los que trae `vercel.json` (`pnpm install` / `pnpm run build`). No hace falta cambiarlos en el dashboard.
+4. **Variables de entorno** (Settings → Environment Variables, en **Production** y **Preview**):
+   ```
+   DATABASE_URL             # Neon pooled
+   DIRECT_URL                # Neon directo
+   JWT_ACCESS_SECRET         # secreto largo y aleatorio
+   JWT_REFRESH_SECRET        # secreto largo y aleatorio, distinto del de acceso
+   BLOB_READ_WRITE_TOKEN     # vacío (Vercel Blob está en pausa, ver más abajo)
+   ```
+5. **Primer deploy**: al hacer push a `main` (o el deploy inicial), `pnpm run build` corre `prisma generate` → **`prisma migrate deploy`** (aplica automáticamente las migraciones pendientes contra `DIRECT_URL`) → build de `shared` → build de `web`. No hace falta correr migraciones a mano; si el schema no tiene migraciones pendientes, el paso es un no-op.
+6. **Seed inicial (opcional)**: `pnpm run db:seed` desde local (apuntando el `.env` a la Neon de producción) crea un usuario demo (`master@demo.local` / `demo1234`) y un grupo de ejemplo. Es idempotente (usa `upsert`), se puede correr más de una vez sin duplicar datos.
+7. **Verificar**: `https://<tu-proyecto>.vercel.app/api/health` debe responder OK, y la SPA debe cargar en `/`.
+
+### Cambios de schema después del primer deploy
+
+Al añadir un modelo o campo nuevo: `pnpm run db:migrate` en local genera la migración (contra tu Neon o un Postgres local) y la deja en `prisma/migrations/`. Al commitear y pushear, el siguiente deploy en Vercel la aplica solo — **no hay que correr `prisma migrate deploy` a mano**, ya está en el `build` (ver script `build` en `package.json`).
 
 ---
 
@@ -151,17 +178,15 @@ Parser del `.md`, cálculo de derivados (con tests contra el fixture real), Stor
 - **Responsive**: sidebar del journal pasa a ancho completo y se apila sobre el contenido en móvil (`flex-col sm:flex-row`); header de `AppLayout` con `flex-wrap`. Verificado en viewport 375×812.
 - Verificado manualmente en navegador (login, error de credenciales, crear/unirse a grupo con validación, regenerar código, importar ficha real del fixture, CRUD completo de página de journal con toasts, tabs de la ficha, responsive móvil) y con `pnpm run typecheck/lint/test/build`.
 
-### ⬜ Fase 8 — Despliegue (documentación)
+### ✅ Fase 8 — Despliegue (documentación)
 
-La app **ya está desplegada y funcionando**. Falta formalizar: documentar el flujo de env vars, `prisma migrate deploy` en el deploy, y confirmar el checklist de la Fase 8.
+- **`prisma migrate deploy` automatizado**: el script `build` (raíz, el que corre Vercel) ahora es `prisma generate && prisma migrate deploy && build:shared && build web`. Antes las migraciones se aplicaban a mano con `pnpm run db:migrate` apuntando a Neon; ahora cada deploy las aplica solo (usa `DIRECT_URL`, ya configurado como `directUrl` en `prisma/schema.prisma`). Verificado localmente: con las 2 migraciones existentes ya aplicadas, el paso es un no-op ("No pending migrations to apply.") y el build completo sigue funcionando.
+- **Checklist de despliegue desde cero** documentado en la sección "Despliegue" de este README: Neon → repo en Vercel → Root Directory vacío → variables de entorno en Production+Preview → primer deploy (migra solo) → seed opcional → verificar `/api/health`.
 
 ---
 
 ## Qué queda por hacer
 
-- **Fase 8 (documentación de despliegue)** — la app ya está en producción, pero falta:
-  - Documentar el paso de `prisma migrate deploy` (hoy las migraciones se corren a mano con `pnpm run db:migrate` apuntando a Neon; no está automatizado en el build de Vercel).
-  - Checklist final de variables de entorno / pasos para que otra persona pueda desplegar esto desde cero.
 - **Vercel Blob**: sigue en pausa (ver `lib/storage.ts`). Reactivar solo si algún día hace falta subir archivos individuales de más de ~4 MB.
 - **Verificar Fase 6 con un `.zip` real**: se probó con un `.zip` sintético construido a mano; si tienes un export real de Obsidian/Foundry, conviene correrlo una vez para pillar casos raros (nombres de página con caracteres especiales, jerarquías más profundas, PDFs embebidos en vez de solo imágenes).
 - **Code splitting**: `vite build` avisa de un chunk de ~557 kB (172 kB gzip). No es bloqueante, pero si crece más conviene `manualChunks` o `dynamic import()` para las rutas menos usadas (journal, ficha).
