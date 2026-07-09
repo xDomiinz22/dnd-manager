@@ -17,6 +17,17 @@ export function GoogleSignInButton({ text = "signin_with" }: GoogleSignInButtonP
   const googleLogin = useGoogleLogin();
   const [unavailable, setUnavailable] = useState(!CLIENT_ID);
 
+  useEffect(() => {
+    if (!CLIENT_ID) {
+      // Falla en silencio a propósito (no rompe login/registro por
+      // contraseña), pero deja rastro en consola: la causa casi siempre es
+      // que falta configurar VITE_GOOGLE_CLIENT_ID en el entorno del build.
+      console.warn(
+        "GoogleSignInButton: falta VITE_GOOGLE_CLIENT_ID, el botón de Google no se muestra.",
+      );
+    }
+  }, []);
+
   // El script de Google solo debe cargarse e inicializarse una vez; el
   // callback siempre lee la versión más reciente de navigate/toast/mutate a
   // través de este ref para no quedarse con closures obsoletas.
