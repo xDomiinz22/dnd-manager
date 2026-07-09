@@ -1,6 +1,6 @@
 import type { Response, RequestHandler } from "express";
 import type { AuthResponse, RefreshResponse } from "@dnd-manager/shared";
-import { loginSchema, registerSchema } from "@dnd-manager/shared";
+import { googleAuthSchema, loginSchema, registerSchema } from "@dnd-manager/shared";
 import * as authService from "../services/authService";
 import {
   REFRESH_COOKIE_NAME,
@@ -32,6 +32,16 @@ export const loginHandler: RequestHandler = async (req, res, next) => {
   try {
     const input = loginSchema.parse(req.body);
     const tokens = await authService.login(input);
+    sendAuthResponse(res, tokens);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const googleHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = googleAuthSchema.parse(req.body);
+    const tokens = await authService.googleLogin(input.idToken);
     sendAuthResponse(res, tokens);
   } catch (err) {
     next(err);

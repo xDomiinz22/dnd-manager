@@ -18,6 +18,11 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+export const googleAuthSchema = z.object({
+  idToken: z.string().min(1, "Falta el token de Google"),
+});
+export type GoogleAuthInput = z.infer<typeof googleAuthSchema>;
+
 export const userProfileSchema = z.object({
   id: z.string(),
   email: z.string(),

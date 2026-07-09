@@ -12,16 +12,16 @@ App web para gestionar grupos de **Dungeons & Dragons 5e** (sistema Foundry `dnd
 
 Monorepo **pnpm** desplegado como **un solo proyecto en Vercel** (frontend estático + backend serverless bajo el mismo dominio).
 
-| Capa            | Tecnología                                                                        |
-| --------------- | --------------------------------------------------------------------------------- |
-| Frontend        | React 18 + Vite + TypeScript + Tailwind + TanStack Query + React Router           |
-| Backend         | Express (montado como **una** función serverless en `api/index.ts`)               |
-| ORM / DB        | Prisma + **PostgreSQL en Neon** (pooled `DATABASE_URL` + directo `DIRECT_URL`)    |
-| Auth            | JWT (access en memoria + refresh en cookie `httpOnly`), passwords con `argon2`    |
-| Validación      | `zod` (schemas compartidos en `shared/`)                                          |
-| Tests           | Vitest                                                                            |
-| Parsing fichas  | `js-yaml` (bloque `Actor` del `.md` de Foundry)                                   |
-| Parsing journal | `jszip` + `js-yaml` (frontmatter) + `marked` + `dompurify` (todo en el navegador) |
+| Capa            | Tecnología                                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Frontend        | React 18 + Vite + TypeScript + Tailwind + TanStack Query + React Router                                                     |
+| Backend         | Express (montado como **una** función serverless en `api/index.ts`)                                                         |
+| ORM / DB        | Prisma + **PostgreSQL en Neon** (pooled `DATABASE_URL` + directo `DIRECT_URL`)                                              |
+| Auth            | JWT (access en memoria + refresh en cookie `httpOnly`), passwords con `argon2`, login con Google (Google Identity Services) |
+| Validación      | `zod` (schemas compartidos en `shared/`)                                                                                    |
+| Tests           | Vitest                                                                                                                      |
+| Parsing fichas  | `js-yaml` (bloque `Actor` del `.md` de Foundry)                                                                             |
+| Parsing journal | `jszip` + `js-yaml` (frontmatter) + `marked` + `dompurify` (todo en el navegador)                                           |
 
 ### Estructura del repo
 
@@ -78,9 +78,27 @@ DIRECT_URL     # Neon directo (para migraciones)
 JWT_ACCESS_SECRET
 JWT_REFRESH_SECRET
 BLOB_READ_WRITE_TOKEN   # vacío por ahora (ver "Assets")
+GOOGLE_CLIENT_ID        # login con Google — ver sección de abajo
+VITE_GOOGLE_CLIENT_ID   # mismo valor, lo usa el frontend
 ```
 
 En Vercel estas variables están configuradas en Production+Preview (Settings → Environment Variables).
+
+`VITE_GOOGLE_CLIENT_ID` solo lo lee Vite si está en el entorno del proceso o en un `.env` **dentro de `web/`** (Vite no mira el `.env` de la raíz para variables de cliente). Para desarrollo local hay un `web/.env` con ese único valor (gitignorado); en Vercel basta con configurar la variable en el dashboard, Vite la recoge de `process.env` en build sin necesitar ningún archivo.
+
+### Login con Google
+
+Usa **Google Identity Services** (el botón oficial de Google, sin redirect): el frontend inicializa `window.google.accounts.id` con `VITE_GOOGLE_CLIENT_ID` y manda el ID token resultante a `POST /api/auth/google`, que lo verifica con `google-auth-library` (audience = `GOOGLE_CLIENT_ID`) y hace login/registro:
+
+- Si ya existe un usuario con ese `googleId`, entra directamente.
+- Si no, busca por email: si existe una cuenta con contraseña con ese email, la vincula (le añade `googleId`, sin tocar la contraseña).
+- Si no existe ninguna, crea una cuenta nueva sin contraseña (`passwordHash` nulo) con un username generado a partir del nombre de Google.
+
+**Para configurar un Client ID propio** (Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID → Web application):
+
+1. En **Authorized JavaScript origins** añade tu dominio de producción (`https://<tu-proyecto>.vercel.app`) y tu origen de desarrollo local (`http://localhost:5173`, el puerto de Vite).
+2. Copia el Client ID (es público, no hace falta guardarlo como secreto) y ponlo en `GOOGLE_CLIENT_ID` + `VITE_GOOGLE_CLIENT_ID` (mismo valor en ambas) tanto en tu `.env`/`web/.env` local como en Vercel.
+3. Sin `GOOGLE_CLIENT_ID` configurado en el servidor, `POST /api/auth/google` responde `503 GOOGLE_AUTH_DISABLED` en vez de crashear; el resto de la app (login/registro por contraseña) funciona igual.
 
 ---
 
@@ -100,6 +118,8 @@ La app está desplegada en Vercel como **un solo proyecto** (frontend estático 
    JWT_ACCESS_SECRET         # secreto largo y aleatorio
    JWT_REFRESH_SECRET        # secreto largo y aleatorio, distinto del de acceso
    BLOB_READ_WRITE_TOKEN     # vacío (Vercel Blob está en pausa, ver más abajo)
+   GOOGLE_CLIENT_ID          # Client ID de Google Cloud Console (ver "Login con Google")
+   VITE_GOOGLE_CLIENT_ID     # mismo valor que GOOGLE_CLIENT_ID
    ```
 5. **Primer deploy**: al hacer push a `main` (o el deploy inicial), `pnpm run build` corre `prisma generate` → **`prisma migrate deploy`** (aplica automáticamente las migraciones pendientes contra `DIRECT_URL`) → build de `shared` → build de `web`. No hace falta correr migraciones a mano; si el schema no tiene migraciones pendientes, el paso es un no-op.
 6. **Seed inicial (opcional)**: `pnpm run db:seed` desde local (apuntando el `.env` a la Neon de producción) crea un usuario demo (`master@demo.local` / `demo1234`) y un grupo de ejemplo. Es idempotente (usa `upsert`), se puede correr más de una vez sin duplicar datos.
@@ -132,6 +152,8 @@ El deploy costó porque hubo **cuatro** causas encadenadas. Si algo se rompe de 
 4. **Enrutado `/api/*`**: el catch-all `api/[...path].ts` solo enrutaba 1 segmento en Vercel (`/api/health` OK, `/api/auth/register` → NOT_FOUND). Solución: función única en `api/index.ts` + rewrite `"/api/(.*)" → "/api"` (Express recibe la URL original y enruta internamente). El SPA fallback usa negative-lookahead: `"/((?!api/).*)" → "/index.html"` para no capturar la API.
 
 Además: en el dashboard de Vercel, **Root Directory** debe estar vacío (raíz del repo) y sin overrides manuales de Output Directory (se usa `vercel.json`).
+
+**NO poner `envDir` en `web/vite.config.ts`** apuntando a la raíz del monorepo para compartir el `.env` con el server: por alguna razón (no investigada a fondo — posiblemente afecta cómo esbuild/Vite resuelve el `mode`/target al ver un `.env` fuera del root por defecto) el bundle de producción pasó de ~557 kB a ~821 kB con el mismo código, reproducible incluso con la caché de Vite limpia. `web/.env` (gitignorado) con las variables `VITE_*` es la alternativa segura; en Vercel no hace falta ni eso, ya que Vite recoge `VITE_*` de `process.env` en build sin importar el `envDir`.
 
 ---
 
@@ -182,6 +204,18 @@ Parser del `.md`, cálculo de derivados (con tests contra el fixture real), Stor
 
 - **`prisma migrate deploy` automatizado**: el script `build` (raíz, el que corre Vercel) ahora es `prisma generate && prisma migrate deploy && build:shared && build web`. Antes las migraciones se aplicaban a mano con `pnpm run db:migrate` apuntando a Neon; ahora cada deploy las aplica solo (usa `DIRECT_URL`, ya configurado como `directUrl` en `prisma/schema.prisma`). Verificado localmente: con las 2 migraciones existentes ya aplicadas, el paso es un no-op ("No pending migrations to apply.") y el build completo sigue funcionando.
 - **Checklist de despliegue desde cero** documentado en la sección "Despliegue" de este README: Neon → repo en Vercel → Root Directory vacío → variables de entorno en Production+Preview → primer deploy (migra solo) → seed opcional → verificar `/api/health`.
+
+---
+
+## Post-roadmap
+
+### ✅ Login con Google
+
+- Prisma: `User.passwordHash` ahora opcional y `User.googleId` único (migración `20260709183021_google_auth`). Cuentas creadas solo con Google no tienen contraseña; `login()` por email/contraseña detecta este caso y devuelve un error `GOOGLE_ACCOUNT` con mensaje claro en vez de intentar verificar contra un hash nulo.
+- `POST /api/auth/google` (`shared/src/auth.ts` → `googleAuthSchema`, `lib/auth.ts` → `verifyGoogleIdToken` con `google-auth-library`, `server/services/authService.ts` → `googleLogin`): verifica el ID token (audience = `GOOGLE_CLIENT_ID`), busca por `googleId`, si no existe busca por email para vincular una cuenta con contraseña ya existente, y si tampoco hay coincidencia crea una cuenta nueva sin contraseña con username generado (`generateUniqueUsername`, deriva del nombre de Google normalizando acentos y resolviendo colisiones con sufijo numérico).
+- Frontend: `web/src/lib/googleIdentity.ts` carga el script de Google Identity Services dinámicamente una sola vez; `GoogleSignInButton.tsx` inicializa el botón y manda el ID token a `useGoogleLogin`. Usa el patrón de "ref con los callbacks más recientes" para que el efecto de carga (una sola vez) no incurra en dependencias obsoletas del hook.
+- Reutiliza el mismo Client ID de OAuth que **AI Pulse** (es público, no un secreto) — solo hubo que añadir los orígenes autorizados del dominio de producción y de dev en Google Cloud Console.
+- Verificado: login/registro por contraseña sin regresión, botón se renderiza en Login y Register, error controlado con token inválido (401) y con cuenta Google-only intentando login por contraseña (401 con mensaje claro, sin crash), `typecheck`/`lint`/`test`/`build` limpios.
 
 ---
 

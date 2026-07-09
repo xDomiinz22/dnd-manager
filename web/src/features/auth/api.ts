@@ -1,4 +1,10 @@
-import type { AuthResponse, LoginInput, RegisterInput, UserProfile } from "@dnd-manager/shared";
+import type {
+  AuthResponse,
+  GoogleAuthInput,
+  LoginInput,
+  RegisterInput,
+  UserProfile,
+} from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
 
 export const authApi = {
@@ -6,6 +12,8 @@ export const authApi = {
     apiFetch<AuthResponse>("/auth/register", { method: "POST", body: JSON.stringify(input) }),
   login: (input: LoginInput) =>
     apiFetch<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(input) }),
+  google: (input: GoogleAuthInput) =>
+    apiFetch<AuthResponse>("/auth/google", { method: "POST", body: JSON.stringify(input) }),
   logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),
   me: () => apiFetch<UserProfile>("/me"),
 };

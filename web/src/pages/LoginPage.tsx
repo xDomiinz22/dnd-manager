@@ -5,6 +5,7 @@ import { loginSchema, type LoginInput } from "@dnd-manager/shared";
 import { useLogin } from "../features/auth/hooks";
 import { TextField } from "../components/ui/TextField";
 import { Button } from "../components/ui/Button";
+import { GoogleSignInButton } from "../components/GoogleSignInButton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function LoginPage() {
@@ -26,34 +27,40 @@ export function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        noValidate
-        className="w-full max-w-sm rounded-lg border border-slate-800 bg-slate-900 p-8 shadow-xl"
-      >
+      <div className="w-full max-w-sm rounded-lg border border-slate-800 bg-slate-900 p-8 shadow-xl">
         <h1 className="mb-6 text-2xl font-semibold text-amber-400">Iniciar sesión</h1>
 
-        <TextField
-          label="Email"
-          type="email"
-          error={errors.email?.message}
-          {...register("email")}
-        />
-        <TextField
-          label="Contraseña"
-          type="password"
-          error={errors.password?.message}
-          {...register("password")}
-        />
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <TextField
+            label="Email"
+            type="email"
+            error={errors.email?.message}
+            {...register("email")}
+          />
+          <TextField
+            label="Contraseña"
+            type="password"
+            error={errors.password?.message}
+            {...register("password")}
+          />
 
-        <Button
-          type="submit"
-          isLoading={login.isPending}
-          loadingText="Entrando..."
-          className="w-full"
-        >
-          Entrar
-        </Button>
+          <Button
+            type="submit"
+            isLoading={login.isPending}
+            loadingText="Entrando..."
+            className="w-full"
+          >
+            Entrar
+          </Button>
+        </form>
+
+        <div className="my-5 flex items-center gap-3 text-xs text-slate-500">
+          <div className="h-px flex-1 bg-slate-800" />
+          o
+          <div className="h-px flex-1 bg-slate-800" />
+        </div>
+
+        <GoogleSignInButton />
 
         <p className="mt-4 text-center text-sm text-slate-400">
           ¿No tienes cuenta?{" "}
@@ -61,7 +68,7 @@ export function LoginPage() {
             Regístrate
           </Link>
         </p>
-      </form>
+      </div>
     </main>
   );
 }
