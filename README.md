@@ -4,7 +4,7 @@ App web para gestionar grupos de **Dungeons & Dragons 5e** (sistema Foundry `dnd
 
 - **Producción:** https://dnd-manager-web.vercel.app
 - **Repo:** privado en `github.com/xDomiinz22/dnd-manager`
-- **Estado:** Fases 0–6 completas y verificadas. Desplegado y operativo. Pendientes: Fase 7 (pulido UI) y Fase 8 (docs despliegue).
+- **Estado:** Fases 0–7 completas y verificadas. Desplegado y operativo. Pendiente: Fase 8 (docs despliegue).
 
 ---
 
@@ -140,9 +140,16 @@ Parser del `.md`, cálculo de derivados (con tests contra el fixture real), Stor
 - Al borrar una página, sus hijas se reenganchan al abuelo (no se pierden ni se cascada-borran).
 - Verificado con un `.zip` sintético (no había uno real disponible para esta fase) que reproduce la estructura documentada: índice con TOC anidado, página con imagen embebida, wiki-links con y sin alias, reimport destructivo, creación manual con backlinks recalculados.
 
-### ⬜ Fase 7 — Shell de frontend y pulido
+### ✅ Fase 7 — Shell de frontend y pulido
 
-Guards de auth ya existen; falta pulir estados de carga/skeletons, toasts, react-hook-form + zod en formularios, componentes reutilizables, empty states, accesibilidad y responsive.
+- **Kit de UI reutilizable** en `web/src/components/ui/`: `Button`, `Card` (polimórfico vía prop `as`), `TextField`/`TextAreaField`/`SelectField` (con `error` y `hideLabel`), `Skeleton`/`SkeletonText`/`SkeletonRow`/`SkeletonPage`, `EmptyState`. Sustituyen las clases Tailwind duplicadas que había en cada página.
+- **Toasts**: `ToastProvider`/`useToast` (contexto propio, sin dependencia externa) montado en `main.tsx` con contenedor `aria-live="polite"`. Wireado en todas las mutaciones de grupos, personajes y journal (crear/unir/regenerar/expulsar/importar/duplicar/crear-editar-borrar página).
+- **Skeletons** en vez de "Cargando...": `ProtectedRoute`, `GroupsPage`, `MyCharactersPage`, `GroupDetailPage`, `CharacterSheetPage`, `GroupJournalPage`, `CharacterJournalPage`.
+- **Empty states** con `EmptyState`: sin grupos, sin personajes (propios y de grupo), árbol de journal vacío.
+- **Formularios migrados a `react-hook-form` + `zod`** (`@hookform/resolvers/zod`), reutilizando los schemas ya exportados por `@dnd-manager/shared` (login, registro, crear/unirse a grupo, importar ficha/.md, duplicar personaje, crear/editar página de journal). Se añadieron mensajes de error en español a esos schemas (antes tiraban del default en inglés de zod). `ImportJournalZipForm` se dejó como wizard multi-paso con `useState` (no encaja bien en RHF por su naturaleza asíncrona de varios pasos), pero restyled con `Card`/`Button` y con toasts.
+- **Accesibilidad**: pestañas de `CharacterSheetPage` con `role="tablist"/"tab"/"tabpanel"` + `aria-selected`; `aria-label` en botones de icono (cerrar toast, expandir/colapsar árbol, input de archivo del importador); foco visible (`focus-visible:outline`) en botones y en los links de la lista de grupos.
+- **Responsive**: sidebar del journal pasa a ancho completo y se apila sobre el contenido en móvil (`flex-col sm:flex-row`); header de `AppLayout` con `flex-wrap`. Verificado en viewport 375×812.
+- Verificado manualmente en navegador (login, error de credenciales, crear/unirse a grupo con validación, regenerar código, importar ficha real del fixture, CRUD completo de página de journal con toasts, tabs de la ficha, responsive móvil) y con `pnpm run typecheck/lint/test/build`.
 
 ### ⬜ Fase 8 — Despliegue (documentación)
 
@@ -152,18 +159,11 @@ La app **ya está desplegada y funcionando**. Falta formalizar: documentar el fl
 
 ## Qué queda por hacer
 
-- **Fase 7 (pulido de UI)** — nada de esto es funcionalmente urgente, la app funciona sin ello:
-  - Estados de carga tipo skeleton en vez de "Cargando...".
-  - Toasts para confirmar acciones (guardar, borrar, importar) en vez de solo cambios de estado silenciosos.
-  - Migrar formularios sueltos a `react-hook-form` + `zod` (hoy son `useState` + validación básica del navegador).
-  - Extraer componentes repetidos (botones, inputs, cards) a un set reutilizable — hay bastante duplicación de clases Tailwind entre páginas.
-  - Empty states más cuidados (grupos sin personajes, journal vacío, etc. — hoy son un párrafo de texto plano).
-  - Revisión de accesibilidad (algunos `<button>` sin `aria-label`, foco de teclado en el árbol del journal) y responsive en móvil (el layout de la ficha y del journal no se ha probado en viewport estrecho).
 - **Fase 8 (documentación de despliegue)** — la app ya está en producción, pero falta:
   - Documentar el paso de `prisma migrate deploy` (hoy las migraciones se corren a mano con `pnpm run db:migrate` apuntando a Neon; no está automatizado en el build de Vercel).
   - Checklist final de variables de entorno / pasos para que otra persona pueda desplegar esto desde cero.
 - **Vercel Blob**: sigue en pausa (ver `lib/storage.ts`). Reactivar solo si algún día hace falta subir archivos individuales de más de ~4 MB.
 - **Verificar Fase 6 con un `.zip` real**: se probó con un `.zip` sintético construido a mano; si tienes un export real de Obsidian/Foundry, conviene correrlo una vez para pillar casos raros (nombres de página con caracteres especiales, jerarquías más profundas, PDFs embebidos en vez de solo imágenes).
-- **Datos de prueba en Neon**: durante las verificaciones de todas las fases se crearon varios usuarios/grupos/journals de test (`prod_*`, `wake_*`, `journalmaster`, "Grupo Producción", "Grupo Journal Browser", etc.). Limpiar si se quiere una base limpia antes de usarla de verdad.
-- **Warning conocido e inofensivo**: ESLint marca `react-refresh/only-export-components` en `web/src/context/AuthContext.tsx` (patrón Context+hook en un archivo). No es un error.
-- **Cambios locales sin commitear**: todo el trabajo de la Fase 6 todavía está solo en el working tree (`git status` lo confirma) — ni siquiera hay un commit local, y por tanto tampoco se subió a GitHub. Pendiente de confirmar con el usuario antes de comprometer y subir.
+- **Code splitting**: `vite build` avisa de un chunk de ~557 kB (172 kB gzip). No es bloqueante, pero si crece más conviene `manualChunks` o `dynamic import()` para las rutas menos usadas (journal, ficha).
+- **Datos de prueba en Neon**: además de los datos previos (`prod_*`, `wake_*`, `journalmaster`, "Grupo Producción", "Grupo Journal Browser"), la verificación de la Fase 7 creó "Grupo Fase 7 Test" (vacío, bajo `journalmaster`) y, bajo el usuario semilla `master@demo.local`/`demo1234`, un personaje importado del fixture en "Grupo Demo" y un `JournalEntry` "Diario de prueba" con una página editada. Limpiar si se quiere una base limpia antes de usarla de verdad.
+- **Warning conocido e inofensivo**: ESLint marca `react-refresh/only-export-components` en `web/src/context/AuthContext.tsx` y en `web/src/components/ui/Toast.tsx` (mismo patrón Context+hook en un archivo). No es un error.

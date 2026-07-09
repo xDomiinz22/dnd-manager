@@ -4,12 +4,12 @@ export const groupRoleSchema = z.enum(["MASTER", "PLAYER"]);
 export type GroupRoleValue = z.infer<typeof groupRoleSchema>;
 
 export const createGroupSchema = z.object({
-  name: z.string().trim().min(1).max(100),
+  name: z.string().trim().min(1, "El nombre no puede estar vacío").max(100),
 });
 export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 
 export const joinGroupSchema = z.object({
-  inviteCode: z.string().trim().min(4).max(12),
+  inviteCode: z.string().trim().min(4, "El código debe tener al menos 4 caracteres").max(12),
 });
 export type JoinGroupInput = z.infer<typeof joinGroupSchema>;
 

@@ -1,13 +1,29 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  importCharacterMdSchema,
+  importCharacterSchema,
+  type ImportCharacterInput,
+  type ImportCharacterMdInput,
+} from "@dnd-manager/shared";
 import { useAuth } from "../context/AuthContext";
 import { useGroupDetail, useRegenerateInviteCode, useRemoveMember } from "../features/groups/hooks";
 import { useImportCharacter, useImportCharacterMd } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { SelectField } from "../components/ui/SelectField";
+import { TextAreaField } from "../components/ui/TextAreaField";
+import { EmptyState } from "../components/ui/EmptyState";
+import { SkeletonPage } from "../components/ui/Skeleton";
+import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const toast = useToast();
   const { data: group, isLoading } = useGroupDetail(id!);
   const regenerate = useRegenerateInviteCode(id!);
   const removeMember = useRemoveMember(id!);
@@ -16,7 +32,11 @@ export function GroupDetailPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   if (isLoading || !group) {
-    return <div className="mx-auto max-w-2xl px-6 py-10 text-slate-400">Cargando grupo...</div>;
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-10">
+        <SkeletonPage rows={4} />
+      </div>
+    );
   }
 
   const isMaster = group.role === "MASTER";
@@ -26,6 +46,27 @@ export function GroupDetailPage() {
     navigator.clipboard.writeText(group.inviteCode).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  function handleRegenerate() {
+    regenerate.mutate(undefined, {
+      onSuccess: () => toast.success("Código de invitación regenerado."),
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo regenerar el código.")),
+    });
+  }
+
+  function handleRemoveMember(userId: string, isSelf: boolean) {
+    removeMember.mutate(userId, {
+      onSuccess: () =>
+        toast.success(isSelf ? "Has salido del grupo." : "Miembro expulsado del grupo."),
+      onError: (err) =>
+        toast.error(
+          toErrorMessage(
+            err,
+            isSelf ? "No se pudo salir del grupo." : "No se pudo expulsar al miembro.",
+          ),
+        ),
     });
   }
 
@@ -42,29 +83,26 @@ export function GroupDetailPage() {
       </div>
       <p className="mb-6 text-sm text-slate-400">Master: {group.master.username}</p>
 
-      <div className="mb-6 flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3">
+      <Card className="mb-6 flex items-center gap-3">
         <span className="text-sm text-slate-400">Código de invitación</span>
         <code className="rounded bg-slate-800 px-2 py-1 font-mono tracking-widest text-amber-400">
           {group.inviteCode}
         </code>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="text-sm text-slate-300 hover:text-amber-400"
-        >
+        <Button variant="ghost" onClick={handleCopy}>
           {copied ? "¡Copiado!" : "Copiar"}
-        </button>
+        </Button>
         {isMaster && (
-          <button
-            type="button"
-            onClick={() => regenerate.mutate()}
-            disabled={regenerate.isPending}
-            className="ml-auto text-sm text-slate-300 hover:text-amber-400 disabled:opacity-50"
+          <Button
+            variant="ghost"
+            onClick={handleRegenerate}
+            isLoading={regenerate.isPending}
+            loadingText="Regenerando..."
+            className="ml-auto"
           >
-            {regenerate.isPending ? "Regenerando..." : "Regenerar"}
-          </button>
+            Regenerar
+          </Button>
         )}
-      </div>
+      </Card>
 
       <h2 className="mb-3 text-lg font-medium text-slate-200">Miembros ({group.members.length})</h2>
       <ul className="mb-6 space-y-2">
@@ -81,14 +119,13 @@ export function GroupDetailPage() {
                 {m.role === "MASTER" ? "Master" : "Jugador"}
               </span>
               {m.role !== "MASTER" && (isMaster || m.userId === user?.id) && (
-                <button
-                  type="button"
-                  onClick={() => removeMember.mutate(m.userId)}
-                  disabled={removeMember.isPending}
-                  className="text-sm text-red-400 hover:underline disabled:opacity-50"
+                <Button
+                  variant="danger"
+                  onClick={() => handleRemoveMember(m.userId, m.userId === user?.id)}
+                  isLoading={removeMember.isPending}
                 >
                   {m.userId === user?.id ? "Salir" : "Expulsar"}
-                </button>
+                </Button>
               )}
             </div>
           </li>
@@ -100,13 +137,13 @@ export function GroupDetailPage() {
           Personajes ({group.characters.length})
         </h2>
         {isMaster && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            className="text-amber-400"
             onClick={() => setImporting((v) => !v)}
-            className="text-sm text-amber-400 hover:underline"
           >
             {importing ? "Cancelar" : "Importar ficha"}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -118,47 +155,50 @@ export function GroupDetailPage() {
         />
       )}
 
-      <ul className="space-y-2">
-        {group.characters.map((c) => (
-          <li key={c.id} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-            <div className="flex items-center gap-3">
-              <PortraitCircle url={c.portraitUrl} name={c.name} size={48} />
-              <div className="flex-1">
-                <Link
-                  to={`/characters/${c.id}`}
-                  className="font-medium text-slate-100 hover:text-amber-400"
-                >
-                  {c.name}
-                </Link>
-                {c.className && (
-                  <p className="text-sm text-slate-500">
-                    {c.className} {c.level} {c.ownerUsername ? `· ${c.ownerUsername}` : ""}
-                  </p>
+      {group.characters.length === 0 ? (
+        <EmptyState
+          title="Aún no hay personajes en este grupo."
+          description={isMaster ? "Importa una ficha desde el export .md de Foundry." : undefined}
+        />
+      ) : (
+        <ul className="space-y-2">
+          {group.characters.map((c) => (
+            <li key={c.id} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+              <div className="flex items-center gap-3">
+                <PortraitCircle url={c.portraitUrl} name={c.name} size={48} />
+                <div className="flex-1">
+                  <Link
+                    to={`/characters/${c.id}`}
+                    className="font-medium text-slate-100 hover:text-amber-400"
+                  >
+                    {c.name}
+                  </Link>
+                  {c.className && (
+                    <p className="text-sm text-slate-500">
+                      {c.className} {c.level} {c.ownerUsername ? `· ${c.ownerUsername}` : ""}
+                    </p>
+                  )}
+                </div>
+                {isMaster && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setUpdatingId(updatingId === c.id ? null : c.id)}
+                  >
+                    Actualizar .md
+                  </Button>
                 )}
               </div>
-              {isMaster && (
-                <button
-                  type="button"
-                  onClick={() => setUpdatingId(updatingId === c.id ? null : c.id)}
-                  className="text-sm text-slate-300 hover:text-amber-400"
-                >
-                  Actualizar .md
-                </button>
+              {updatingId === c.id && (
+                <UpdateCharacterMdForm
+                  characterId={c.id}
+                  groupId={group.id}
+                  onDone={() => setUpdatingId(null)}
+                />
               )}
-            </div>
-            {updatingId === c.id && (
-              <UpdateCharacterMdForm
-                characterId={c.id}
-                groupId={group.id}
-                onDone={() => setUpdatingId(null)}
-              />
-            )}
-          </li>
-        ))}
-        {group.characters.length === 0 && (
-          <p className="text-slate-500">Aún no hay personajes en este grupo.</p>
-        )}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -171,69 +211,50 @@ interface ImportCharacterFormProps {
 
 function ImportCharacterForm({ groupId, members, onDone }: ImportCharacterFormProps) {
   const players = members.filter((m) => m.role !== "MASTER");
-  const [md, setMd] = useState("");
-  const [ownerId, setOwnerId] = useState(players[0]?.userId ?? "");
   const importCharacter = useImportCharacter(groupId);
+  const toast = useToast();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ImportCharacterInput>({
+    resolver: zodResolver(importCharacterSchema),
+    defaultValues: { ownerId: players[0]?.userId ?? "", md: "" },
+  });
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    importCharacter.mutate(
-      { md, ownerId: ownerId || undefined },
-      {
-        onSuccess: () => {
-          setMd("");
-          onDone();
-        },
+  function onSubmit(values: ImportCharacterInput) {
+    importCharacter.mutate(values, {
+      onSuccess: () => {
+        toast.success("Ficha importada.");
+        onDone();
       },
-    );
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo importar la ficha.")),
+    });
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="mb-4 rounded-lg border border-slate-800 bg-slate-900 p-4"
-    >
-      <label className="mb-1 block text-sm text-slate-400" htmlFor="owner">
-        Dueño
-      </label>
-      <select
-        id="owner"
-        value={ownerId}
-        onChange={(e) => setOwnerId(e.target.value)}
-        className="mb-3 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
-      >
+    <Card as="form" onSubmit={handleSubmit(onSubmit)} noValidate className="mb-4">
+      <SelectField label="Dueño" {...register("ownerId")}>
         {players.map((p) => (
           <option key={p.userId} value={p.userId}>
             {p.username}
           </option>
         ))}
-      </select>
+      </SelectField>
 
-      <label className="mb-1 block text-sm text-slate-400" htmlFor="md">
-        Contenido del .md (export Foundry)
-      </label>
-      <textarea
-        id="md"
-        value={md}
-        onChange={(e) => setMd(e.target.value)}
-        required
+      <TextAreaField
+        label="Contenido del .md (export Foundry)"
         rows={6}
-        className="mb-3 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 font-mono text-xs text-slate-100"
+        className="font-mono text-xs"
         placeholder={"---\ntitle: ...\n```Actor\n...\n```"}
+        error={errors.md?.message}
+        {...register("md")}
       />
 
-      {importCharacter.isError && (
-        <p className="mb-3 text-sm text-red-400">{(importCharacter.error as Error).message}</p>
-      )}
-
-      <button
-        type="submit"
-        disabled={importCharacter.isPending}
-        className="rounded bg-amber-400 px-3 py-2 text-sm font-medium text-slate-950 disabled:opacity-50"
-      >
-        {importCharacter.isPending ? "Importando..." : "Importar"}
-      </button>
-    </form>
+      <Button type="submit" isLoading={importCharacter.isPending} loadingText="Importando...">
+        Importar
+      </Button>
+    </Card>
   );
 }
 
@@ -246,34 +267,45 @@ function UpdateCharacterMdForm({
   groupId: string;
   onDone: () => void;
 }) {
-  const [md, setMd] = useState("");
   const importMd = useImportCharacterMd(characterId, groupId);
+  const toast = useToast();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<ImportCharacterMdInput>({
+    resolver: zodResolver(importCharacterMdSchema),
+    defaultValues: { md: "" },
+  });
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    importMd.mutate({ md }, { onSuccess: onDone });
+  function onSubmit(values: ImportCharacterMdInput) {
+    importMd.mutate(values, {
+      onSuccess: () => {
+        toast.success("Ficha actualizada.");
+        onDone();
+      },
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo actualizar la ficha.")),
+    });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-3 border-t border-slate-800 pt-3">
-      <textarea
-        value={md}
-        onChange={(e) => setMd(e.target.value)}
-        required
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      className="mt-3 border-t border-slate-800 pt-3"
+    >
+      <TextAreaField
+        label="Nuevo contenido del .md"
+        hideLabel
         rows={5}
-        className="mb-3 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 font-mono text-xs text-slate-100"
+        className="font-mono text-xs"
         placeholder="Pega el nuevo contenido del .md"
+        error={errors.md?.message}
+        {...register("md")}
       />
-      {importMd.isError && (
-        <p className="mb-3 text-sm text-red-400">{(importMd.error as Error).message}</p>
-      )}
-      <button
-        type="submit"
-        disabled={importMd.isPending}
-        className="rounded bg-amber-400 px-3 py-2 text-sm font-medium text-slate-950 disabled:opacity-50"
-      >
-        {importMd.isPending ? "Actualizando..." : "Actualizar"}
-      </button>
+      <Button type="submit" isLoading={importMd.isPending} loadingText="Actualizando...">
+        Actualizar
+      </Button>
     </form>
   );
 }

@@ -1,22 +1,47 @@
-import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  createGroupSchema,
+  joinGroupSchema,
+  type CreateGroupInput,
+  type JoinGroupInput,
+} from "@dnd-manager/shared";
 import { useCreateGroup, useGroups, useJoinGroup } from "../features/groups/hooks";
+import { Card } from "../components/ui/Card";
+import { TextField } from "../components/ui/TextField";
+import { Button } from "../components/ui/Button";
+import { EmptyState } from "../components/ui/EmptyState";
+import { SkeletonPage } from "../components/ui/Skeleton";
+import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function GroupsPage() {
   const { data: groups, isLoading } = useGroups();
   const createGroup = useCreateGroup();
   const joinGroup = useJoinGroup();
-  const [groupName, setGroupName] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
+  const toast = useToast();
 
-  function handleCreate(e: FormEvent) {
-    e.preventDefault();
-    createGroup.mutate({ name: groupName }, { onSuccess: () => setGroupName("") });
+  const createForm = useForm<CreateGroupInput>({ resolver: zodResolver(createGroupSchema) });
+  const joinForm = useForm<JoinGroupInput>({ resolver: zodResolver(joinGroupSchema) });
+
+  function handleCreate(values: CreateGroupInput) {
+    createGroup.mutate(values, {
+      onSuccess: () => {
+        createForm.reset();
+        toast.success(`Grupo "${values.name}" creado.`);
+      },
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo crear el grupo.")),
+    });
   }
 
-  function handleJoin(e: FormEvent) {
-    e.preventDefault();
-    joinGroup.mutate({ inviteCode }, { onSuccess: () => setInviteCode("") });
+  function handleJoin(values: JoinGroupInput) {
+    joinGroup.mutate(values, {
+      onSuccess: () => {
+        joinForm.reset();
+        toast.success("Te has unido al grupo.");
+      },
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo unir al grupo.")),
+    });
   }
 
   return (
@@ -24,52 +49,55 @@ export function GroupsPage() {
       <h1 className="mb-6 text-2xl font-semibold text-amber-400">Tus grupos</h1>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2">
-        <form onSubmit={handleCreate} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+        <Card as="form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
           <h2 className="mb-3 text-sm font-medium text-slate-300">Crear grupo</h2>
-          <input
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
+          <TextField
+            label="Nombre del grupo"
             placeholder="Nombre del grupo"
-            required
-            className="mb-3 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:border-amber-400"
+            error={createForm.formState.errors.name?.message}
+            {...createForm.register("name")}
           />
-          {createGroup.isError && (
-            <p className="mb-3 text-sm text-red-400">{(createGroup.error as Error).message}</p>
-          )}
-          <button
+          <Button
             type="submit"
-            disabled={createGroup.isPending}
-            className="w-full rounded bg-amber-400 px-3 py-2 font-medium text-slate-950 disabled:opacity-50"
+            isLoading={createGroup.isPending}
+            loadingText="Creando..."
+            className="w-full"
           >
-            {createGroup.isPending ? "Creando..." : "Crear"}
-          </button>
-        </form>
+            Crear
+          </Button>
+        </Card>
 
-        <form onSubmit={handleJoin} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+        <Card as="form" onSubmit={joinForm.handleSubmit(handleJoin)} noValidate>
           <h2 className="mb-3 text-sm font-medium text-slate-300">Unirse con código</h2>
-          <input
-            value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+          <TextField
+            label="Código de invitación"
             placeholder="Código de invitación"
-            required
-            className="mb-3 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 uppercase tracking-widest text-slate-100 outline-none focus:border-amber-400"
+            className="uppercase tracking-widest"
+            error={joinForm.formState.errors.inviteCode?.message}
+            {...joinForm.register("inviteCode", {
+              onChange: (e) => {
+                e.target.value = e.target.value.toUpperCase();
+              },
+            })}
           />
-          {joinGroup.isError && (
-            <p className="mb-3 text-sm text-red-400">{(joinGroup.error as Error).message}</p>
-          )}
-          <button
+          <Button
             type="submit"
-            disabled={joinGroup.isPending}
-            className="w-full rounded bg-amber-400 px-3 py-2 font-medium text-slate-950 disabled:opacity-50"
+            isLoading={joinGroup.isPending}
+            loadingText="Uniéndote..."
+            className="w-full"
           >
-            {joinGroup.isPending ? "Uniéndote..." : "Unirse"}
-          </button>
-        </form>
+            Unirse
+          </Button>
+        </Card>
       </div>
 
-      {isLoading && <p className="text-slate-400">Cargando grupos...</p>}
+      {isLoading && <SkeletonPage rows={2} />}
+
       {!isLoading && groups?.length === 0 && (
-        <p className="text-slate-400">Aún no perteneces a ningún grupo.</p>
+        <EmptyState
+          title="Aún no perteneces a ningún grupo."
+          description="Crea uno nuevo o pídele a tu Master el código de invitación."
+        />
       )}
 
       <ul className="space-y-2">
@@ -77,7 +105,7 @@ export function GroupsPage() {
           <li key={g.id}>
             <Link
               to={`/groups/${g.id}`}
-              className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 hover:border-amber-400"
+              className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 hover:border-amber-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
             >
               <span className="font-medium text-slate-100">{g.name}</span>
               <span className="flex items-center gap-3 text-sm text-slate-400">

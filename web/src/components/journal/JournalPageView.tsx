@@ -1,6 +1,12 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { JournalPageView as JournalPageViewData } from "@dnd-manager/shared";
+import { updateJournalPageSchema, type UpdateJournalPageInput } from "@dnd-manager/shared";
 import { JOURNAL_PAGE_LINK_PREFIX, renderJournalHtml } from "../../features/journal/render";
+import { TextField } from "../ui/TextField";
+import { TextAreaField } from "../ui/TextAreaField";
+import { Button } from "../ui/Button";
 
 interface JournalPageViewProps {
   page: JournalPageViewData;
@@ -22,8 +28,19 @@ export function JournalPageView({
   isSaving,
 }: JournalPageViewProps) {
   const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(page.title);
-  const [bodyMarkdown, setBodyMarkdown] = useState(page.bodyMarkdown);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<UpdateJournalPageInput>({
+    resolver: zodResolver(updateJournalPageSchema),
+    defaultValues: { title: page.title, bodyMarkdown: page.bodyMarkdown },
+  });
+
+  useEffect(() => {
+    reset({ title: page.title, bodyMarkdown: page.bodyMarkdown });
+  }, [page.id, page.title, page.bodyMarkdown, reset]);
 
   const html = useMemo(
     () => renderJournalHtml(page.bodyMarkdown, page.assets, titleToId),
@@ -41,49 +58,42 @@ export function JournalPageView({
     }
   }
 
-  function startEditing() {
-    setTitle(page.title);
-    setBodyMarkdown(page.bodyMarkdown);
-    setEditing(true);
-  }
-
-  function handleSave() {
-    onSave?.({ title, bodyMarkdown });
+  function onSubmit(values: UpdateJournalPageInput) {
+    onSave?.({ title: values.title ?? page.title, bodyMarkdown: values.bodyMarkdown ?? "" });
     setEditing(false);
   }
 
   if (editing) {
     return (
-      <div className="flex-1 rounded-lg border border-slate-800 bg-slate-900 p-4">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="mb-3 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 font-semibold text-amber-400"
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+        className="flex-1 rounded-lg border border-slate-800 bg-slate-900 p-4"
+      >
+        <TextField
+          label="Título"
+          hideLabel
+          className="font-semibold text-amber-400"
+          error={errors.title?.message}
+          {...register("title")}
         />
-        <textarea
-          value={bodyMarkdown}
-          onChange={(e) => setBodyMarkdown(e.target.value)}
+        <TextAreaField
+          label="Contenido"
+          hideLabel
           rows={16}
-          className="mb-3 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 font-mono text-sm text-slate-100"
+          className="font-mono text-sm"
+          error={errors.bodyMarkdown?.message}
+          {...register("bodyMarkdown")}
         />
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="rounded bg-amber-400 px-3 py-2 text-sm font-medium text-slate-950 disabled:opacity-50"
-          >
-            {isSaving ? "Guardando..." : "Guardar"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditing(false)}
-            className="rounded border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
-          >
+          <Button type="submit" isLoading={isSaving} loadingText="Guardando...">
+            Guardar
+          </Button>
+          <Button variant="secondary" type="button" onClick={() => setEditing(false)}>
             Cancelar
-          </button>
+          </Button>
         </div>
-      </div>
+      </form>
     );
   }
 
@@ -92,18 +102,20 @@ export function JournalPageView({
       <div className="mb-3 flex items-start justify-between gap-3">
         <h1 className="text-xl font-semibold text-amber-400">{page.title}</h1>
         {canEdit && (
-          <div className="flex shrink-0 gap-2 text-sm">
-            <button
-              type="button"
-              onClick={startEditing}
-              className="text-slate-300 hover:text-amber-400"
+          <div className="flex shrink-0 gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                reset({ title: page.title, bodyMarkdown: page.bodyMarkdown });
+                setEditing(true);
+              }}
             >
               Editar
-            </button>
+            </Button>
             {onDelete && (
-              <button type="button" onClick={onDelete} className="text-red-400 hover:underline">
+              <Button variant="danger" onClick={onDelete}>
                 Borrar
-              </button>
+              </Button>
             )}
           </div>
         )}

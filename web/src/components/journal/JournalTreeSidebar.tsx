@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { JournalTreeNode } from "@dnd-manager/shared";
+import { EmptyState } from "../ui/EmptyState";
 
 interface JournalTreeSidebarProps {
   title: string;
@@ -15,22 +16,25 @@ export function JournalTreeSidebar({
   onSelect,
 }: JournalTreeSidebarProps) {
   return (
-    <div className="w-64 shrink-0 rounded-lg border border-slate-800 bg-slate-900 p-3">
+    <div className="w-full shrink-0 rounded-lg border border-slate-800 bg-slate-900 p-3 sm:w-64">
       <h2 className="mb-2 truncate text-sm font-semibold text-amber-400" title={title}>
         {title}
       </h2>
-      <ul className="space-y-0.5">
-        {nodes.map((node) => (
-          <TreeNode
-            key={node.id}
-            node={node}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            depth={0}
-          />
-        ))}
-        {nodes.length === 0 && <li className="text-sm text-slate-500">Sin páginas todavía.</li>}
-      </ul>
+      {nodes.length === 0 ? (
+        <EmptyState title="Sin páginas todavía." />
+      ) : (
+        <ul className="space-y-0.5">
+          {nodes.map((node) => (
+            <TreeNode
+              key={node.id}
+              node={node}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              depth={0}
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

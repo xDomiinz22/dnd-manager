@@ -1,20 +1,20 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
+  email: z.string().trim().toLowerCase().email("Email no válido"),
   username: z
     .string()
     .trim()
-    .min(3)
-    .max(24)
+    .min(3, "Mínimo 3 caracteres")
+    .max(24, "Máximo 24 caracteres")
     .regex(/^[a-zA-Z0-9_]+$/, "Solo letras, números y guion bajo"),
-  password: z.string().min(8).max(200),
+  password: z.string().min(8, "Mínimo 8 caracteres").max(200),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(1),
+  email: z.string().trim().toLowerCase().email("Email no válido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 

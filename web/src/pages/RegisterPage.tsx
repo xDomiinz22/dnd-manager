@@ -1,80 +1,65 @@
-import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { registerSchema, type RegisterInput } from "@dnd-manager/shared";
 import { useRegister } from "../features/auth/hooks";
+import { TextField } from "../components/ui/TextField";
+import { Button } from "../components/ui/Button";
+import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function RegisterPage() {
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const register = useRegister();
   const navigate = useNavigate();
+  const toast = useToast();
+  const {
+    register: registerField,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) });
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    register.mutate(
-      { email, username, password },
-      { onSuccess: () => navigate("/", { replace: true }) },
-    );
+  function onSubmit(values: RegisterInput) {
+    register.mutate(values, {
+      onSuccess: () => navigate("/", { replace: true }),
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo crear la cuenta.")),
+    });
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
         className="w-full max-w-sm rounded-lg border border-slate-800 bg-slate-900 p-8 shadow-xl"
       >
         <h1 className="mb-6 text-2xl font-semibold text-amber-400">Crear cuenta</h1>
 
-        <label className="mb-1 block text-sm text-slate-400" htmlFor="email">
-          Email
-        </label>
-        <input
-          id="email"
+        <TextField
+          label="Email"
           type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mb-4 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:border-amber-400"
+          error={errors.email?.message}
+          {...registerField("email")}
         />
-
-        <label className="mb-1 block text-sm text-slate-400" htmlFor="username">
-          Username
-        </label>
-        <input
-          id="username"
+        <TextField
+          label="Username"
           type="text"
-          required
-          minLength={3}
-          maxLength={24}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="mb-4 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:border-amber-400"
+          error={errors.username?.message}
+          {...registerField("username")}
         />
-
-        <label className="mb-1 block text-sm text-slate-400" htmlFor="password">
-          Contraseña
-        </label>
-        <input
-          id="password"
+        <TextField
+          label="Contraseña"
           type="password"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mb-4 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:border-amber-400"
+          error={errors.password?.message}
+          {...registerField("password")}
         />
 
-        {register.isError && (
-          <p className="mb-4 text-sm text-red-400">{(register.error as Error).message}</p>
-        )}
-
-        <button
+        <Button
           type="submit"
-          disabled={register.isPending}
-          className="w-full rounded bg-amber-400 px-3 py-2 font-medium text-slate-950 disabled:opacity-50"
+          isLoading={register.isPending}
+          loadingText="Creando..."
+          className="w-full"
         >
-          {register.isPending ? "Creando..." : "Crear cuenta"}
-        </button>
+          Crear cuenta
+        </Button>
 
         <p className="mt-4 text-center text-sm text-slate-400">
           ¿Ya tienes cuenta?{" "}

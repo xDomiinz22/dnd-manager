@@ -14,11 +14,15 @@ import { JournalTreeSidebar } from "../components/journal/JournalTreeSidebar";
 import { JournalPageView } from "../components/journal/JournalPageView";
 import { ImportJournalZipForm } from "../components/journal/ImportJournalZipForm";
 import { NewJournalPageForm } from "../components/journal/NewJournalPageForm";
+import { Button } from "../components/ui/Button";
+import { SkeletonPage } from "../components/ui/Skeleton";
+import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function GroupJournalPage() {
   const { id: groupId, pageId } = useParams<{ id: string; pageId?: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
   const { data: group } = useGroupDetail(groupId!);
   const { data: journal, isLoading, isError, error } = useGroupJournal(groupId!);
   const { data: page } = useJournalPage(pageId ?? null);
@@ -38,7 +42,11 @@ export function GroupJournalPage() {
   }
 
   if (isLoading) {
-    return <div className="mx-auto max-w-4xl px-6 py-10 text-slate-400">Cargando diario...</div>;
+    return (
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <SkeletonPage />
+      </div>
+    );
   }
 
   if (isError) {
@@ -57,22 +65,14 @@ export function GroupJournalPage() {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-amber-400">Diario de grupo</h1>
-        <div className="flex gap-3 text-sm">
-          <button
-            type="button"
-            onClick={() => setShowNewPage((v) => !v)}
-            className="text-slate-300 hover:text-amber-400"
-          >
+        <div className="flex gap-3">
+          <Button variant="ghost" onClick={() => setShowNewPage((v) => !v)}>
             Nueva página
-          </button>
+          </Button>
           {isMaster && (
-            <button
-              type="button"
-              onClick={() => setShowImport((v) => !v)}
-              className="text-slate-300 hover:text-amber-400"
-            >
+            <Button variant="ghost" onClick={() => setShowImport((v) => !v)}>
               {showImport ? "Cerrar" : "Reimportar .zip"}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -83,12 +83,17 @@ export function GroupJournalPage() {
       {showNewPage && (
         <NewJournalPageForm
           isPending={createPage.isPending}
-          onCreate={(input) => createPage.mutate(input)}
+          onCreate={(input) =>
+            createPage.mutate(input, {
+              onSuccess: () => toast.success("Página creada."),
+              onError: (err) => toast.error(toErrorMessage(err, "No se pudo crear la página.")),
+            })
+          }
           onDone={() => setShowNewPage(false)}
         />
       )}
 
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
         <JournalTreeSidebar
           title={journal.title}
           nodes={journal.pages}
@@ -103,9 +108,21 @@ export function GroupJournalPage() {
             onNavigate={goToPage}
             canEdit
             isSaving={updatePage.isPending}
-            onSave={(input) => updatePage.mutate({ pageId: page.id, input })}
+            onSave={(input) =>
+              updatePage.mutate(
+                { pageId: page.id, input },
+                {
+                  onSuccess: () => toast.success("Página guardada."),
+                  onError: (err) =>
+                    toast.error(toErrorMessage(err, "No se pudo guardar la página.")),
+                },
+              )
+            }
             onDelete={() => {
-              deletePage.mutate(page.id);
+              deletePage.mutate(page.id, {
+                onSuccess: () => toast.success("Página borrada."),
+                onError: (err) => toast.error(toErrorMessage(err, "No se pudo borrar la página.")),
+              });
               navigate(`/groups/${groupId}/journal`);
             }}
           />

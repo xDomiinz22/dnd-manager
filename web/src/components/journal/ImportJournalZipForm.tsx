@@ -5,16 +5,18 @@ import {
   type ZipImportProgress,
 } from "../../features/journal/zipImport";
 import { useImportGroupJournal } from "../../features/journal/hooks";
+import { Card } from "../ui/Card";
+import { Button } from "../ui/Button";
+import { toErrorMessage, useToast } from "../ui/Toast";
 
 export function ImportJournalZipForm({ groupId, onDone }: { groupId: string; onDone: () => void }) {
   const importJournal = useImportGroupJournal(groupId);
+  const toast = useToast();
   const [progress, setProgress] = useState<ZipImportProgress | null>(null);
   const [step, setStep] = useState<"idle" | "parsing" | "uploading" | "importing">("idle");
-  const [error, setError] = useState<string | null>(null);
   const [confirmDestroy, setConfirmDestroy] = useState(false);
 
   async function handleFile(file: File) {
-    setError(null);
     setProgress(null);
     try {
       setStep("parsing");
@@ -25,9 +27,10 @@ export function ImportJournalZipForm({ groupId, onDone }: { groupId: string; onD
 
       setStep("importing");
       await importJournal.mutateAsync(payload);
+      toast.success("Diario importado.");
       onDone();
     } catch (err) {
-      setError((err as Error).message);
+      toast.error(toErrorMessage(err, "No se pudo importar el diario."));
     } finally {
       setStep("idle");
     }
@@ -36,22 +39,22 @@ export function ImportJournalZipForm({ groupId, onDone }: { groupId: string; onD
   const busy = step !== "idle";
 
   return (
-    <div className="mb-4 rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <Card className="mb-4">
       <p className="mb-3 text-sm text-amber-400">
         ⚠ Importar reemplaza por completo el diario de grupo actual (no se puede deshacer).
       </p>
 
       {!confirmDestroy ? (
-        <button
-          type="button"
-          onClick={() => setConfirmDestroy(true)}
-          className="rounded border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800"
-        >
+        <Button variant="secondary" onClick={() => setConfirmDestroy(true)}>
           Importar .zip de Obsidian
-        </button>
+        </Button>
       ) : (
         <div>
+          <label className="sr-only" htmlFor="journal-zip-file">
+            Archivo .zip de Obsidian
+          </label>
           <input
+            id="journal-zip-file"
             type="file"
             accept=".zip"
             disabled={busy}
@@ -71,17 +74,16 @@ export function ImportJournalZipForm({ groupId, onDone }: { groupId: string; onD
             </p>
           )}
           {step === "importing" && <p className="text-sm text-slate-400">Guardando el diario...</p>}
-          {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={() => setConfirmDestroy(false)}
             disabled={busy}
-            className="mt-2 text-sm text-slate-400 hover:text-slate-200 disabled:opacity-50"
+            className="mt-2"
           >
             Cancelar
-          </button>
+          </Button>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

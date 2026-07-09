@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import type { AbilityKey, CharacterFull } from "@dnd-manager/shared";
 import { useCharacter } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
+import { SkeletonPage } from "../components/ui/Skeleton";
 import {
   ABILITY_FULL_LABELS,
   ABILITY_LABELS,
@@ -31,7 +32,11 @@ export function CharacterSheetPage() {
   const { data, isLoading, isError, error } = useCharacter(id!);
 
   if (isLoading) {
-    return <div className="mx-auto max-w-4xl px-6 py-10 text-slate-400">Cargando ficha...</div>;
+    return (
+      <div className="mx-auto max-w-4xl px-6 py-10">
+        <SkeletonPage rows={4} />
+      </div>
+    );
   }
   if (isError) {
     return (
@@ -121,13 +126,17 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
       </div>
 
       {/* Pestañas */}
-      <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-800">
+      <div role="tablist" className="mb-4 flex flex-wrap gap-2 border-b border-slate-800">
         {TABS.map((t) => (
           <button
             key={t}
             type="button"
+            role="tab"
+            id={`tab-${t}`}
+            aria-selected={tab === t}
+            aria-controls={`tabpanel-${t}`}
             onClick={() => setTab(t)}
-            className={`px-3 py-2 text-sm ${
+            className={`px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
               tab === t
                 ? "border-b-2 border-amber-400 text-amber-400"
                 : "text-slate-400 hover:text-slate-200"
@@ -138,12 +147,14 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
         ))}
       </div>
 
-      {tab === "Details" && <DetailsTab character={character} system={system} />}
-      {tab === "Skills & Tools" && <SkillsTab character={character} />}
-      {tab === "Inventory" && <InventoryTab items={character.items} />}
-      {tab === "Features" && <FeaturesTab items={character.items} />}
-      {tab === "Spellbook" && <SpellbookTab items={character.items} />}
-      {tab === "Biography" && <BiographyTab details={details} />}
+      <div role="tabpanel" id={`tabpanel-${tab}`} aria-labelledby={`tab-${tab}`}>
+        {tab === "Details" && <DetailsTab character={character} system={system} />}
+        {tab === "Skills & Tools" && <SkillsTab character={character} />}
+        {tab === "Inventory" && <InventoryTab items={character.items} />}
+        {tab === "Features" && <FeaturesTab items={character.items} />}
+        {tab === "Spellbook" && <SpellbookTab items={character.items} />}
+        {tab === "Biography" && <BiographyTab details={details} />}
+      </div>
     </div>
   );
 }

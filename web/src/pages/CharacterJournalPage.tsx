@@ -12,10 +12,14 @@ import { buildTitleIndex } from "../features/journal/render";
 import { JournalTreeSidebar } from "../components/journal/JournalTreeSidebar";
 import { JournalPageView } from "../components/journal/JournalPageView";
 import { NewJournalPageForm } from "../components/journal/NewJournalPageForm";
+import { Button } from "../components/ui/Button";
+import { SkeletonPage } from "../components/ui/Skeleton";
+import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function CharacterJournalPage() {
   const { id: characterId, pageId } = useParams<{ id: string; pageId?: string }>();
   const navigate = useNavigate();
+  const toast = useToast();
   const { data: characterView, isLoading: loadingCharacter } = useCharacter(characterId!);
   const { data: journal, isLoading, isError, error } = useCharacterJournal(characterId!);
   const { data: page } = useJournalPage(pageId ?? null);
@@ -32,7 +36,11 @@ export function CharacterJournalPage() {
   }
 
   if (loadingCharacter || isLoading) {
-    return <div className="mx-auto max-w-4xl px-6 py-10 text-slate-400">Cargando diario...</div>;
+    return (
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <SkeletonPage />
+      </div>
+    );
   }
 
   if (characterView?.access !== "FULL") {
@@ -56,24 +64,25 @@ export function CharacterJournalPage() {
     <div className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-semibold text-amber-400">Diario de {characterName}</h1>
-        <button
-          type="button"
-          onClick={() => setShowNewPage((v) => !v)}
-          className="text-sm text-slate-300 hover:text-amber-400"
-        >
+        <Button variant="ghost" onClick={() => setShowNewPage((v) => !v)}>
           Nueva página
-        </button>
+        </Button>
       </div>
 
       {showNewPage && (
         <NewJournalPageForm
           isPending={createPage.isPending}
-          onCreate={(input) => createPage.mutate(input)}
+          onCreate={(input) =>
+            createPage.mutate(input, {
+              onSuccess: () => toast.success("Página creada."),
+              onError: (err) => toast.error(toErrorMessage(err, "No se pudo crear la página.")),
+            })
+          }
           onDone={() => setShowNewPage(false)}
         />
       )}
 
-      <div className="flex gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row">
         <JournalTreeSidebar
           title={journal.title}
           nodes={journal.pages}
@@ -88,9 +97,21 @@ export function CharacterJournalPage() {
             onNavigate={goToPage}
             canEdit
             isSaving={updatePage.isPending}
-            onSave={(input) => updatePage.mutate({ pageId: page.id, input })}
+            onSave={(input) =>
+              updatePage.mutate(
+                { pageId: page.id, input },
+                {
+                  onSuccess: () => toast.success("Página guardada."),
+                  onError: (err) =>
+                    toast.error(toErrorMessage(err, "No se pudo guardar la página.")),
+                },
+              )
+            }
             onDelete={() => {
-              deletePage.mutate(page.id);
+              deletePage.mutate(page.id, {
+                onSuccess: () => toast.success("Página borrada."),
+                onError: (err) => toast.error(toErrorMessage(err, "No se pudo borrar la página.")),
+              });
               navigate(`/characters/${characterId}/journal`);
             }}
           />

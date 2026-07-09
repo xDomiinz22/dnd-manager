@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { duplicateCharacterSchema, type DuplicateCharacterInput } from "@dnd-manager/shared";
 import { useGroups } from "../features/groups/hooks";
 import { useDuplicateCharacter, useMyCharacters } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
+import { Button } from "../components/ui/Button";
+import { SelectField } from "../components/ui/SelectField";
+import { EmptyState } from "../components/ui/EmptyState";
+import { SkeletonPage } from "../components/ui/Skeleton";
+import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function MyCharactersPage() {
   const { data: characters, isLoading } = useMyCharacters();
@@ -13,11 +21,13 @@ export function MyCharactersPage() {
     <div className="mx-auto max-w-2xl px-6 py-10">
       <h1 className="mb-6 text-2xl font-semibold text-amber-400">Mis personajes</h1>
 
-      {isLoading && <p className="text-slate-400">Cargando...</p>}
+      {isLoading && <SkeletonPage />}
+
       {!isLoading && characters?.length === 0 && (
-        <p className="text-slate-400">
-          Todavía no tienes personajes. Pídele al Master de tu grupo que importe uno.
-        </p>
+        <EmptyState
+          title="Todavía no tienes personajes."
+          description="Pídele al Master de tu grupo que importe uno."
+        />
       )}
 
       <ul className="space-y-3">
@@ -36,13 +46,12 @@ export function MyCharactersPage() {
                   {c.className ?? "Sin clase"} {c.level} · {c.groupName}
                 </p>
               </div>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={() => setDuplicatingId(duplicatingId === c.id ? null : c.id)}
-                className="text-sm text-slate-300 hover:text-amber-400"
               >
                 Añadir a otro grupo
-              </button>
+              </Button>
             </div>
 
             {duplicatingId === c.id && (
@@ -69,45 +78,47 @@ interface DuplicateFormProps {
 
 function DuplicateForm({ characterId, currentGroupId, groups, onDone }: DuplicateFormProps) {
   const otherGroups = groups.filter((g) => g.id !== currentGroupId);
-  const [targetGroupId, setTargetGroupId] = useState(otherGroups[0]?.id ?? "");
   const duplicate = useDuplicateCharacter(characterId);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!targetGroupId) return;
-    duplicate.mutate({ targetGroupId }, { onSuccess: onDone });
-  }
+  const toast = useToast();
+  const { register, handleSubmit } = useForm<DuplicateCharacterInput>({
+    resolver: zodResolver(duplicateCharacterSchema),
+    defaultValues: { targetGroupId: otherGroups[0]?.id ?? "" },
+  });
 
   if (otherGroups.length === 0) {
     return <p className="mt-3 text-sm text-slate-500">No perteneces a ningún otro grupo.</p>;
   }
 
+  function onSubmit(values: DuplicateCharacterInput) {
+    duplicate.mutate(values, {
+      onSuccess: () => {
+        toast.success("Personaje añadido al otro grupo.");
+        onDone();
+      },
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo duplicar el personaje.")),
+    });
+  }
+
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(onSubmit)}
       className="mt-3 flex items-center gap-2 border-t border-slate-800 pt-3"
     >
-      <select
-        value={targetGroupId}
-        onChange={(e) => setTargetGroupId(e.target.value)}
-        className="flex-1 rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+      <SelectField
+        label="Grupo destino"
+        hideLabel
+        wrapperClassName="mb-0 flex-1"
+        {...register("targetGroupId")}
       >
         {otherGroups.map((g) => (
           <option key={g.id} value={g.id}>
             {g.name}
           </option>
         ))}
-      </select>
-      <button
-        type="submit"
-        disabled={duplicate.isPending}
-        className="rounded bg-amber-400 px-3 py-2 text-sm font-medium text-slate-950 disabled:opacity-50"
-      >
-        {duplicate.isPending ? "Duplicando..." : "Duplicar"}
-      </button>
-      {duplicate.isError && (
-        <p className="text-sm text-red-400">{(duplicate.error as Error).message}</p>
-      )}
+      </SelectField>
+      <Button type="submit" isLoading={duplicate.isPending} loadingText="Duplicando...">
+        Duplicar
+      </Button>
     </form>
   );
 }

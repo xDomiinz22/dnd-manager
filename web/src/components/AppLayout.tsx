@@ -1,6 +1,7 @@
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLogout } from "../features/auth/hooks";
+import { Button } from "./ui/Button";
 
 export function AppLayout() {
   const { user } = useAuth();
@@ -8,8 +9,8 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
-        <nav className="flex items-center gap-4">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-6 py-4">
+        <nav className="flex flex-wrap items-center gap-4">
           <Link to="/" className="font-semibold text-amber-400">
             D&D Manager
           </Link>
@@ -22,14 +23,14 @@ export function AppLayout() {
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-slate-300">{user?.username}</span>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={() => logout.mutate()}
-            disabled={logout.isPending}
-            className="rounded border border-slate-700 px-3 py-1 text-slate-100 hover:bg-slate-800 disabled:opacity-50"
+            isLoading={logout.isPending}
+            loadingText="Saliendo..."
           >
             Salir
-          </button>
+          </Button>
         </div>
       </header>
       <Outlet />

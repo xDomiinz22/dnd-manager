@@ -1,64 +1,59 @@
-import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, type LoginInput } from "@dnd-manager/shared";
 import { useLogin } from "../features/auth/hooks";
+import { TextField } from "../components/ui/TextField";
+import { Button } from "../components/ui/Button";
+import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const login = useLogin();
   const navigate = useNavigate();
+  const toast = useToast();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    login.mutate(
-      { email, password },
-      { onSuccess: () => navigate("/", { replace: true }) },
-    );
+  function onSubmit(values: LoginInput) {
+    login.mutate(values, {
+      onSuccess: () => navigate("/", { replace: true }),
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo iniciar sesión.")),
+    });
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
         className="w-full max-w-sm rounded-lg border border-slate-800 bg-slate-900 p-8 shadow-xl"
       >
         <h1 className="mb-6 text-2xl font-semibold text-amber-400">Iniciar sesión</h1>
 
-        <label className="mb-1 block text-sm text-slate-400" htmlFor="email">
-          Email
-        </label>
-        <input
-          id="email"
+        <TextField
+          label="Email"
           type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mb-4 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:border-amber-400"
+          error={errors.email?.message}
+          {...register("email")}
         />
-
-        <label className="mb-1 block text-sm text-slate-400" htmlFor="password">
-          Contraseña
-        </label>
-        <input
-          id="password"
+        <TextField
+          label="Contraseña"
           type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mb-4 w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:border-amber-400"
+          error={errors.password?.message}
+          {...register("password")}
         />
 
-        {login.isError && (
-          <p className="mb-4 text-sm text-red-400">{(login.error as Error).message}</p>
-        )}
-
-        <button
+        <Button
           type="submit"
-          disabled={login.isPending}
-          className="w-full rounded bg-amber-400 px-3 py-2 font-medium text-slate-950 disabled:opacity-50"
+          isLoading={login.isPending}
+          loadingText="Entrando..."
+          className="w-full"
         >
-          {login.isPending ? "Entrando..." : "Entrar"}
-        </button>
+          Entrar
+        </Button>
 
         <p className="mt-4 text-center text-sm text-slate-400">
           ¿No tienes cuenta?{" "}

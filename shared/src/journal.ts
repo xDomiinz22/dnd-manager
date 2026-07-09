@@ -81,7 +81,7 @@ export type JournalPageView = z.infer<typeof journalPageViewSchema>;
 
 // ---- CRUD de páginas ----
 export const createJournalPageSchema = z.object({
-  title: z.string().min(1),
+  title: z.string().min(1, "El título no puede estar vacío"),
   bodyMarkdown: z.string().default(""),
   parentId: z.string().nullable().optional(),
   order: z.number().optional(),
@@ -89,7 +89,7 @@ export const createJournalPageSchema = z.object({
 export type CreateJournalPageInput = z.infer<typeof createJournalPageSchema>;
 
 export const updateJournalPageSchema = z.object({
-  title: z.string().min(1).optional(),
+  title: z.string().min(1, "El título no puede estar vacío").optional(),
   bodyMarkdown: z.string().optional(),
   parentId: z.string().nullable().optional(),
   order: z.number().optional(),
