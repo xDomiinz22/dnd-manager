@@ -13,12 +13,16 @@
     "@dnd-manager/shared": "workspace:*",
     "@tanstack/react-query": "^5.51.23",
     "dompurify": "^3.1.6",
+    "js-yaml": "^4.1.0",
+    "jszip": "^3.10.1",
+    "marked": "^13.0.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0"
   },
   "devDependencies": {
     "@types/dompurify": "^3.0.5",
+    "@types/js-yaml": "^4.0.9",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

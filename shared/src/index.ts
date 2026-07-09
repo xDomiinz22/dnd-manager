@@ -4,3 +4,4 @@ export * from "./auth";
 export * from "./groups";
 export * from "./characters";
 export * from "./assets";
+export * from "./journal";

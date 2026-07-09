@@ -31,7 +31,15 @@ export function GroupDetailPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
-      <h1 className="mb-1 text-2xl font-semibold text-amber-400">{group.name}</h1>
+      <div className="mb-1 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-amber-400">{group.name}</h1>
+        <Link
+          to={`/groups/${group.id}/journal`}
+          className="text-sm text-slate-300 hover:text-amber-400"
+        >
+          Diario de grupo →
+        </Link>
+      </div>
       <p className="mb-6 text-sm text-slate-400">Master: {group.master.username}</p>
 
       <div className="mb-6 flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900 px-4 py-3">

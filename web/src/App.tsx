@@ -8,6 +8,8 @@ import { GroupsPage } from "./pages/GroupsPage";
 import { GroupDetailPage } from "./pages/GroupDetailPage";
 import { MyCharactersPage } from "./pages/MyCharactersPage";
 import { CharacterSheetPage } from "./pages/CharacterSheetPage";
+import { GroupJournalPage } from "./pages/GroupJournalPage";
+import { CharacterJournalPage } from "./pages/CharacterJournalPage";
 
 export function App() {
   return (
@@ -19,8 +21,12 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:id" element={<GroupDetailPage />} />
+          <Route path="/groups/:id/journal" element={<GroupJournalPage />} />
+          <Route path="/groups/:id/journal/:pageId" element={<GroupJournalPage />} />
           <Route path="/characters" element={<MyCharactersPage />} />
           <Route path="/characters/:id" element={<CharacterSheetPage />} />
+          <Route path="/characters/:id/journal" element={<CharacterJournalPage />} />
+          <Route path="/characters/:id/journal/:pageId" element={<CharacterJournalPage />} />
         </Route>
       </Route>
     </Routes>

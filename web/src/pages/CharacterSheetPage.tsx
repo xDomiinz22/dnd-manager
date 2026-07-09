@@ -2,7 +2,7 @@
 // que no tiene tipos: usamos `any` deliberadamente al indexar esos datos.
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import type { AbilityKey, CharacterFull } from "@dnd-manager/shared";
 import { useCharacter } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
@@ -83,6 +83,12 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
             {character.subclassName ? ` · ${character.subclassName}` : ""}
           </p>
           <p className="text-sm text-slate-500">{character.species ?? "Especie desconocida"}</p>
+          <Link
+            to={`/characters/${character.id}/journal`}
+            className="mt-1 inline-block text-sm text-amber-400 hover:underline"
+          >
+            Diario personal →
+          </Link>
 
           <div className="mt-4 grid grid-cols-3 gap-3 text-center sm:grid-cols-6">
             <Stat label="Nivel" value={String(character.level)} />
