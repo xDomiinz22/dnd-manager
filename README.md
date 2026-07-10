@@ -298,6 +298,17 @@ Verificado en navegador con dos usuarios reales (Master dueño del personaje vs.
 
 **Ajuste de tamaño** (mismo día, a petición del usuario — "para ver mejor la imagen"): tarjeta y retrato responsive en dos escalones. `PortraitCircle.tsx` ganó una prop opcional `sizeClassName` (clases Tailwind responsive tipo `"h-36 w-36 sm:h-44 sm:w-44"`) que sustituye al `size` numérico fijo cuando se pasa, sin tocar el resto de usos del componente (listas de personajes siguen usando `size` en px). Móvil: tarjeta 320px→343px, retrato 128px→144px. Escritorio (`sm:`): tarjeta 448px, retrato 176px — salto notablemente mayor que en móvil, tal como se pidió. Verificado con `getComputedStyle`/`getBoundingClientRect` en ambos viewports, sin overflow horizontal en 375px. `typecheck`/`lint`/`test`/`build` limpios.
 
+### ✅ Buscador de secciones en los journals
+
+Pedido explícito: buscar **secciones** (títulos de página) del árbol del journal, no contenido de las páginas. Al ya tener el árbol completo (`JournalTreeNode[]`, con títulos) cargado en el cliente para pintar el sidebar, no hizo falta tocar el backend — es un filtro client-side.
+
+- `JournalTreeSidebar.tsx` (compartido entre `GroupJournalPage` y `CharacterJournalPage`): nuevo campo de búsqueda sobre el árbol. `filterTree()` recorre recursivamente y conserva una sección si su título coincide, o si alguna descendiente coincide — en ese caso solo se quedan las descendientes que coinciden (poda ramas no relacionadas, deja visible el camino hasta el resultado). Si la propia sección coincide, conserva **todas** sus hijas tal cual (sin filtrar), para poder seguir navegando por ella con normalidad.
+- Comparación insensible a mayúsculas/minúsculas y a acentos (`normalize("NFD")` + strip de marcas diacríticas vía `̀-ͯ`), para que "dragon" encuentre "Dragón".
+- Estado "sin resultados" diferenciado del "sin páginas todavía" (árbol vacío) ya existente. Botón `×` para limpiar la búsqueda. El estado de expandido/colapsado de cada nodo (`TreeNode`, keyed por `id`) se conserva entre búsquedas porque React reutiliza el mismo componente para el mismo id.
+- La página abierta en el panel de la derecha no se ve afectada por la búsqueda del sidebar — solo filtra la navegación, no oculta lo que ya tienes abierto.
+
+Verificado en navegador (grupo con 3 páginas de prueba, título con acento incluido): "dragon" filtra correctamente a solo "Taberna del Dragón Dorado" pese a la falta de acento en la búsqueda; una búsqueda sin coincidencias muestra "Sin resultados para «xyzxyz»."; el botón de limpiar funciona. La lógica de poda con jerarquía anidada (buscar una página nieta conserva el camino de ancestros y descarta hermanos no relacionados; buscar un ancestro conserva su subárbol completo intacto) se verificó con un script aparte reproduciendo `filterTree` sobre un árbol de 3 niveles, porque la creación manual de páginas desde la UI no soporta elegir un padre (solo el import de `.zip` de Obsidian genera jerarquía) — no había forma rápida de crear anidación real vía navegador. `typecheck`/`lint`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer
