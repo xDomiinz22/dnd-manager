@@ -15,6 +15,7 @@ import {
   listCharacterImagesHandler,
   listMyCharactersHandler,
   reassignOwnerHandler,
+  updateHpHandler,
   uploadCharacterImageHandler,
 } from "../controllers/characterController";
 
@@ -46,6 +47,12 @@ charactersRouter.patch(
   requireAuth,
   requireCharacterMasterOrOwner,
   changePortraitHandler,
+);
+charactersRouter.patch(
+  "/characters/:id/hp",
+  requireAuth,
+  requireCharacterMasterOrOwner,
+  updateHpHandler,
 );
 charactersRouter.post("/characters/:id/duplicate", requireAuth, duplicateCharacterHandler);
 

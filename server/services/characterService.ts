@@ -14,6 +14,23 @@ import { AppError } from "../errors/AppError";
 
 export type CharacterWithPortrait = CharacterSheet & { portraitAsset: Asset | null };
 
+/**
+ * PG actuales: prioriza el valor editado a mano (`currentHp`, persistido);
+ * si nunca se ha tocado, usa el valor que traía el .md de Foundry
+ * (`rawSystem.attributes.hp.value`, snapshot del momento del import); si
+ * tampoco hay eso, cae al máximo derivado.
+ */
+function resolveCurrentHp(character: CharacterSheet): number {
+  if (character.currentHp !== null) return character.currentHp;
+
+  const rawSystem = character.rawSystem as { attributes?: { hp?: { value?: number } } } | null;
+  const rawValue = rawSystem?.attributes?.hp?.value;
+  if (typeof rawValue === "number") return rawValue;
+
+  const derived = character.derived as CharacterFull["derived"] | null;
+  return derived?.hitPoints.override ?? derived?.hitPoints.max ?? 0;
+}
+
 function toCharacterFull(character: CharacterWithPortrait): CharacterFull {
   return {
     id: character.id,
@@ -28,6 +45,7 @@ function toCharacterFull(character: CharacterWithPortrait): CharacterFull {
     alignment: character.alignment,
     portraitUrl: character.portraitAsset ? resolveAssetUrl(character.portraitAsset) : null,
     portraitAssetId: character.portraitAssetId,
+    currentHp: resolveCurrentHp(character),
     rawSystem: character.rawSystem,
     items: character.items,
     // Guardamos exactamente lo que genera deriveCharacterStats, así que el shape coincide con DerivedStats.
@@ -179,6 +197,17 @@ export async function changePortrait(id: string, assetId: string): Promise<Chara
   const character = await prisma.characterSheet.update({
     where: { id: existing.id },
     data: { portraitAssetId: assetId },
+    include: { portraitAsset: true },
+  });
+  return toCharacterFull(character);
+}
+
+export async function updateCurrentHp(id: string, currentHp: number): Promise<CharacterFull> {
+  const existing = await getCharacterOrThrow(id);
+
+  const character = await prisma.characterSheet.update({
+    where: { id: existing.id },
+    data: { currentHp },
     include: { portraitAsset: true },
   });
   return toCharacterFull(character);

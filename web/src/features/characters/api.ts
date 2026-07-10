@@ -7,6 +7,7 @@ import type {
   DuplicateCharacterInput,
   ImportCharacterInput,
   ImportCharacterMdInput,
+  UpdateHpInput,
   UploadCharacterImageResponse,
 } from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
@@ -31,6 +32,11 @@ export const charactersApi = {
     }),
   changePortrait: (id: string, input: ChangePortraitInput) =>
     apiFetch<CharacterFull>(`/characters/${id}/portrait`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  updateHp: (id: string, input: UpdateHpInput) =>
+    apiFetch<CharacterFull>(`/characters/${id}/hp`, {
       method: "PATCH",
       body: JSON.stringify(input),
     }),

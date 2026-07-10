@@ -5,6 +5,7 @@ import {
   importCharacterMdSchema,
   importCharacterSchema,
   reassignOwnerSchema,
+  updateHpSchema,
 } from "@dnd-manager/shared";
 import * as characterService from "../services/characterService";
 import { toAssetDto } from "../services/assetUrl";
@@ -48,6 +49,16 @@ export const changePortraitHandler: RequestHandler = async (req, res, next) => {
   try {
     const input = changePortraitSchema.parse(req.body);
     const character = await characterService.changePortrait(req.params.id!, input.assetId);
+    res.json(character);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateHpHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = updateHpSchema.parse(req.body);
+    const character = await characterService.updateCurrentHp(req.params.id!, input.currentHp);
     res.json(character);
   } catch (err) {
     next(err);

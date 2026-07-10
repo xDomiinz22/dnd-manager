@@ -3,11 +3,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { AbilityKey, CharacterFull } from "@dnd-manager/shared";
-import { useCharacter } from "../features/characters/hooks";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  updateHpSchema,
+  type AbilityKey,
+  type CharacterFull,
+  type UpdateHpInput,
+} from "@dnd-manager/shared";
+import { useCharacter, useUpdateHp } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { CharacterImageManager } from "../components/character/CharacterImageManager";
 import { SkeletonPage } from "../components/ui/Skeleton";
+import { toErrorMessage, useToast } from "../components/ui/Toast";
 import {
   ABILITY_FULL_LABELS,
   ABILITY_LABELS,
@@ -72,7 +80,6 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
 
   const ac = character.derived.armorClass.override ?? character.derived.armorClass.computed;
   const hpMax = character.derived.hitPoints.override ?? character.derived.hitPoints.max;
-  const hpCurrent = attributes.hp?.value ?? hpMax;
   const speed = attributes.movement?.walk
     ? `${attributes.movement.walk} ${attributes.movement.units ?? "ft"}`
     : "—";
@@ -105,7 +112,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
           <div className="mt-4 grid grid-cols-3 gap-3 text-center sm:grid-cols-6">
             <Stat label="Nivel" value={String(character.level)} />
             <Stat label="CA" value={ac != null ? String(ac) : "—"} />
-            <Stat label="PG" value={`${hpCurrent}/${hpMax}`} />
+            <HpStat characterId={character.id} current={character.currentHp} max={hpMax} />
             <Stat label="Velocidad" value={speed} />
             <Stat label="Bono" value={formatModifier(character.derived.proficiencyBonus)} />
             <Stat label="Perc. pasiva" value={String(character.derived.passivePerception)} />
@@ -172,6 +179,100 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
       <div className="font-semibold text-slate-100">{value}</div>
     </div>
+  );
+}
+
+/** PG editables in situ: click para registrar daño/curación como un nuevo valor absoluto. */
+function HpStat({
+  characterId,
+  current,
+  max,
+}: {
+  characterId: string;
+  current: number;
+  max: number;
+}) {
+  const [editing, setEditing] = useState(false);
+  const toast = useToast();
+  const updateHp = useUpdateHp(characterId);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<UpdateHpInput>({
+    resolver: zodResolver(updateHpSchema),
+    defaultValues: { currentHp: current },
+  });
+
+  function startEditing() {
+    reset({ currentHp: current });
+    setEditing(true);
+  }
+
+  function onSubmit(values: UpdateHpInput) {
+    updateHp.mutate(values, {
+      onSuccess: () => {
+        toast.success("PG actualizados.");
+        setEditing(false);
+      },
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudieron actualizar los PG.")),
+    });
+  }
+
+  if (editing) {
+    return (
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        noValidate
+        className="flex flex-col items-center gap-1"
+      >
+        <div className="text-xs uppercase tracking-wide text-slate-500">PG</div>
+        <div className="flex items-center gap-1">
+          <input
+            type="number"
+            min={0}
+            autoFocus
+            aria-label="Puntos de golpe actuales"
+            aria-invalid={!!errors.currentHp}
+            className="w-14 rounded border border-slate-700 bg-slate-800 px-1 py-0.5 text-center text-sm text-slate-100 outline-none focus:border-amber-400"
+            {...register("currentHp", { valueAsNumber: true })}
+          />
+          <span className="text-sm text-slate-500">/{max}</span>
+        </div>
+        {errors.currentHp && <p className="text-xs text-red-400">{errors.currentHp.message}</p>}
+        <div className="flex gap-2 text-xs">
+          <button
+            type="submit"
+            disabled={updateHp.isPending}
+            className="text-amber-400 hover:underline disabled:opacity-50"
+          >
+            {updateHp.isPending ? "..." : "Guardar"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="text-slate-500 hover:text-slate-300"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={startEditing}
+      title="Editar PG actuales"
+      className="w-full rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+    >
+      <div className="text-xs uppercase tracking-wide text-slate-500">PG</div>
+      <div className="font-semibold text-slate-100">
+        {current}/{max}
+      </div>
+    </button>
   );
 }
 

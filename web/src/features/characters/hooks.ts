@@ -4,6 +4,7 @@ import type {
   DuplicateCharacterInput,
   ImportCharacterInput,
   ImportCharacterMdInput,
+  UpdateHpInput,
 } from "@dnd-manager/shared";
 import { charactersApi } from "./api";
 import { GROUPS_QUERY_KEY, groupDetailKey } from "../groups/hooks";
@@ -78,6 +79,14 @@ export function useChangePortrait(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ChangePortraitInput) => charactersApi.changePortrait(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: characterKey(id) }),
+  });
+}
+
+export function useUpdateHp(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateHpInput) => charactersApi.updateHp(id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: characterKey(id) }),
   });
 }

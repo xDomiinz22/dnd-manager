@@ -61,6 +61,11 @@ export const changePortraitSchema = z.object({
 });
 export type ChangePortraitInput = z.infer<typeof changePortraitSchema>;
 
+export const updateHpSchema = z.object({
+  currentHp: z.number().int().min(0, "Los PG no pueden ser negativos"),
+});
+export type UpdateHpInput = z.infer<typeof updateHpSchema>;
+
 export const characterFullSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
@@ -74,6 +79,7 @@ export const characterFullSchema = z.object({
   alignment: z.string().nullable(),
   portraitUrl: z.string().nullable(),
   portraitAssetId: z.string().nullable(),
+  currentHp: z.number(),
   rawSystem: z.unknown(),
   items: z.unknown(),
   derived: derivedStatsSchema,

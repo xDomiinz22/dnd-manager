@@ -112,6 +112,10 @@ model CharacterSheet {
   portraitAsset   Asset?  @relation("CharacterPortrait", fields: [portraitAssetId], references: [id])
   images          Asset[] @relation("CharacterImages")
 
+  // PG actuales editables en vivo (registrar daño/curación). Null = todavía no
+  // se ha tocado manualmente, y se usa el valor importado del .md / el máximo.
+  currentHp Int?
+
   // Datos crudos y derivados:
   rawSystem    Json
   items        Json

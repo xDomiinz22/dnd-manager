@@ -264,6 +264,16 @@ Reportado por el usuario con un caso real: una página con `![[assets-...-[Edge]
 
 Verificado: reproducido el bug exacto con el string reportado (el regex viejo extraía 0 embeds; el nuevo extrae el nombre completo); confirmado que la sustitución por el marcador `![[asset:ID]]` funciona con ese nombre; probado contra el servidor real creando una página con título `Item [Edge] especial` y otra que enlaza a ella — el backlink se resuelve; y en el navegador (Playwright) el link se renderiza clicable con el label correcto en vez de como texto plano con corchetes. `typecheck`/`lint`/`test`/`build` limpios.
 
+### ✅ PG (puntos de golpe) actuales editables
+
+Antes los PG actuales de la ficha eran de solo lectura: se leían directamente de `rawSystem.attributes.hp.value` (snapshot del `.md` de Foundry en el momento del import) y nunca cambiaban salvo un reimport completo. Ahora se pueden editar para registrar el daño/curación de cada sesión.
+
+- Prisma: `CharacterSheet.currentHp Int?` (migración `20260710104627_character_current_hp`). `null` = todavía no se ha tocado a mano (usa el valor importado de Foundry o, si no hay, el máximo derivado).
+- `PATCH /characters/:id/hp` (`shared/src/characters.ts` → `updateHpSchema`, entero `>= 0`), gateado por el mismo `requireCharacterMasterOrOwner` que ya protegía retrato/imágenes. `characterService.resolveCurrentHp` centraliza el fallback (persistido → valor de Foundry → máximo) para que `CharacterFull.currentHp` sea siempre el valor efectivo, sin que el frontend tenga que conocer la cadena de fallbacks.
+- Frontend: el stat "PG" de la cabecera de la ficha (`CharacterSheetPage.tsx` → `HpStat`) es ahora un botón; al hacer click se convierte en un formulario react-hook-form + zod con un input numérico (valor absoluto, no un delta) y Guardar/Cancelar.
+
+Verificado en navegador (Playwright): editar a un valor menor (simulando daño) se guarda, persiste tras recargar la página, y el mismo valor negativo se rechaza en cliente (zod) sin ni siquiera llegar a mandar la petición, mostrando el mensaje de error bajo el input. `typecheck`/`lint`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer
