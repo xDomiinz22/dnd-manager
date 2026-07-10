@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
-import type {
-  CreateJournalPageInput,
-  Journal,
-  JournalImportPayload,
-  JournalPageView,
-  JournalTreeNode,
-  UpdateJournalPageInput,
+import {
+  parseBracketLinkContent,
+  type CreateJournalPageInput,
+  type Journal,
+  type JournalImportPayload,
+  type JournalPageView,
+  type JournalTreeNode,
+  type UpdateJournalPageInput,
 } from "@dnd-manager/shared";
 import { Prisma } from "@prisma/client";
 import type { JournalEntry } from "@prisma/client";
@@ -20,14 +21,16 @@ type Tx = Prisma.TransactionClient;
 // bloque, no debería acercarse a esto, pero da margen bajo maxDuration=60s de Vercel).
 const IMPORT_TRANSACTION_TIMEOUT_MS = 20_000;
 
-const WIKILINK_PATTERN = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
+// Lazy hasta el primer `]]`: un título real puede traer un `]` suelto (p.ej.
+// "... [Edge]-182.png"), así que no se puede excluir `]` del contenido.
+const WIKILINK_PATTERN = /\[\[([\s\S]+?)\]\]/g;
 
 function extractWikiLinks(bodyMarkdown: string): { title: string; label: string | null }[] {
   const links: { title: string; label: string | null }[] = [];
   for (const match of bodyMarkdown.matchAll(WIKILINK_PATTERN)) {
-    const title = match[1]?.trim();
+    const { target: title, alias } = parseBracketLinkContent(match[1] ?? "");
     if (!title) continue;
-    links.push({ title, label: match[2]?.trim() ?? null });
+    links.push({ title, label: alias });
   }
   return links;
 }

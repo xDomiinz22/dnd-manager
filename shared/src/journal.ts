@@ -95,3 +95,23 @@ export const updateJournalPageSchema = z.object({
   order: z.number().optional(),
 });
 export type UpdateJournalPageInput = z.infer<typeof updateJournalPageSchema>;
+
+// ---- Parsing de contenido [[...]] / ![[...]] ----
+export interface ParsedBracketLink {
+  target: string;
+  alias: string | null;
+}
+
+/**
+ * Parte el contenido capturado entre `[[`/`]]` en target + alias opcional
+ * (separados por el primer `|`). El regex que captura ese contenido debe
+ * usar un lazy match hasta el primer `]]` (`[\s\S]+?`) en vez de excluir `]`
+ * del contenido (`[^\]|]+`): nombres de archivo/títulos reales de Obsidian
+ * pueden contener un `]` suelto (p.ej. "... [Edge]-182.png"), y excluirlo
+ * corta la captura antes de tiempo, dejando el embed/link sin resolver.
+ */
+export function parseBracketLinkContent(raw: string): ParsedBracketLink {
+  const pipeIndex = raw.indexOf("|");
+  if (pipeIndex === -1) return { target: raw.trim(), alias: null };
+  return { target: raw.slice(0, pipeIndex).trim(), alias: raw.slice(pipeIndex + 1).trim() };
+}

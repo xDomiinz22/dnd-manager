@@ -254,6 +254,16 @@ Reportado por el usuario: al importar un `.zip` real de Obsidian, todos los asse
 
 Verificado con un import sintético de 150 páginas anidadas (jerarquía de 3 niveles) con wiki-links cruzados entre todas: completa en ~1.1s (antes habría sido ~750 round-trips secuenciales), árbol y las 149 backlinks se resuelven correctamente. `typecheck`/`lint`/`test`/`build` limpios.
 
+### ✅ Fix: algunas imágenes embebidas no cargaban en el journal
+
+Reportado por el usuario con un caso real: una página con `![[assets-...-[Edge]-182.png]]` se veía tal cual, entre corchetes, en vez de mostrar la imagen.
+
+**Causa**: los regex que extraen el contenido de `[[...]]`/`![[...]]` (embeds y wiki-links, tanto al importar como al renderizar) usaban una clase de caracteres que **excluye `]` del nombre/título** (`[^\]|]+`), asumiendo que nunca aparece un `]` suelto dentro del nombre de archivo o del título de una página. Nombres de archivo reales de Obsidian sí pueden traer un `]` (en este caso, un tag tipo "[Edge]" como parte del nombre) — cuando eso pasa, la captura se corta en ese `]` y el resto (`-182.png]]`) rompe el cierre esperado `]]`, así que el regex entero no matchea: el embed nunca se reconoce, el asset nunca se sube durante el import, y el texto crudo `![[...]]` se queda tal cual en el `bodyMarkdown` — que es justo lo que se veía en pantalla.
+
+**Fix**: nueva utilidad compartida `parseBracketLinkContent` (`shared/src/journal.ts`) que separa target/alias partiendo por el primer `|`, pensada para usarse junto a un regex _lazy_ hasta el primer `]]` (`[\s\S]+?`) en vez de la clase de caracteres que excluía `]`. Aplicado en los tres sitios que parseaban esta sintaxis: `zipImport.ts` (`EMBED_PATTERN` al extraer qué assets subir, y el TOC del índice), `render.ts` (resolución de wiki-links a links de página) y `journalService.ts` (`WIKILINK_PATTERN`, resolución de backlinks en el servidor).
+
+Verificado: reproducido el bug exacto con el string reportado (el regex viejo extraía 0 embeds; el nuevo extrae el nombre completo); confirmado que la sustitución por el marcador `![[asset:ID]]` funciona con ese nombre; probado contra el servidor real creando una página con título `Item [Edge] especial` y otra que enlaza a ella — el backlink se resuelve; y en el navegador (Playwright) el link se renderiza clicable con el label correcto en vez de como texto plano con corchetes. `typecheck`/`lint`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer

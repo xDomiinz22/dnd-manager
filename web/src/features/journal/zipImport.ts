@@ -1,6 +1,6 @@
 import JSZip from "jszip";
 import yaml from "js-yaml";
-import type { JournalImportPayload } from "@dnd-manager/shared";
+import { parseBracketLinkContent, type JournalImportPayload } from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
 
 /**
@@ -46,12 +46,14 @@ function stripDuplicateTitleHeading(content: string, title: string): string {
   return content.replace(new RegExp(`^#\\s*${escapeRegExp(title)}\\s*\\n+`), "").trim();
 }
 
-const EMBED_PATTERN = /!\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+// Lazy hasta el primer `]]`: un nombre de archivo real puede traer un `]` suelto
+// (p.ej. "... [Edge]-182.png"), así que no se puede excluir `]` del contenido.
+const EMBED_PATTERN = /!\[\[([\s\S]+?)\]\]/g;
 
 function extractEmbedFileNames(body: string): string[] {
   const names: string[] = [];
   for (const match of body.matchAll(EMBED_PATTERN)) {
-    const name = match[1]?.trim();
+    const name = parseBracketLinkContent(match[1] ?? "").target;
     if (name) names.push(name);
   }
   return names;
@@ -69,10 +71,10 @@ function parseToc(markdown: string): TocEntry[] {
   const result: TocEntry[] = [];
 
   for (const rawLine of lines) {
-    const match = rawLine.match(/^(\s*)-\s*\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/);
+    const match = rawLine.match(/^(\s*)-\s*\[\[([\s\S]+?)\]\]/);
     if (!match) continue;
     const indent = (match[1] ?? "").replace(/\t/g, "    ").length;
-    const title = match[2]!.trim();
+    const title = parseBracketLinkContent(match[2]!).target;
 
     while (stack.length > 0 && stack[stack.length - 1]!.indent >= indent) stack.pop();
     const parentTitle = stack.length > 0 ? stack[stack.length - 1]!.title : null;

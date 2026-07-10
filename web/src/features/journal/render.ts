@@ -1,6 +1,11 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import type { Journal, JournalPageAssetView, JournalTreeNode } from "@dnd-manager/shared";
+import {
+  parseBracketLinkContent,
+  type Journal,
+  type JournalPageAssetView,
+  type JournalTreeNode,
+} from "@dnd-manager/shared";
 
 /** Prefijo de href interno para que un click en un wiki-link navegue con React Router en vez de recargar. */
 export const JOURNAL_PAGE_LINK_PREFIX = "journal-page:";
@@ -35,9 +40,11 @@ function resolveMarkers(
     return `[${alt || "archivo adjunto"}](${asset.url})`;
   });
 
-  text = text.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, title: string, alias?: string) => {
-    const label = (alias ?? title).trim();
-    const id = titleToId.get(title.trim().toLowerCase());
+  // Lazy hasta el primer `]]`: un título real puede traer un `]` suelto.
+  text = text.replace(/\[\[([\s\S]+?)\]\]/g, (_, raw: string) => {
+    const { target: title, alias } = parseBracketLinkContent(raw);
+    const label = alias ?? title;
+    const id = titleToId.get(title.toLowerCase());
     if (!id) return label;
     // Fragmento en vez de esquema propio: DOMPurify descarta hrefs con
     // esquemas no reconocidos (p.ej. "journal-page:ID"), pero un "#..." es
