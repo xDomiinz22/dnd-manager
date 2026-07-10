@@ -4,7 +4,9 @@ type CardProps<C extends ElementType> = { as?: C } & Omit<ComponentPropsWithoutR
 
 export function Card<C extends ElementType = "div">({ as, className, ...rest }: CardProps<C>) {
   const Component = as ?? "div";
-  const mergedClassName = `rounded-lg border border-slate-800 bg-slate-900 p-4 ${className ?? ""}`;
+  // Vignette sutil hacia los bordes (sombra interior tintada de oxblood) en vez
+  // de una sombra dura: sugiere el borde gastado de una página, no una tarjeta SaaS.
+  const mergedClassName = `rounded-sm border border-rule bg-parchment-panel p-4 shadow-[inset_0_0_28px_-6px_rgba(107,22,32,0.22)] ${className ?? ""}`;
   const props = { className: mergedClassName, ...rest } as ComponentPropsWithoutRef<C>;
   return <Component {...props} />;
 }

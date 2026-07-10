@@ -274,6 +274,18 @@ Antes los PG actuales de la ficha eran de solo lectura: se leían directamente d
 
 Verificado en navegador (Playwright): editar a un valor menor (simulando daño) se guarda, persiste tras recargar la página, y el mismo valor negativo se rechaza en cliente (zod) sin ni siquiera llegar a mandar la petición, mostrando el mensaje de error bajo el input. `typecheck`/`lint`/`test`/`build` limpios.
 
+### ✅ Rediseño visual completo: identidad "Tomo del Jugador"
+
+El frontend tenía un look genérico de dashboard SaaS (slate + amber). Se rediseñó todo con una identidad temática D&D — pergamino, oxblood, oro, tipografía de tomo — usando la skill `impeccable` (PRODUCT.md + DESIGN.md nuevos en la raíz documentan el brief y el sistema completo de tokens).
+
+- **Dirección**: "Tomo del Jugador" (referencia al Player's Handbook) — pergamino claro, oxblood, oro solo como acento decorativo/UI (nunca texto de cuerpo, falla contraste), display en Cinzel, cuerpo en EB Garamond. Elegida explícitamente para evitar tanto el dashboard genérico anterior como el cliché "IA" de crema `#F4F1EA` + Playfair + terracota.
+- **Paleta verificada por contraste** (script Node con fórmula de luminancia relativa, no estimada): `ink` #2A1B12 sobre `parchment` #F0E4C8 → 13.16:1; `ink-muted` #6B5640 → 5.49:1/4.68:1 (panel); `oxblood` #6B1620 → 9.45:1/8.05:1; `oxblood-dark` #4A0F16 (errores) → 12.13:1. `gold`/`gold-bright` fallan el umbral de texto (3.06:1 y 2.03:1) — restringidos a bordes, decoración y texto grande/UI, nunca cuerpo de texto.
+- **Tokens** (`web/tailwind.config.js`, `web/src/index.css`): paleta completa como colores nombrados de Tailwind, fuentes vía Google Fonts CDN, `border-radius` reducido a `rounded-sm` en todo el kit (antes `rounded-lg`), y una **letra capitular iluminada** como elemento de firma — `.journal-prose > p:first-of-type::first-letter` en Cinzel 700, 3.2em, oxblood, flotante — que solo aparece en el primer párrafo de cada página de journal.
+- Kit de UI (`Button`, `Card`, `TextField`, `TextAreaField`, `SelectField`, `Skeleton`, `EmptyState`, `Toast`, `FileDropTextArea`) y todas las páginas (shell, login/registro, home, grupos, mis personajes, ficha de personaje completa con sus 6 pestañas y el editor de PG, journal de grupo y personal, árbol de páginas) migrados al nuevo sistema. Nuevo componente `ChapterHeading` para los títulos de página (regla doble en degradado dorado).
+- El botón de Google (`GoogleSignInButton.tsx`) pasó de `theme: "filled_black"` a `"outline"` para no desentonar sobre el fondo claro de pergamino.
+
+Verificado: `typecheck`/`lint`/`test`/`build` limpios; navegación completa en navegador (login real con el usuario semilla, grupos, detalle de grupo, ficha de personaje con datos reales incluido el editor de PG, journal de grupo con una página real — confirmada la letra capitular renderizando en Cinzel/oxblood vía estilos computados) sin errores de consola ni peticiones fallidas inesperadas; sin overflow horizontal en viewport móvil (375px) en ficha de personaje ni journal. La herramienta de captura de pantalla no estuvo disponible en esta sesión (timeout de infraestructura); la verificación visual se hizo con snapshots de accesibilidad e inspección de estilos computados en vez de capturas.
+
 ---
 
 ## Qué queda por hacer

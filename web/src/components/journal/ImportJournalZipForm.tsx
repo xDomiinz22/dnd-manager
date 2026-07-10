@@ -40,7 +40,7 @@ export function ImportJournalZipForm({ groupId, onDone }: { groupId: string; onD
 
   return (
     <Card className="mb-4">
-      <p className="mb-3 text-sm text-amber-400">
+      <p className="mb-3 text-sm text-oxblood">
         ⚠ Importar reemplaza por completo el diario de grupo actual (no se puede deshacer).
       </p>
 
@@ -62,18 +62,18 @@ export function ImportJournalZipForm({ groupId, onDone }: { groupId: string; onD
               const file = e.target.files?.[0];
               if (file) void handleFile(file);
             }}
-            className="mb-2 block text-sm text-slate-300"
+            className="mb-2 block text-sm text-ink"
           />
           {step === "parsing" && (
-            <p className="text-sm text-slate-400">Descomprimiendo y leyendo páginas...</p>
+            <p className="text-sm text-ink-muted">Descomprimiendo y leyendo páginas...</p>
           )}
           {step === "uploading" && (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-ink-muted">
               Subiendo assets
               {progress ? ` (${progress.uploadedAssets}/${progress.totalAssets})` : "..."}
             </p>
           )}
-          {step === "importing" && <p className="text-sm text-slate-400">Guardando el diario...</p>}
+          {step === "importing" && <p className="text-sm text-ink-muted">Guardando el diario...</p>}
           <Button
             variant="ghost"
             onClick={() => setConfirmDestroy(false)}

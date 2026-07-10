@@ -16,8 +16,8 @@ export function JournalTreeSidebar({
   onSelect,
 }: JournalTreeSidebarProps) {
   return (
-    <div className="w-full shrink-0 rounded-lg border border-slate-800 bg-slate-900 p-3 sm:w-64">
-      <h2 className="mb-2 truncate text-sm font-semibold text-amber-400" title={title}>
+    <div className="w-full shrink-0 rounded-sm border border-rule bg-parchment-panel p-3 sm:w-64">
+      <h2 className="mb-2 truncate font-display text-sm tracking-wide text-oxblood" title={title}>
         {title}
       </h2>
       {nodes.length === 0 ? (
@@ -57,8 +57,8 @@ function TreeNode({
   return (
     <li>
       <div
-        className={`flex items-center gap-1 rounded px-1.5 py-1 text-sm ${
-          isSelected ? "bg-slate-800 text-amber-400" : "text-slate-300 hover:bg-slate-800/60"
+        className={`flex items-center gap-1 rounded-sm px-1.5 py-1 text-sm ${
+          isSelected ? "bg-parchment-deep text-oxblood" : "text-ink hover:bg-parchment-deep/60"
         }`}
         style={{ paddingLeft: `${depth * 14 + 6}px` }}
       >
@@ -66,7 +66,7 @@ function TreeNode({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="text-slate-500 hover:text-slate-300"
+            className="text-ink-muted hover:text-oxblood"
             aria-label={open ? "Colapsar" : "Expandir"}
           >
             {open ? "▾" : "▸"}

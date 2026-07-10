@@ -10,11 +10,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
-    "rounded bg-amber-400 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-amber-300 disabled:opacity-50",
+    "rounded-sm border border-gold/60 bg-oxblood px-3 py-2 text-sm font-semibold uppercase tracking-wide text-parchment hover:bg-oxblood-dark disabled:opacity-50",
   secondary:
-    "rounded border border-slate-700 px-3 py-2 text-sm text-slate-100 hover:bg-slate-800 disabled:opacity-50",
-  danger: "text-sm font-medium text-red-400 hover:underline disabled:opacity-50",
-  ghost: "text-sm font-medium text-slate-300 hover:text-amber-400 disabled:opacity-50",
+    "rounded-sm border border-oxblood px-3 py-2 text-sm font-semibold uppercase tracking-wide text-oxblood hover:bg-oxblood hover:text-parchment disabled:opacity-50",
+  danger: "text-sm font-semibold text-oxblood-dark hover:underline disabled:opacity-50",
+  ghost: "text-sm font-semibold text-ink hover:text-oxblood disabled:opacity-50",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -35,7 +35,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       type={type}
       disabled={disabled || isLoading}
-      className={`focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${VARIANT_CLASSES[variant]} ${className}`}
       {...rest}
     >
       {isLoading ? (loadingText ?? "...") : children}

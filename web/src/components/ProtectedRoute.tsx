@@ -8,7 +8,7 @@ export function ProtectedRoute() {
   if (status === "loading") {
     return (
       <div
-        className="flex min-h-screen items-center justify-center bg-slate-950"
+        className="flex min-h-screen items-center justify-center bg-parchment"
         role="status"
         aria-label="Cargando sesión"
       >

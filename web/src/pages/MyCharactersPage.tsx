@@ -9,6 +9,7 @@ import { PortraitCircle } from "../components/character/PortraitCircle";
 import { Button } from "../components/ui/Button";
 import { SelectField } from "../components/ui/SelectField";
 import { EmptyState } from "../components/ui/EmptyState";
+import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
@@ -19,7 +20,7 @@ export function MyCharactersPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
-      <h1 className="mb-6 text-2xl font-semibold text-amber-400">Mis personajes</h1>
+      <ChapterHeading>Mis personajes</ChapterHeading>
 
       {isLoading && <SkeletonPage />}
 
@@ -32,17 +33,17 @@ export function MyCharactersPage() {
 
       <ul className="space-y-3">
         {characters?.map((c) => (
-          <li key={c.id} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+          <li key={c.id} className="rounded-sm border border-rule bg-parchment-panel p-4">
             <div className="flex items-center gap-4">
               <PortraitCircle url={c.portraitUrl} name={c.name} size={56} />
               <div className="flex-1">
                 <Link
                   to={`/characters/${c.id}`}
-                  className="font-medium text-slate-100 hover:text-amber-400"
+                  className="font-semibold text-ink hover:text-oxblood"
                 >
                   {c.name}
                 </Link>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-ink-muted">
                   {c.className ?? "Sin clase"} {c.level} · {c.groupName}
                 </p>
               </div>
@@ -86,7 +87,7 @@ function DuplicateForm({ characterId, currentGroupId, groups, onDone }: Duplicat
   });
 
   if (otherGroups.length === 0) {
-    return <p className="mt-3 text-sm text-slate-500">No perteneces a ningún otro grupo.</p>;
+    return <p className="mt-3 text-sm text-ink-muted">No perteneces a ningún otro grupo.</p>;
   }
 
   function onSubmit(values: DuplicateCharacterInput) {
@@ -102,7 +103,7 @@ function DuplicateForm({ characterId, currentGroupId, groups, onDone }: Duplicat
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="mt-3 flex items-center gap-2 border-t border-slate-800 pt-3"
+      className="mt-3 flex items-center gap-2 border-t border-rule pt-3"
     >
       <SelectField
         label="Grupo destino"

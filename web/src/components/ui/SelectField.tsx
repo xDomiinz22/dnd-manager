@@ -25,7 +25,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(funct
   return (
     <div className={wrapperClassName}>
       <label
-        className={hideLabel ? "sr-only" : "mb-1 block text-sm text-slate-400"}
+        className={hideLabel ? "sr-only" : "mb-1 block text-sm text-ink-muted"}
         htmlFor={fieldId}
       >
         {label}
@@ -36,15 +36,15 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(funct
         name={name}
         aria-invalid={!!error}
         aria-describedby={error ? `${fieldId}-error` : undefined}
-        className={`w-full rounded border bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-amber-400 ${
-          error ? "border-red-500" : "border-slate-700"
+        className={`w-full rounded-sm border bg-parchment px-3 py-2 text-sm text-ink outline-none focus:border-oxblood ${
+          error ? "border-oxblood-dark" : "border-rule-strong"
         } ${className}`}
         {...rest}
       >
         {children}
       </select>
       {error && (
-        <p id={`${fieldId}-error`} className="mt-1 text-sm text-red-400">
+        <p id={`${fieldId}-error`} className="mt-1 text-sm text-oxblood-dark">
           {error}
         </p>
       )}

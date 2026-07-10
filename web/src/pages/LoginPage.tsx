@@ -26,9 +26,10 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-100">
-      <div className="w-full max-w-sm rounded-lg border border-slate-800 bg-slate-900 p-8 shadow-xl">
-        <h1 className="mb-6 text-2xl font-semibold text-amber-400">Iniciar sesión</h1>
+    <main className="flex min-h-screen items-center justify-center bg-parchment text-ink">
+      <div className="w-full max-w-sm rounded-sm border border-rule bg-parchment-panel p-8 shadow-[inset_0_0_28px_-6px_rgba(107,22,32,0.22)]">
+        <h1 className="mb-1 font-display text-2xl tracking-wide text-oxblood">Iniciar sesión</h1>
+        <div className="chapter-rule mb-6" />
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <TextField
@@ -54,17 +55,17 @@ export function LoginPage() {
           </Button>
         </form>
 
-        <div className="my-5 flex items-center gap-3 text-xs text-slate-500">
-          <div className="h-px flex-1 bg-slate-800" />
+        <div className="my-5 flex items-center gap-3 text-xs text-ink-muted">
+          <div className="h-px flex-1 bg-rule" />
           o
-          <div className="h-px flex-1 bg-slate-800" />
+          <div className="h-px flex-1 bg-rule" />
         </div>
 
         <GoogleSignInButton />
 
-        <p className="mt-4 text-center text-sm text-slate-400">
+        <p className="mt-4 text-center text-sm text-ink-muted">
           ¿No tienes cuenta?{" "}
-          <Link to="/register" className="text-amber-400 hover:underline">
+          <Link to="/register" className="text-oxblood hover:underline">
             Regístrate
           </Link>
         </p>

@@ -13,7 +13,7 @@ export function PortraitCircle({ url, name, size = 96 }: PortraitCircleProps) {
         src={url}
         alt={name}
         style={style}
-        className="rounded-full border-2 border-amber-400/60 object-cover"
+        className="rounded-full border-2 border-gold object-cover"
       />
     );
   }
@@ -21,7 +21,7 @@ export function PortraitCircle({ url, name, size = 96 }: PortraitCircleProps) {
   return (
     <div
       style={style}
-      className="flex items-center justify-center rounded-full border-2 border-slate-700 bg-slate-800 text-2xl font-semibold text-slate-500"
+      className="flex items-center justify-center rounded-full border-2 border-rule-strong bg-parchment-deep font-display text-2xl text-ink-muted"
     >
       {name.charAt(0).toUpperCase()}
     </div>

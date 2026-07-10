@@ -3,6 +3,68 @@
 @tailwind utilities;
 
 /*
+ * "Tomo del Jugador": ver DESIGN.md. Variables espejo de tailwind.config.js
+ * para el CSS a medida de esta hoja (filetes, letra capital) — si cambia un
+ * color en el config, cambiarlo aquí también.
+ */
+:root {
+  --color-ink: #2a1b12;
+  --color-oxblood: #6b1620;
+  --color-gold: #a8792b;
+  --color-parchment: #f0e4c8;
+}
+
+html,
+body {
+  background-color: var(--color-parchment);
+  color: var(--color-ink);
+  font-family: "EB Garamond", serif;
+}
+
+/* Filete doble dorado bajo un encabezado de capítulo (ver ChapterHeading.tsx). */
+.chapter-rule {
+  position: relative;
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-gold) 12%,
+    var(--color-gold) 88%,
+    transparent
+  );
+}
+.chapter-rule::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 7px;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-gold) 22%,
+    var(--color-gold) 78%,
+    transparent
+  );
+}
+
+/*
+ * Letra capital iluminada: firma visual de la app (ver DESIGN.md → Signature
+ * element). Solo se aplica al primer párrafo real de una página de journal,
+ * nunca a un título ni a una imagen que llegue primero.
+ */
+.journal-prose > p:first-of-type::first-letter {
+  font-family: "Cinzel", serif;
+  font-weight: 700;
+  font-size: 3.2em;
+  line-height: 0.78;
+  float: left;
+  padding: 0.04em 0.09em 0 0;
+  color: var(--color-oxblood);
+}
+
+/*
  * Reset mínimo para el HTML dinámico (descripciones de Foundry, journal
  * markdown) que se inserta vía dangerouslySetInnerHTML: sin esto, una palabra
  * larga o una tabla ancha puede desbordar el layout en móvil.
@@ -12,10 +74,18 @@
   overflow-wrap: anywhere;
 }
 
+.prose-sm a,
+.journal-prose a {
+  color: var(--color-oxblood);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .prose-sm img,
 .journal-prose img {
   max-width: 100%;
   height: auto;
+  border-radius: 2px;
 }
 
 .prose-sm table,

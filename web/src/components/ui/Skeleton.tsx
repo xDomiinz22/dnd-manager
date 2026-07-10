@@ -1,5 +1,7 @@
 export function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-slate-800 ${className}`} aria-hidden="true" />;
+  return (
+    <div className={`animate-pulse rounded-sm bg-parchment-deep ${className}`} aria-hidden="true" />
+  );
 }
 
 export function SkeletonText({
@@ -21,7 +23,7 @@ export function SkeletonText({
 export function SkeletonRow({ className = "" }: { className?: string }) {
   return (
     <div
-      className={`rounded-lg border border-slate-800 bg-slate-900 p-4 ${className}`}
+      className={`rounded-sm border border-rule bg-parchment-panel p-4 ${className}`}
       aria-hidden="true"
     >
       <div className="flex items-center gap-4">

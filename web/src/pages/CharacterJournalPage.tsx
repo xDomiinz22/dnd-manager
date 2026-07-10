@@ -13,6 +13,7 @@ import { JournalTreeSidebar } from "../components/journal/JournalTreeSidebar";
 import { JournalPageView } from "../components/journal/JournalPageView";
 import { NewJournalPageForm } from "../components/journal/NewJournalPageForm";
 import { Button } from "../components/ui/Button";
+import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
@@ -45,7 +46,7 @@ export function CharacterJournalPage() {
 
   if (characterView?.access !== "FULL") {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-10 text-slate-400">
+      <div className="mx-auto max-w-4xl px-6 py-10 text-ink-muted">
         No tienes acceso al diario de este personaje.
       </div>
     );
@@ -53,7 +54,7 @@ export function CharacterJournalPage() {
 
   if (isError) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-10 text-slate-400">{(error as Error).message}</div>
+      <div className="mx-auto max-w-4xl px-6 py-10 text-ink-muted">{(error as Error).message}</div>
     );
   }
   if (!journal) return null;
@@ -62,12 +63,15 @@ export function CharacterJournalPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-amber-400">Diario de {characterName}</h1>
-        <Button variant="ghost" onClick={() => setShowNewPage((v) => !v)}>
-          Nueva página
-        </Button>
-      </div>
+      <ChapterHeading
+        action={
+          <Button variant="ghost" onClick={() => setShowNewPage((v) => !v)}>
+            Nueva página
+          </Button>
+        }
+      >
+        Diario de {characterName}
+      </ChapterHeading>
 
       {showNewPage && (
         <NewJournalPageForm
@@ -116,7 +120,7 @@ export function CharacterJournalPage() {
             }}
           />
         ) : (
-          <div className="flex-1 rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-500">
+          <div className="flex-1 rounded-sm border border-rule bg-parchment-panel p-6 text-ink-muted">
             Elige una página del árbol para leerla.
           </div>
         )}

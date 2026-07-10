@@ -8,21 +8,21 @@ export function AppLayout() {
   const logout = useLogout();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 px-6 py-4">
-        <nav className="flex flex-wrap items-center gap-4">
-          <Link to="/" className="font-semibold text-amber-400">
+    <div className="min-h-screen bg-parchment text-ink">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-rule bg-parchment-panel px-6 py-4">
+        <nav className="flex flex-wrap items-center gap-5">
+          <Link to="/" className="font-display text-lg tracking-wide text-oxblood">
             D&D Manager
           </Link>
-          <Link to="/groups" className="text-slate-300 hover:text-amber-400">
+          <Link to="/groups" className="text-ink hover:text-oxblood">
             Grupos
           </Link>
-          <Link to="/characters" className="text-slate-300 hover:text-amber-400">
+          <Link to="/characters" className="text-ink hover:text-oxblood">
             Mis personajes
           </Link>
         </nav>
         <div className="flex items-center gap-3 text-sm">
-          <span className="text-slate-300">{user?.username}</span>
+          <span className="text-ink-muted">{user?.username}</span>
           <Button
             variant="secondary"
             onClick={() => logout.mutate()}

@@ -56,7 +56,7 @@ export function GoogleSignInButton({ text = "signin_with" }: GoogleSignInButtonP
           },
         });
         accountsId.renderButton(containerRef.current, {
-          theme: "filled_black",
+          theme: "outline",
           size: "large",
           width: "320",
           text,

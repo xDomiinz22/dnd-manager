@@ -12,6 +12,7 @@ import { Card } from "../components/ui/Card";
 import { TextField } from "../components/ui/TextField";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
+import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
@@ -46,11 +47,11 @@ export function GroupsPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
-      <h1 className="mb-6 text-2xl font-semibold text-amber-400">Tus grupos</h1>
+      <ChapterHeading>Tus grupos</ChapterHeading>
 
       <div className="mb-8 grid gap-4 sm:grid-cols-2">
         <Card as="form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
-          <h2 className="mb-3 text-sm font-medium text-slate-300">Crear grupo</h2>
+          <h2 className="mb-3 font-display text-sm tracking-wide text-oxblood">Crear grupo</h2>
           <TextField
             label="Nombre del grupo"
             placeholder="Nombre del grupo"
@@ -68,7 +69,9 @@ export function GroupsPage() {
         </Card>
 
         <Card as="form" onSubmit={joinForm.handleSubmit(handleJoin)} noValidate>
-          <h2 className="mb-3 text-sm font-medium text-slate-300">Unirse con código</h2>
+          <h2 className="mb-3 font-display text-sm tracking-wide text-oxblood">
+            Unirse con código
+          </h2>
           <TextField
             label="Código de invitación"
             placeholder="Código de invitación"
@@ -105,11 +108,11 @@ export function GroupsPage() {
           <li key={g.id}>
             <Link
               to={`/groups/${g.id}`}
-              className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-4 py-3 hover:border-amber-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+              className="flex items-center justify-between rounded-sm border border-rule bg-parchment-panel px-4 py-3 hover:border-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
             >
-              <span className="font-medium text-slate-100">{g.name}</span>
-              <span className="flex items-center gap-3 text-sm text-slate-400">
-                <span className={g.role === "MASTER" ? "text-amber-400" : undefined}>
+              <span className="font-semibold text-ink">{g.name}</span>
+              <span className="flex items-center gap-3 text-sm text-ink-muted">
+                <span className={g.role === "MASTER" ? "text-oxblood" : undefined}>
                   {g.role === "MASTER" ? "Master" : "Jugador"}
                 </span>
                 <span>

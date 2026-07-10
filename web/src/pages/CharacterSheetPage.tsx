@@ -49,7 +49,9 @@ export function CharacterSheetPage() {
   }
   if (isError) {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-10 text-red-400">{(error as Error).message}</div>
+      <div className="mx-auto max-w-4xl px-6 py-10 text-oxblood-dark">
+        {(error as Error).message}
+      </div>
     );
   }
   if (!data) return null;
@@ -60,8 +62,10 @@ export function CharacterSheetPage() {
         <div className="flex justify-center">
           <PortraitCircle url={data.character.portraitUrl} name={data.character.name} size={128} />
         </div>
-        <h1 className="mt-4 text-xl font-semibold text-slate-100">{data.character.name}</h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <h1 className="mt-4 font-display text-xl tracking-wide text-oxblood">
+          {data.character.name}
+        </h1>
+        <p className="mt-2 text-sm text-ink-muted">
           Solo puedes ver el nombre y la foto de este personaje.
         </p>
       </div>
@@ -87,7 +91,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       {/* Cabecera hero */}
-      <div className="mb-6 flex flex-col items-center gap-4 rounded-lg border border-slate-800 bg-slate-900 p-6 sm:flex-row sm:items-start">
+      <div className="mb-6 flex flex-col items-center gap-4 rounded-sm border border-rule bg-parchment-panel p-6 shadow-[inset_0_0_28px_-6px_rgba(107,22,32,0.22)] sm:flex-row sm:items-start">
         <div className="flex flex-col items-center">
           <PortraitCircle url={character.portraitUrl} name={character.name} size={112} />
           <CharacterImageManager
@@ -96,15 +100,15 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
           />
         </div>
         <div className="flex-1 text-center sm:text-left">
-          <h1 className="text-2xl font-semibold text-amber-400">{character.name}</h1>
-          <p className="text-slate-300">
+          <h1 className="font-display text-2xl tracking-wide text-oxblood">{character.name}</h1>
+          <p className="text-ink">
             {character.className ?? "Sin clase"} {character.level}
             {character.subclassName ? ` · ${character.subclassName}` : ""}
           </p>
-          <p className="text-sm text-slate-500">{character.species ?? "Especie desconocida"}</p>
+          <p className="text-sm text-ink-muted">{character.species ?? "Especie desconocida"}</p>
           <Link
             to={`/characters/${character.id}/journal`}
-            className="mt-1 inline-block text-sm text-amber-400 hover:underline"
+            className="mt-1 inline-block text-sm text-oxblood hover:underline"
           >
             Diario personal →
           </Link>
@@ -125,14 +129,14 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
         {ABILITY_KEYS.map((key) => (
           <div
             key={key}
-            className="rounded-lg border border-slate-800 bg-slate-900 py-3 text-center"
+            className="rounded-sm border border-rule bg-parchment-panel py-3 text-center"
             title={ABILITY_FULL_LABELS[key]}
           >
-            <div className="text-xs font-medium text-slate-500">{ABILITY_LABELS[key]}</div>
-            <div className="text-lg font-semibold text-slate-100">
-              {abilities[key]?.value ?? "—"}
+            <div className="font-display text-xs tracking-wide text-ink-muted">
+              {ABILITY_LABELS[key]}
             </div>
-            <div className="text-sm text-amber-400">
+            <div className="text-lg font-semibold text-ink">{abilities[key]?.value ?? "—"}</div>
+            <div className="text-sm text-oxblood">
               {formatModifier(character.derived.abilityModifiers[key])}
             </div>
           </div>
@@ -140,7 +144,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
       </div>
 
       {/* Pestañas */}
-      <div role="tablist" className="mb-4 flex flex-wrap gap-2 border-b border-slate-800">
+      <div role="tablist" className="mb-4 flex flex-wrap gap-2 border-b-2 border-rule">
         {TABS.map((t) => (
           <button
             key={t}
@@ -150,10 +154,10 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
             aria-selected={tab === t}
             aria-controls={`tabpanel-${t}`}
             onClick={() => setTab(t)}
-            className={`px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
+            className={`px-3 py-2 font-display text-sm tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${
               tab === t
-                ? "border-b-2 border-amber-400 text-amber-400"
-                : "text-slate-400 hover:text-slate-200"
+                ? "border-b-2 border-oxblood text-oxblood"
+                : "text-ink-muted hover:text-oxblood"
             }`}
           >
             {t}
@@ -176,8 +180,10 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="font-semibold text-slate-100">{value}</div>
+      <div className="text-xs uppercase tracking-wide text-ink-muted">{label}</div>
+      <div className="font-semibold text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -227,7 +233,7 @@ function HpStat({
         noValidate
         className="flex flex-col items-center gap-1"
       >
-        <div className="text-xs uppercase tracking-wide text-slate-500">PG</div>
+        <div className="text-xs uppercase tracking-wide text-ink-muted">PG</div>
         <div className="flex items-center gap-1">
           <input
             type="number"
@@ -235,24 +241,26 @@ function HpStat({
             autoFocus
             aria-label="Puntos de golpe actuales"
             aria-invalid={!!errors.currentHp}
-            className="w-14 rounded border border-slate-700 bg-slate-800 px-1 py-0.5 text-center text-sm text-slate-100 outline-none focus:border-amber-400"
+            className="w-14 rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-center text-sm text-ink outline-none focus:border-oxblood"
             {...register("currentHp", { valueAsNumber: true })}
           />
-          <span className="text-sm text-slate-500">/{max}</span>
+          <span className="text-sm text-ink-muted">/{max}</span>
         </div>
-        {errors.currentHp && <p className="text-xs text-red-400">{errors.currentHp.message}</p>}
+        {errors.currentHp && (
+          <p className="text-xs text-oxblood-dark">{errors.currentHp.message}</p>
+        )}
         <div className="flex gap-2 text-xs">
           <button
             type="submit"
             disabled={updateHp.isPending}
-            className="text-amber-400 hover:underline disabled:opacity-50"
+            className="font-semibold text-oxblood hover:underline disabled:opacity-50"
           >
             {updateHp.isPending ? "..." : "Guardar"}
           </button>
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="text-slate-500 hover:text-slate-300"
+            className="text-ink-muted hover:text-ink"
           >
             Cancelar
           </button>
@@ -266,10 +274,10 @@ function HpStat({
       type="button"
       onClick={startEditing}
       title="Editar PG actuales"
-      className="w-full rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+      className="w-full rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
     >
-      <div className="text-xs uppercase tracking-wide text-slate-500">PG</div>
-      <div className="font-semibold text-slate-100">
+      <div className="text-xs uppercase tracking-wide text-ink-muted">PG</div>
+      <div className="font-semibold text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
         {current}/{max}
       </div>
     </button>
@@ -289,22 +297,24 @@ function DetailsTab({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-300">Tiradas de salvación</h2>
+      <div className="rounded-sm border border-rule bg-parchment-panel p-4">
+        <h2 className="mb-3 font-display text-sm tracking-wide text-oxblood">
+          Tiradas de salvación
+        </h2>
         <ul className="space-y-1 text-sm">
           {ABILITY_KEYS.map((key) => (
-            <li key={key} className="flex justify-between text-slate-300">
+            <li key={key} className="flex justify-between text-ink">
               <span>{ABILITY_FULL_LABELS[key]}</span>
-              <span className="text-amber-400">
+              <span className="text-oxblood" style={{ fontVariantNumeric: "tabular-nums" }}>
                 {formatModifier(character.derived.savingThrows[key])}
               </span>
             </li>
           ))}
         </ul>
       </div>
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-        <h2 className="mb-3 text-sm font-semibold text-slate-300">General</h2>
-        <dl className="space-y-1 text-sm text-slate-300">
+      <div className="rounded-sm border border-rule bg-parchment-panel p-4">
+        <h2 className="mb-3 font-display text-sm tracking-wide text-oxblood">General</h2>
+        <dl className="space-y-1 text-sm text-ink">
           <Row label="Trasfondo" value={character.background ?? "—"} />
           <Row label="Alineamiento" value={character.alignment ?? "—"} />
           <Row label="Tamaño" value={traits.size ?? "—"} />
@@ -327,7 +337,7 @@ function DetailsTab({
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
+      <dt className="text-ink-muted">{label}</dt>
       <dd className="text-right">{value}</dd>
     </div>
   );
@@ -336,23 +346,27 @@ function Row({ label, value }: { label: string; value: string }) {
 function SkillsTab({ character }: { character: CharacterFull }) {
   const entries = Object.entries(character.derived.skills);
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-800 bg-slate-900">
+    <div className="overflow-x-auto rounded-sm border border-rule bg-parchment-panel">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-800 text-left text-slate-500">
-            <th className="px-4 py-2 font-medium">Habilidad</th>
-            <th className="px-4 py-2 font-medium">Car.</th>
-            <th className="px-4 py-2 font-medium">Bono</th>
-            <th className="px-4 py-2 font-medium">Pasiva</th>
+          <tr className="border-b border-rule text-left text-ink-muted">
+            <th className="px-4 py-2 font-display font-normal tracking-wide">Habilidad</th>
+            <th className="px-4 py-2 font-display font-normal tracking-wide">Car.</th>
+            <th className="px-4 py-2 font-display font-normal tracking-wide">Bono</th>
+            <th className="px-4 py-2 font-display font-normal tracking-wide">Pasiva</th>
           </tr>
         </thead>
         <tbody>
           {entries.map(([code, skill]) => (
-            <tr key={code} className="border-b border-slate-800/60 last:border-0">
-              <td className="px-4 py-2 text-slate-100">{SKILL_LABELS[code] ?? code}</td>
-              <td className="px-4 py-2 text-slate-500">{ABILITY_LABELS[skill.ability]}</td>
-              <td className="px-4 py-2 text-amber-400">{formatModifier(skill.bonus)}</td>
-              <td className="px-4 py-2 text-slate-300">{skill.passive}</td>
+            <tr key={code} className="border-b border-rule/60 last:border-0">
+              <td className="px-4 py-2 text-ink">{SKILL_LABELS[code] ?? code}</td>
+              <td className="px-4 py-2 text-ink-muted">{ABILITY_LABELS[skill.ability]}</td>
+              <td className="px-4 py-2 text-oxblood" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatModifier(skill.bonus)}
+              </td>
+              <td className="px-4 py-2 text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
+                {skill.passive}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -364,21 +378,21 @@ function SkillsTab({ character }: { character: CharacterFull }) {
 function InventoryTab({ items }: { items: unknown }) {
   const inventory = itemsOfType(items, ["weapon", "equipment", "consumable", "container", "loot"]);
   if (inventory.length === 0) {
-    return <p className="text-slate-500">Sin objetos.</p>;
+    return <p className="text-ink-muted">Sin objetos.</p>;
   }
   return (
     <ul className="space-y-2">
       {inventory.map((item) => (
-        <li key={item._id} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+        <li key={item._id} className="rounded-sm border border-rule bg-parchment-panel p-4">
           <div className="flex items-center justify-between">
-            <span className="font-medium text-slate-100">{item.name}</span>
+            <span className="font-semibold text-ink">{item.name}</span>
             {item.system?.quantity != null && (
-              <span className="text-sm text-slate-500">x{item.system.quantity}</span>
+              <span className="text-sm text-ink-muted">x{item.system.quantity}</span>
             )}
           </div>
           {item.system?.description?.value && (
-            <details className="mt-2 text-sm text-slate-400">
-              <summary className="cursor-pointer text-slate-500">Descripción</summary>
+            <details className="mt-2 text-sm text-ink">
+              <summary className="cursor-pointer text-ink-muted">Descripción</summary>
               <div
                 className="prose-sm mt-2"
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.system.description.value) }}
@@ -394,16 +408,16 @@ function InventoryTab({ items }: { items: unknown }) {
 function FeaturesTab({ items }: { items: unknown }) {
   const features = itemsOfType(items, ["feat", "class", "subclass", "race", "background"]);
   if (features.length === 0) {
-    return <p className="text-slate-500">Sin rasgos.</p>;
+    return <p className="text-ink-muted">Sin rasgos.</p>;
   }
   return (
     <ul className="space-y-2">
       {features.map((item) => (
-        <li key={item._id} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-          <div className="font-medium text-slate-100">{item.name}</div>
+        <li key={item._id} className="rounded-sm border border-rule bg-parchment-panel p-4">
+          <div className="font-semibold text-ink">{item.name}</div>
           {item.system?.description?.value && (
-            <details className="mt-2 text-sm text-slate-400">
-              <summary className="cursor-pointer text-slate-500">Descripción</summary>
+            <details className="mt-2 text-sm text-ink">
+              <summary className="cursor-pointer text-ink-muted">Descripción</summary>
               <div
                 className="prose-sm mt-2"
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.system.description.value) }}
@@ -419,7 +433,7 @@ function FeaturesTab({ items }: { items: unknown }) {
 function SpellbookTab({ items }: { items: unknown }) {
   const spells = itemsOfType(items, ["spell"]);
   if (spells.length === 0) {
-    return <p className="text-slate-500">Sin conjuros.</p>;
+    return <p className="text-ink-muted">Sin conjuros.</p>;
   }
 
   const byLevel = new Map<number, typeof spells>();
@@ -433,16 +447,16 @@ function SpellbookTab({ items }: { items: unknown }) {
     <div className="space-y-4">
       {levels.map((level) => (
         <div key={level}>
-          <h3 className="mb-2 text-sm font-semibold text-slate-400">
+          <h3 className="mb-2 font-display text-sm tracking-wide text-oxblood">
             {level === 0 ? "Trucos" : `Nivel ${level}`}
           </h3>
           <ul className="space-y-2">
             {byLevel.get(level)!.map((spell) => (
-              <li key={spell._id} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
-                <div className="font-medium text-slate-100">{spell.name}</div>
+              <li key={spell._id} className="rounded-sm border border-rule bg-parchment-panel p-4">
+                <div className="font-semibold text-ink">{spell.name}</div>
                 {spell.system?.description?.value && (
-                  <details className="mt-2 text-sm text-slate-400">
-                    <summary className="cursor-pointer text-slate-500">Descripción</summary>
+                  <details className="mt-2 text-sm text-ink">
+                    <summary className="cursor-pointer text-ink-muted">Descripción</summary>
                     <div
                       className="prose-sm mt-2"
                       dangerouslySetInnerHTML={{
@@ -463,11 +477,11 @@ function SpellbookTab({ items }: { items: unknown }) {
 function BiographyTab({ details }: { details: Record<string, any> }) {
   const bio = details.biography?.value;
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <div className="rounded-sm border border-rule bg-parchment-panel p-4">
       {bio ? (
         <div className="prose-sm" dangerouslySetInnerHTML={{ __html: sanitizeHtml(bio) }} />
       ) : (
-        <p className="text-slate-500">Sin biografía.</p>
+        <p className="text-ink-muted">Sin biografía.</p>
       )}
     </div>
   );

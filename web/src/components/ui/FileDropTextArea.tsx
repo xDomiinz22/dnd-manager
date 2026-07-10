@@ -35,12 +35,12 @@ export const FileDropTextArea = forwardRef<HTMLTextAreaElement, FileDropTextArea
         }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={handleDrop}
-        className={`rounded-lg transition-colors ${
-          isDragging ? "outline outline-2 outline-dashed outline-amber-400 outline-offset-2" : ""
+        className={`rounded-sm transition-colors ${
+          isDragging ? "outline outline-2 outline-dashed outline-oxblood outline-offset-2" : ""
         }`}
       >
         <TextAreaField ref={ref} {...textAreaProps} />
-        <label className="-mt-2 mb-3 block cursor-pointer text-xs text-slate-500 hover:text-amber-400">
+        <label className="-mt-2 mb-3 block cursor-pointer text-xs text-ink-muted hover:text-oxblood">
           Arrastra un archivo{acceptExtension ? ` ${acceptExtension}` : ""} aquí, o{" "}
           <span className="underline">selecciona uno</span>
           <input

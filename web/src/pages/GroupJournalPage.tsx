@@ -15,6 +15,7 @@ import { JournalPageView } from "../components/journal/JournalPageView";
 import { ImportJournalZipForm } from "../components/journal/ImportJournalZipForm";
 import { NewJournalPageForm } from "../components/journal/NewJournalPageForm";
 import { Button } from "../components/ui/Button";
+import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
@@ -52,7 +53,7 @@ export function GroupJournalPage() {
   if (isError) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-10">
-        <p className="mb-4 text-slate-400">{(error as Error).message}</p>
+        <p className="mb-4 text-ink-muted">{(error as Error).message}</p>
         {isMaster && (
           <ImportJournalZipForm groupId={groupId!} onDone={() => window.location.reload()} />
         )}
@@ -63,19 +64,22 @@ export function GroupJournalPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-amber-400">Diario de grupo</h1>
-        <div className="flex gap-3">
-          <Button variant="ghost" onClick={() => setShowNewPage((v) => !v)}>
-            Nueva página
-          </Button>
-          {isMaster && (
-            <Button variant="ghost" onClick={() => setShowImport((v) => !v)}>
-              {showImport ? "Cerrar" : "Reimportar .zip"}
+      <ChapterHeading
+        action={
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={() => setShowNewPage((v) => !v)}>
+              Nueva página
             </Button>
-          )}
-        </div>
-      </div>
+            {isMaster && (
+              <Button variant="ghost" onClick={() => setShowImport((v) => !v)}>
+                {showImport ? "Cerrar" : "Reimportar .zip"}
+              </Button>
+            )}
+          </div>
+        }
+      >
+        Diario de grupo
+      </ChapterHeading>
 
       {showImport && isMaster && (
         <ImportJournalZipForm groupId={groupId!} onDone={() => setShowImport(false)} />
@@ -127,12 +131,12 @@ export function GroupJournalPage() {
             }}
           />
         ) : (
-          <div className="flex-1 rounded-lg border border-slate-800 bg-slate-900 p-6 text-slate-500">
+          <div className="flex-1 rounded-sm border border-rule bg-parchment-panel p-6 text-ink-muted">
             Elige una página del árbol para leerla.
           </div>
         )}
       </div>
-      <p className="mt-3 text-xs text-slate-600">Conectado como {user?.username}</p>
+      <p className="mt-3 text-xs text-ink-muted">Conectado como {user?.username}</p>
     </div>
   );
 }

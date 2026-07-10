@@ -17,9 +17,9 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 const KIND_CLASSES: Record<ToastKind, string> = {
-  success: "border-emerald-700 bg-emerald-950 text-emerald-200",
-  error: "border-red-700 bg-red-950 text-red-200",
-  info: "border-slate-700 bg-slate-800 text-slate-200",
+  success: "border-moss bg-[#E3E8D0] text-moss",
+  error: "border-oxblood bg-[#F3DCDD] text-oxblood-dark",
+  info: "border-rule bg-parchment-panel text-ink",
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -56,7 +56,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role="status"
-            className={`pointer-events-auto rounded-lg border px-4 py-3 text-sm shadow-xl ${KIND_CLASSES[t.kind]}`}
+            className={`pointer-events-auto rounded-sm border px-4 py-3 text-sm shadow-xl ${KIND_CLASSES[t.kind]}`}
           >
             <div className="flex items-start justify-between gap-3">
               <span>{t.message}</span>

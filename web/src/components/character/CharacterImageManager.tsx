@@ -61,8 +61,8 @@ export function CharacterImageManager({
                   type="button"
                   onClick={() => !isActive && handleSetMain(img.id)}
                   title={isActive ? "Imagen principal" : "Marcar como principal"}
-                  className={`h-14 w-14 overflow-hidden rounded border-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400 ${
-                    isActive ? "border-amber-400" : "border-slate-700 hover:border-slate-500"
+                  className={`h-14 w-14 overflow-hidden rounded-sm border-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${
+                    isActive ? "border-oxblood" : "border-rule-strong hover:border-oxblood"
                   }`}
                 >
                   <img
@@ -76,7 +76,7 @@ export function CharacterImageManager({
                     type="button"
                     onClick={() => handleDelete(img.id)}
                     aria-label="Borrar imagen"
-                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-xs leading-none text-white opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+                    className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-parchment opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
                   >
                     ×
                   </button>

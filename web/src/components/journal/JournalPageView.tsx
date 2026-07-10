@@ -68,12 +68,12 @@ export function JournalPageView({
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        className="flex-1 rounded-lg border border-slate-800 bg-slate-900 p-4"
+        className="flex-1 rounded-sm border border-rule bg-parchment-panel p-4"
       >
         <TextField
           label="Título"
           hideLabel
-          className="font-semibold text-amber-400"
+          className="font-display text-oxblood"
           error={errors.title?.message}
           {...register("title")}
         />
@@ -98,9 +98,9 @@ export function JournalPageView({
   }
 
   return (
-    <div className="flex-1 rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <div className="flex-1 rounded-sm border border-rule bg-parchment-panel p-4">
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h1 className="text-xl font-semibold text-amber-400">{page.title}</h1>
+        <h1 className="font-display text-xl tracking-wide text-oxblood">{page.title}</h1>
         {canEdit && (
           <div className="flex shrink-0 gap-2">
             <Button
@@ -122,29 +122,27 @@ export function JournalPageView({
       </div>
 
       <div
-        className="journal-prose text-sm leading-relaxed text-slate-200"
+        className="journal-prose text-[0.95rem] leading-relaxed text-ink"
         onClick={handleContentClick}
         // El HTML ya pasó por DOMPurify en renderJournalHtml.
         dangerouslySetInnerHTML={{ __html: html }}
       />
 
       {page.backlinks.length > 0 && (
-        <div className="mt-6 border-t border-slate-800 pt-3">
-          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Backlinks
-          </h2>
+        <div className="mt-6 border-t border-rule pt-3">
+          <h2 className="mb-2 font-display text-xs tracking-wide text-ink-muted">Backlinks</h2>
           <ul className="space-y-1">
             {page.backlinks.map((b) => (
               <li key={b.pageId}>
                 <button
                   type="button"
                   onClick={() => onNavigate(b.pageId)}
-                  className="text-sm text-amber-400 hover:underline"
+                  className="text-sm text-oxblood hover:underline"
                 >
                   {b.title}
                 </button>
                 {b.label && b.label !== b.title && (
-                  <span className="ml-1 text-xs text-slate-500">({b.label})</span>
+                  <span className="ml-1 text-xs text-ink-muted">({b.label})</span>
                 )}
               </li>
             ))}

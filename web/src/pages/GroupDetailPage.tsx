@@ -17,6 +17,7 @@ import { Card } from "../components/ui/Card";
 import { SelectField } from "../components/ui/SelectField";
 import { FileDropTextArea } from "../components/ui/FileDropTextArea";
 import { EmptyState } from "../components/ui/EmptyState";
+import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
@@ -72,20 +73,20 @@ export function GroupDetailPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
-      <div className="mb-1 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-amber-400">{group.name}</h1>
-        <Link
-          to={`/groups/${group.id}/journal`}
-          className="text-sm text-slate-300 hover:text-amber-400"
-        >
-          Diario de grupo →
-        </Link>
-      </div>
-      <p className="mb-6 text-sm text-slate-400">Master: {group.master.username}</p>
+      <ChapterHeading
+        action={
+          <Link to={`/groups/${group.id}/journal`} className="text-ink hover:text-oxblood">
+            Diario de grupo →
+          </Link>
+        }
+      >
+        {group.name}
+      </ChapterHeading>
+      <p className="-mt-4 mb-6 text-sm text-ink-muted">Master: {group.master.username}</p>
 
       <Card className="mb-6 flex flex-wrap items-center gap-3">
-        <span className="text-sm text-slate-400">Código de invitación</span>
-        <code className="rounded bg-slate-800 px-2 py-1 font-mono tracking-widest text-amber-400">
+        <span className="text-sm text-ink-muted">Código de invitación</span>
+        <code className="rounded-sm bg-parchment px-2 py-1 font-mono tracking-widest text-oxblood">
           {group.inviteCode}
         </code>
         <Button variant="ghost" onClick={handleCopy}>
@@ -104,17 +105,19 @@ export function GroupDetailPage() {
         )}
       </Card>
 
-      <h2 className="mb-3 text-lg font-medium text-slate-200">Miembros ({group.members.length})</h2>
+      <h2 className="mb-3 font-display text-lg tracking-wide text-oxblood">
+        Miembros ({group.members.length})
+      </h2>
       <ul className="mb-6 space-y-2">
         {group.members.map((m) => (
           <li
             key={m.userId}
-            className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-900 px-4 py-3"
+            className="flex items-center justify-between rounded-sm border border-rule bg-parchment-panel px-4 py-3"
           >
-            <span className="text-slate-100">{m.username}</span>
+            <span className="text-ink">{m.username}</span>
             <div className="flex items-center gap-3">
               <span
-                className={`text-sm ${m.role === "MASTER" ? "text-amber-400" : "text-slate-400"}`}
+                className={`text-sm ${m.role === "MASTER" ? "text-oxblood" : "text-ink-muted"}`}
               >
                 {m.role === "MASTER" ? "Master" : "Jugador"}
               </span>
@@ -133,15 +136,11 @@ export function GroupDetailPage() {
       </ul>
 
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-medium text-slate-200">
+        <h2 className="font-display text-lg tracking-wide text-oxblood">
           Personajes ({group.characters.length})
         </h2>
         {isMaster && (
-          <Button
-            variant="ghost"
-            className="text-amber-400"
-            onClick={() => setImporting((v) => !v)}
-          >
+          <Button variant="ghost" onClick={() => setImporting((v) => !v)}>
             {importing ? "Cancelar" : "Importar ficha"}
           </Button>
         )}
@@ -163,18 +162,18 @@ export function GroupDetailPage() {
       ) : (
         <ul className="space-y-2">
           {group.characters.map((c) => (
-            <li key={c.id} className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+            <li key={c.id} className="rounded-sm border border-rule bg-parchment-panel p-4">
               <div className="flex items-center gap-3">
                 <PortraitCircle url={c.portraitUrl} name={c.name} size={48} />
                 <div className="flex-1">
                   <Link
                     to={`/characters/${c.id}`}
-                    className="font-medium text-slate-100 hover:text-amber-400"
+                    className="font-semibold text-ink hover:text-oxblood"
                   >
                     {c.name}
                   </Link>
                   {c.className && (
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-ink-muted">
                       {c.className} {c.level} {c.ownerUsername ? `· ${c.ownerUsername}` : ""}
                     </p>
                   )}
@@ -292,11 +291,7 @@ function UpdateCharacterMdForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      noValidate
-      className="mt-3 border-t border-slate-800 pt-3"
-    >
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-3 border-t border-rule pt-3">
       <FileDropTextArea
         label="Nuevo contenido del .md"
         hideLabel
