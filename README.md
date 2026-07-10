@@ -244,6 +244,16 @@ Antes había que copiar y pegar el contenido del `.md` en un textarea. `FileDrop
 
 Verificado disparando eventos `drop` y `change` sintéticos con un `File`/`DataTransfer` reales sobre la zona y el input oculto respectivamente (no hay forma de arrastrar un archivo de verdad con las herramientas de automatización): en ambos casos el contenido del archivo aparece en el textarea. `typecheck`/`lint`/`test`/`build` limpios.
 
+### ✅ Fix: import de journal fallaba con vaults grandes ("Unexpected server error" al guardar)
+
+Reportado por el usuario: al importar un `.zip` real de Obsidian, todos los assets subían bien, pero justo al terminar y pasar a "Guardando el diario..." fallaba con un error genérico.
+
+**Causa**: `importGroupJournal` creaba cada página, le asignaba su padre y resolvía sus wiki-links **una por una, en un bucle secuencial** (varias queries por página), todo dentro de una única transacción interactiva de Prisma. Prisma pone por defecto un **timeout de 5 segundos** a esas transacciones. Con el `.zip` sintético de pocas páginas usado para verificar la Fase 6 nunca se notó, pero con un vault real de decenas/cientos de páginas, cada una con 2-3 round-trips a Neon (latencia de red), se supera de sobra ese límite — Prisma corta la transacción con un error que `errorHandler.ts` no reconoce específicamente, así que cae en el genérico `500 Unexpected server error`. No era un problema de tamaño del `.zip` (que nunca se sube entero, se parsea en el navegador) ni algo que se arreglara partiendo el archivo (perdería la estructura del árbol y los backlinks, que necesitan conocer todas las páginas a la vez).
+
+**Fix** (`server/services/journalService.ts`): `importGroupJournal` ahora resuelve todo en memoria antes de tocar la DB — ids reales (`crypto.randomUUID()`, generados por página antes de insertar, en vez de esperar el id que devolvería cada `create()`), `parentId` y los wiki-links (contra el propio payload, no contra una query de "siblings") — y hace el guardado en **un puñado de `createMany`** (páginas, assets de página, links) en vez de una query por página. La transacción además ahora especifica `timeout: 20_000` explícito como margen extra. También se subió el límite del body JSON de Express de 2mb a 4mb (`server/app.ts`), por si el texto combinado de todas las páginas de un vault grande se acerca al límite anterior; el límite duro real es el de ~4.5 MB por función serverless de Vercel, que sigue sin tocarse.
+
+Verificado con un import sintético de 150 páginas anidadas (jerarquía de 3 niveles) con wiki-links cruzados entre todas: completa en ~1.1s (antes habría sido ~750 round-trips secuenciales), árbol y las 149 backlinks se resuelven correctamente. `typecheck`/`lint`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer

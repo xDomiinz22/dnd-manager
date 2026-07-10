@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   CreateJournalPageInput,
   Journal,
@@ -15,6 +16,9 @@ import { getMembership, resolveCharacterAccess } from "./authorization";
 import { AppError } from "../errors/AppError";
 
 type Tx = Prisma.TransactionClient;
+// Import destructivo: timeout generoso para vaults grandes (createMany en
+// bloque, no debería acercarse a esto, pero da margen bajo maxDuration=60s de Vercel).
+const IMPORT_TRANSACTION_TIMEOUT_MS = 20_000;
 
 const WIKILINK_PATTERN = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
 
@@ -139,6 +143,16 @@ async function assertJournalReadAccess(entry: JournalEntry, userId: string): Pro
 
 // ---- Import destructivo del journal de grupo ----
 
+/**
+ * Import destructivo: hace todo el guardado en bloque (createMany) en vez de
+ * página por página. Con vaults reales de decenas/cientos de páginas, el
+ * enfoque anterior (crear + actualizar padre + resolver links de cada página
+ * en su propia query, secuencial) fácilmente superaba el timeout por defecto
+ * de 5s de las transacciones interactivas de Prisma y fallaba con un error
+ * genérico justo al terminar de subir los assets. Los ids reales y los
+ * wiki-links se resuelven aquí en memoria (ya tenemos todas las páginas del
+ * payload) para no depender de round-trips a la DB por página.
+ */
 export async function importGroupJournal(
   groupId: string,
   payload: JournalImportPayload,
@@ -154,45 +168,61 @@ export async function importGroupJournal(
     }
   }
 
-  const entryId = await prisma.$transaction(async (tx) => {
-    await tx.journalEntry.deleteMany({ where: { groupId } });
-    const entry = await tx.journalEntry.create({
-      data: { scope: "GROUP", title: payload.title, groupId },
-    });
+  const tempToReal = new Map(payload.pages.map((p) => [p.tempId, randomUUID()]));
+  const byTitle = new Map(
+    payload.pages.map((p) => [p.title.toLowerCase(), tempToReal.get(p.tempId)!]),
+  );
 
-    const tempToReal = new Map<string, string>();
-    for (const page of payload.pages) {
-      const created = await tx.journalPage.create({
-        data: {
-          journalEntryId: entry.id,
-          title: page.title,
-          bodyMarkdown: page.bodyMarkdown,
-          order: page.order,
-          foundryId: page.foundryId ?? null,
-        },
+  const pageRows = payload.pages.map((page) => ({
+    id: tempToReal.get(page.tempId)!,
+    title: page.title,
+    bodyMarkdown: page.bodyMarkdown,
+    order: page.order,
+    foundryId: page.foundryId ?? null,
+    parentId: page.parentTempId ? (tempToReal.get(page.parentTempId) ?? null) : null,
+  }));
+
+  const assetRows = payload.pages.flatMap((page) =>
+    page.assetIds.map((assetId, order) => ({
+      pageId: tempToReal.get(page.tempId)!,
+      assetId,
+      order,
+    })),
+  );
+
+  const linkRows: { fromPageId: string; toPageId: string; label: string | null }[] = [];
+  for (const page of payload.pages) {
+    const fromPageId = tempToReal.get(page.tempId)!;
+    const seen = new Set<string>();
+    for (const link of extractWikiLinks(page.bodyMarkdown)) {
+      const toPageId = byTitle.get(link.title.toLowerCase());
+      if (!toPageId || toPageId === fromPageId || seen.has(toPageId)) continue;
+      seen.add(toPageId);
+      linkRows.push({ fromPageId, toPageId, label: link.label });
+    }
+  }
+
+  const entryId = await prisma.$transaction(
+    async (tx) => {
+      await tx.journalEntry.deleteMany({ where: { groupId } });
+      const entry = await tx.journalEntry.create({
+        data: { scope: "GROUP", title: payload.title, groupId },
       });
-      tempToReal.set(page.tempId, created.id);
-    }
 
-    for (const page of payload.pages) {
-      const realId = tempToReal.get(page.tempId)!;
-      const parentId = page.parentTempId ? (tempToReal.get(page.parentTempId) ?? null) : null;
-      if (parentId) {
-        await tx.journalPage.update({ where: { id: realId }, data: { parentId } });
+      await tx.journalPage.createMany({
+        data: pageRows.map((page) => ({ ...page, journalEntryId: entry.id })),
+      });
+      if (assetRows.length > 0) {
+        await tx.journalPageAsset.createMany({ data: assetRows });
       }
-      if (page.assetIds.length > 0) {
-        await tx.journalPageAsset.createMany({
-          data: page.assetIds.map((assetId, order) => ({ pageId: realId, assetId, order })),
-        });
+      if (linkRows.length > 0) {
+        await tx.journalPageLink.createMany({ data: linkRows });
       }
-    }
 
-    for (const page of payload.pages) {
-      await syncPageLinks(tx, tempToReal.get(page.tempId)!, entry.id, page.bodyMarkdown);
-    }
-
-    return entry.id;
-  });
+      return entry.id;
+    },
+    { timeout: IMPORT_TRANSACTION_TIMEOUT_MS },
+  );
 
   const entry = await prisma.journalEntry.findUniqueOrThrow({ where: { id: entryId } });
   return toJournal(entry);
