@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
@@ -13,6 +14,9 @@ export function createApp() {
       credentials: true,
     }),
   );
+  // gzip/brotli para las respuestas JSON (algunas fichas de personaje traen
+  // el rawSystem completo de Foundry, bastante pesado sin comprimir).
+  app.use(compression());
   // Los .md de fichas Foundry rondan ~200 KB, pero el import de journal manda
   // el texto de TODAS las páginas del vault en un solo POST; 4mb da margen
   // para vaults grandes sin acercarse al límite de ~4.5 MB del body en

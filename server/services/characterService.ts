@@ -7,6 +7,7 @@ import type {
 import { Prisma } from "@prisma/client";
 import type { Asset, CharacterSheet } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
+import { convertImageToWebp } from "../../lib/imageConversion";
 import { parseFoundryMd } from "./foundryParser";
 import { getMembership, resolveCharacterAccess } from "./authorization";
 import { resolveAssetUrl } from "./assetUrl";
@@ -225,15 +226,16 @@ export async function addCharacterImage(
   originalName: string | null,
 ): Promise<{ asset: Asset; character: CharacterFull }> {
   const existing = await getCharacterOrThrow(characterId);
+  const converted = await convertImageToWebp(data, mime, originalName);
 
   const asset = await prisma.asset.create({
     data: {
       ownerId: uploaderId,
       kind: "IMAGE",
-      mime,
-      size: data.length,
-      data,
-      originalName,
+      mime: converted.mime,
+      size: converted.data.length,
+      data: converted.data,
+      originalName: converted.originalName,
       characterId,
     },
   });

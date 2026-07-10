@@ -3,6 +3,7 @@
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install",
   "outputDirectory": "web/dist",
+  "regions": ["fra1"],
   "functions": {
     "api/**/*.ts": {
       "maxDuration": 60

@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { assetKindSchema } from "@dnd-manager/shared";
 import { prisma } from "../../lib/prisma";
+import { convertImageToWebp } from "../../lib/imageConversion";
 import { toAssetDto } from "../services/assetUrl";
 import { AppError } from "../errors/AppError";
 
@@ -16,14 +17,16 @@ export const uploadAssetHandler: RequestHandler = async (req, res, next) => {
       throw new AppError(400, "INVALID_UPLOAD", "Cuerpo de subida vacío");
     }
 
+    const converted = await convertImageToWebp(req.body, mime, originalName);
+
     const asset = await prisma.asset.create({
       data: {
         ownerId: req.userId!,
         kind,
-        mime,
-        size: req.body.length,
-        data: req.body,
-        originalName,
+        mime: converted.mime,
+        size: converted.data.length,
+        data: converted.data,
+        originalName: converted.originalName,
       },
     });
 
