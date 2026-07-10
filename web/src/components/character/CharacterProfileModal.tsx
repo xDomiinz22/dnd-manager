@@ -45,7 +45,7 @@ export function CharacterProfileModal() {
         aria-modal="true"
         aria-label={data ? `Perfil de ${data.character.name}` : "Perfil de personaje"}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-xs rounded-sm border border-rule/70 bg-parchment-panel/60 p-8 text-center shadow-2xl backdrop-blur-xl"
+        className="relative w-full max-w-sm rounded-sm border border-rule/70 bg-parchment-panel/60 p-8 text-center shadow-2xl backdrop-blur-xl sm:max-w-md sm:p-10"
       >
         <button
           type="button"
@@ -58,8 +58,8 @@ export function CharacterProfileModal() {
 
         {isLoading || !data ? (
           <div className="animate-pulse">
-            <div className="mx-auto h-32 w-32 rounded-full bg-parchment-deep/60" />
-            <div className="mx-auto mt-4 h-5 w-32 rounded-sm bg-parchment-deep/60" />
+            <div className="mx-auto h-36 w-36 rounded-full bg-parchment-deep/60 sm:h-44 sm:w-44" />
+            <div className="mx-auto mt-4 h-6 w-36 rounded-sm bg-parchment-deep/60" />
           </div>
         ) : (
           <>
@@ -67,10 +67,10 @@ export function CharacterProfileModal() {
               <PortraitCircle
                 url={data.character.portraitUrl}
                 name={data.character.name}
-                size={128}
+                sizeClassName="h-36 w-36 sm:h-44 sm:w-44"
               />
             </div>
-            <h1 className="mt-4 font-display text-xl tracking-wide text-oxblood">
+            <h1 className="mt-4 font-display text-xl tracking-wide text-oxblood sm:text-2xl">
               {data.character.name}
             </h1>
             <p className="mt-2 text-sm text-ink-muted">
