@@ -238,6 +238,12 @@ Antes solo existía el backend para fijar un retrato (`PATCH /characters/:id/por
 - Frontend: `CharacterImageManager.tsx` (nuevo, en `components/character/`), montado junto al retrato circular en la cabecera de la ficha — solo se renderiza cuando el usuario ya ve la ficha completa (`access === "FULL"`, que coincide exactamente con "Master o dueño"). Miniaturas en grid, la activa con borde ámbar; click en una no-activa la marca como principal; botón de borrar (oculto en la activa) por miniatura; botón "Añadir imagen" con `<input type="file">` oculto.
 - Verificado con imágenes PNG sintéticas subidas vía `fetch` autenticado (no hay forma de rellenar un `<input type="file">` con las herramientas de automatización): primera imagen se auto-selecciona como retrato, segunda no lo hace, cambiar de principal funciona y refleja el borde ámbar correcto, borrar la no-activa funciona, borrar la activa se bloquea con el mensaje esperado (tanto a nivel API como en la UI, donde ni siquiera se muestra el botón). `typecheck`/`lint`/`test`/`build` limpios.
 
+### ✅ Arrastrar y soltar el `.md` al importar/actualizar una ficha
+
+Antes había que copiar y pegar el contenido del `.md` en un textarea. `FileDropTextArea.tsx` (nuevo, en `components/ui/`) envuelve `TextAreaField` con una zona de `onDrop`/`onDragOver` (resalta con borde punteado ámbar mientras se arrastra encima) y además un `<input type="file">` oculto como alternativa de "selecciona uno" — ambos caminos leen el archivo con `file.text()` y llaman a `onFileDrop(text)`, que el formulario usa para hacer `setValue("md", text, { shouldValidate: true })` de react-hook-form. Sustituye el `TextAreaField` suelto en `ImportCharacterForm` y `UpdateCharacterMdForm` (`GroupDetailPage.tsx`); el registro de RHF (`{...register("md")}`) se mantiene igual, así que la validación y el envío no cambian.
+
+Verificado disparando eventos `drop` y `change` sintéticos con un `File`/`DataTransfer` reales sobre la zona y el input oculto respectivamente (no hay forma de arrastrar un archivo de verdad con las herramientas de automatización): en ambos casos el contenido del archivo aparece en el textarea. `typecheck`/`lint`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer

@@ -15,7 +15,7 @@ import { PortraitCircle } from "../components/character/PortraitCircle";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SelectField } from "../components/ui/SelectField";
-import { TextAreaField } from "../components/ui/TextAreaField";
+import { FileDropTextArea } from "../components/ui/FileDropTextArea";
 import { EmptyState } from "../components/ui/EmptyState";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
@@ -216,6 +216,7 @@ function ImportCharacterForm({ groupId, members, onDone }: ImportCharacterFormPr
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<ImportCharacterInput>({
     resolver: zodResolver(importCharacterSchema),
@@ -242,12 +243,13 @@ function ImportCharacterForm({ groupId, members, onDone }: ImportCharacterFormPr
         ))}
       </SelectField>
 
-      <TextAreaField
+      <FileDropTextArea
         label="Contenido del .md (export Foundry)"
         rows={6}
         className="font-mono text-xs"
         placeholder={"---\ntitle: ...\n```Actor\n...\n```"}
         error={errors.md?.message}
+        onFileDrop={(text) => setValue("md", text, { shouldValidate: true })}
         {...register("md")}
       />
 
@@ -272,6 +274,7 @@ function UpdateCharacterMdForm({
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<ImportCharacterMdInput>({
     resolver: zodResolver(importCharacterMdSchema),
@@ -294,13 +297,14 @@ function UpdateCharacterMdForm({
       noValidate
       className="mt-3 border-t border-slate-800 pt-3"
     >
-      <TextAreaField
+      <FileDropTextArea
         label="Nuevo contenido del .md"
         hideLabel
         rows={5}
         className="font-mono text-xs"
         placeholder="Pega el nuevo contenido del .md"
         error={errors.md?.message}
+        onFileDrop={(text) => setValue("md", text, { shouldValidate: true })}
         {...register("md")}
       />
       <Button type="submit" isLoading={importMd.isPending} loadingText="Actualizando...">
