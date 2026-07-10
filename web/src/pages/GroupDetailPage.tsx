@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -24,6 +24,7 @@ import { toErrorMessage, useToast } from "../components/ui/Toast";
 export function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const location = useLocation();
   const toast = useToast();
   const { data: group, isLoading } = useGroupDetail(id!);
   const regenerate = useRegenerateInviteCode(id!);
@@ -161,41 +162,45 @@ export function GroupDetailPage() {
         />
       ) : (
         <ul className="space-y-2">
-          {group.characters.map((c) => (
-            <li key={c.id} className="rounded-sm border border-rule bg-parchment-panel p-4">
-              <div className="flex items-center gap-3">
-                <PortraitCircle url={c.portraitUrl} name={c.name} size={48} />
-                <div className="flex-1">
-                  <Link
-                    to={`/characters/${c.id}`}
-                    className="font-semibold text-ink hover:text-oxblood"
-                  >
-                    {c.name}
-                  </Link>
-                  {c.className && (
-                    <p className="text-sm text-ink-muted">
-                      {c.className} {c.level} {c.ownerUsername ? `· ${c.ownerUsername}` : ""}
-                    </p>
+          {group.characters.map((c) => {
+            const isLimited = !isMaster && c.ownerId !== user?.id;
+            return (
+              <li key={c.id} className="rounded-sm border border-rule bg-parchment-panel p-4">
+                <div className="flex items-center gap-3">
+                  <PortraitCircle url={c.portraitUrl} name={c.name} size={48} />
+                  <div className="flex-1">
+                    <Link
+                      to={`/characters/${c.id}`}
+                      state={isLimited ? { backgroundLocation: location } : undefined}
+                      className="font-semibold text-ink hover:text-oxblood"
+                    >
+                      {c.name}
+                    </Link>
+                    {c.className && (
+                      <p className="text-sm text-ink-muted">
+                        {c.className} {c.level} {c.ownerUsername ? `· ${c.ownerUsername}` : ""}
+                      </p>
+                    )}
+                  </div>
+                  {isMaster && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setUpdatingId(updatingId === c.id ? null : c.id)}
+                    >
+                      Actualizar .md
+                    </Button>
                   )}
                 </div>
-                {isMaster && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setUpdatingId(updatingId === c.id ? null : c.id)}
-                  >
-                    Actualizar .md
-                  </Button>
+                {updatingId === c.id && (
+                  <UpdateCharacterMdForm
+                    characterId={c.id}
+                    groupId={group.id}
+                    onDone={() => setUpdatingId(null)}
+                  />
                 )}
-              </div>
-              {updatingId === c.id && (
-                <UpdateCharacterMdForm
-                  characterId={c.id}
-                  groupId={group.id}
-                  onDone={() => setUpdatingId(null)}
-                />
-              )}
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

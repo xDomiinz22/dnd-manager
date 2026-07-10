@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation, type Location } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { LoginPage } from "./pages/LoginPage";
@@ -10,25 +10,38 @@ import { MyCharactersPage } from "./pages/MyCharactersPage";
 import { CharacterSheetPage } from "./pages/CharacterSheetPage";
 import { GroupJournalPage } from "./pages/GroupJournalPage";
 import { CharacterJournalPage } from "./pages/CharacterJournalPage";
+import { CharacterProfileModal } from "./components/character/CharacterProfileModal";
 
 export function App() {
+  const location = useLocation();
+  const backgroundLocation = (location.state as { backgroundLocation?: Location } | null)
+    ?.backgroundLocation;
+
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route element={<ProtectedRoute />}>
-        <Route element={<AppLayout />}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/groups" element={<GroupsPage />} />
-          <Route path="/groups/:id" element={<GroupDetailPage />} />
-          <Route path="/groups/:id/journal" element={<GroupJournalPage />} />
-          <Route path="/groups/:id/journal/:pageId" element={<GroupJournalPage />} />
-          <Route path="/characters" element={<MyCharactersPage />} />
-          <Route path="/characters/:id" element={<CharacterSheetPage />} />
-          <Route path="/characters/:id/journal" element={<CharacterJournalPage />} />
-          <Route path="/characters/:id/journal/:pageId" element={<CharacterJournalPage />} />
+    <>
+      <Routes location={backgroundLocation ?? location}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AppLayout />}>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/groups" element={<GroupsPage />} />
+            <Route path="/groups/:id" element={<GroupDetailPage />} />
+            <Route path="/groups/:id/journal" element={<GroupJournalPage />} />
+            <Route path="/groups/:id/journal/:pageId" element={<GroupJournalPage />} />
+            <Route path="/characters" element={<MyCharactersPage />} />
+            <Route path="/characters/:id" element={<CharacterSheetPage />} />
+            <Route path="/characters/:id/journal" element={<CharacterJournalPage />} />
+            <Route path="/characters/:id/journal/:pageId" element={<CharacterJournalPage />} />
+          </Route>
         </Route>
-      </Route>
-    </Routes>
+      </Routes>
+
+      {backgroundLocation && (
+        <Routes>
+          <Route path="/characters/:id" element={<CharacterProfileModal />} />
+        </Routes>
+      )}
+    </>
   );
 }
