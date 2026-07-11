@@ -23,6 +23,7 @@ import {
   ABILITY_FULL_LABELS,
   ABILITY_LABELS,
   SKILL_LABELS,
+  classBreakdown,
   formatModifier,
   itemsOfType,
   sanitizeHtml,
@@ -90,6 +91,11 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const speed = attributes.movement?.walk
     ? `${attributes.movement.walk} ${attributes.movement.units ?? "ft"}`
     : "—";
+  const classes = classBreakdown(character.items);
+  const classLine =
+    classes.length > 0
+      ? classes.map((c) => `${c.name} ${c.level}`).join(" / ")
+      : `${character.className ?? "Sin clase"} ${character.level}`;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -105,7 +111,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
         <div className="flex-1 text-center sm:text-left">
           <h1 className="font-display text-2xl tracking-wide text-oxblood">{character.name}</h1>
           <p className="text-ink">
-            {character.className ?? "Sin clase"} {character.level}
+            {classLine}
             {character.subclassName ? ` · ${character.subclassName}` : ""}
           </p>
           <p className="text-sm text-ink-muted">{character.species ?? "Especie desconocida"}</p>
@@ -495,7 +501,9 @@ function SpellbookTab({
 /**
  * Huecos de conjuro nivel 1-7: el .md de Foundry no trae de forma fiable el
  * máximo real, así que tanto usados como máximo se editan a mano aquí, igual
- * que los PG. Cada input guarda al perder el foco, solo si cambió el valor.
+ * que los PG. Botones +/- en vez de un input de texto: cada click guarda al
+ * momento (un input con guardado en onBlur se pierde si el usuario usa las
+ * flechitas nativas del número o navega antes de que el campo pierda el foco).
  */
 function SpellSlotsPanel({
   characterId,
@@ -507,9 +515,9 @@ function SpellSlotsPanel({
   const updateSlot = useUpdateSpellSlot(characterId);
   const toast = useToast();
 
-  function handleBlur(level: SpellSlotLevel, field: "used" | "max", raw: string, original: number) {
-    const value = Number(raw);
-    if (!Number.isInteger(value) || value < 0 || value === original) return;
+  function adjust(level: SpellSlotLevel, field: "used" | "max", current: number, delta: number) {
+    const value = Math.max(0, current + delta);
+    if (value === current) return;
     updateSlot.mutate(
       { level, [field]: value },
       {
@@ -522,7 +530,7 @@ function SpellSlotsPanel({
   return (
     <div>
       <h3 className="mb-2 font-display text-sm tracking-wide text-oxblood">Huecos de conjuro</h3>
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:grid-cols-7">
         {SPELL_SLOT_LEVELS.map((level) => {
           const slot = spellSlots[level];
           return (
@@ -531,30 +539,70 @@ function SpellSlotsPanel({
               className="rounded-sm border border-rule bg-parchment-panel p-2 text-center"
             >
               <div className="font-display text-xs tracking-wide text-ink-muted">Nivel {level}</div>
-              <div className="mt-1 flex items-center justify-center gap-1">
-                <input
-                  key={`used-${level}-${slot.used}`}
-                  type="number"
-                  min={0}
-                  defaultValue={slot.used}
-                  onBlur={(e) => handleBlur(level, "used", e.target.value, slot.used)}
-                  aria-label={`Huecos de nivel ${level} usados`}
-                  className="w-10 rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-center text-sm text-ink outline-none focus:border-oxblood"
+              <div className="mt-1 space-y-1">
+                <SpellSlotStepper
+                  label="Usados"
+                  value={slot.used}
+                  onDecrement={() => adjust(level, "used", slot.used, -1)}
+                  onIncrement={() => adjust(level, "used", slot.used, 1)}
+                  ariaLabel={`usados nivel ${level}`}
                 />
-                <span className="text-ink-muted">/</span>
-                <input
-                  key={`max-${level}-${slot.max}`}
-                  type="number"
-                  min={0}
-                  defaultValue={slot.max}
-                  onBlur={(e) => handleBlur(level, "max", e.target.value, slot.max)}
-                  aria-label={`Huecos de nivel ${level} máximos`}
-                  className="w-10 rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-center text-sm text-ink outline-none focus:border-oxblood"
+                <SpellSlotStepper
+                  label="Máx"
+                  value={slot.max}
+                  onDecrement={() => adjust(level, "max", slot.max, -1)}
+                  onIncrement={() => adjust(level, "max", slot.max, 1)}
+                  ariaLabel={`máximo nivel ${level}`}
                 />
               </div>
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function SpellSlotStepper({
+  label,
+  value,
+  onDecrement,
+  onIncrement,
+  ariaLabel,
+}: {
+  label: string;
+  value: number;
+  onDecrement: () => void;
+  onIncrement: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-1">
+      <span className="text-[10px] uppercase tracking-wide text-ink-muted">{label}</span>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={onDecrement}
+          disabled={value <= 0}
+          aria-label={`Restar ${ariaLabel}`}
+          className="flex h-5 w-5 items-center justify-center rounded-sm border border-rule-strong text-ink-muted hover:border-oxblood hover:text-oxblood disabled:opacity-30"
+        >
+          −
+        </button>
+        <span
+          className="w-4 text-center text-sm text-ink"
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
+          {value}
+        </span>
+        <button
+          type="button"
+          onClick={onIncrement}
+          aria-label={`Sumar ${ariaLabel}`}
+          className="flex h-5 w-5 items-center justify-center rounded-sm border border-rule-strong text-ink-muted hover:border-oxblood hover:text-oxblood"
+        >
+          +
+        </button>
       </div>
     </div>
   );
