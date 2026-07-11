@@ -6,6 +6,7 @@ import {
   importCharacterSchema,
   reassignOwnerSchema,
   updateHpSchema,
+  updateSpellSlotSchema,
 } from "@dnd-manager/shared";
 import * as characterService from "../services/characterService";
 import { toAssetDto } from "../services/assetUrl";
@@ -60,6 +61,30 @@ export const updateHpHandler: RequestHandler = async (req, res, next) => {
     const input = updateHpSchema.parse(req.body);
     const character = await characterService.updateCurrentHp(req.params.id!, input.currentHp);
     res.json(character);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateSpellSlotHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = updateSpellSlotSchema.parse(req.body);
+    const character = await characterService.updateSpellSlot(
+      req.params.id!,
+      input.level,
+      input.used,
+      input.max,
+    );
+    res.json(character);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteCharacterHandler: RequestHandler = async (req, res, next) => {
+  try {
+    await characterService.deleteCharacter(req.params.id!);
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

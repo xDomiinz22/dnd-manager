@@ -6,12 +6,15 @@ import { Link, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
+  SPELL_SLOT_LEVELS,
   updateHpSchema,
   type AbilityKey,
   type CharacterFull,
+  type SpellSlotLevel,
+  type SpellSlots,
   type UpdateHpInput,
 } from "@dnd-manager/shared";
-import { useCharacter, useUpdateHp } from "../features/characters/hooks";
+import { useCharacter, useUpdateHp, useUpdateSpellSlot } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { CharacterImageManager } from "../components/character/CharacterImageManager";
 import { SkeletonPage } from "../components/ui/Skeleton";
@@ -170,7 +173,13 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
         {tab === "Skills & Tools" && <SkillsTab character={character} />}
         {tab === "Inventory" && <InventoryTab items={character.items} />}
         {tab === "Features" && <FeaturesTab items={character.items} />}
-        {tab === "Spellbook" && <SpellbookTab items={character.items} />}
+        {tab === "Spellbook" && (
+          <SpellbookTab
+            characterId={character.id}
+            spellSlots={character.spellSlots}
+            items={character.items}
+          />
+        )}
         {tab === "Biography" && <BiographyTab details={details} />}
       </div>
     </div>
@@ -430,11 +439,16 @@ function FeaturesTab({ items }: { items: unknown }) {
   );
 }
 
-function SpellbookTab({ items }: { items: unknown }) {
+function SpellbookTab({
+  characterId,
+  spellSlots,
+  items,
+}: {
+  characterId: string;
+  spellSlots: SpellSlots;
+  items: unknown;
+}) {
   const spells = itemsOfType(items, ["spell"]);
-  if (spells.length === 0) {
-    return <p className="text-ink-muted">Sin conjuros.</p>;
-  }
 
   const byLevel = new Map<number, typeof spells>();
   for (const spell of spells) {
@@ -445,6 +459,10 @@ function SpellbookTab({ items }: { items: unknown }) {
 
   return (
     <div className="space-y-4">
+      <SpellSlotsPanel characterId={characterId} spellSlots={spellSlots} />
+
+      {spells.length === 0 && <p className="text-ink-muted">Sin conjuros.</p>}
+
       {levels.map((level) => (
         <div key={level}>
           <h3 className="mb-2 font-display text-sm tracking-wide text-oxblood">
@@ -470,6 +488,74 @@ function SpellbookTab({ items }: { items: unknown }) {
           </ul>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Huecos de conjuro nivel 1-7: el .md de Foundry no trae de forma fiable el
+ * máximo real, así que tanto usados como máximo se editan a mano aquí, igual
+ * que los PG. Cada input guarda al perder el foco, solo si cambió el valor.
+ */
+function SpellSlotsPanel({
+  characterId,
+  spellSlots,
+}: {
+  characterId: string;
+  spellSlots: SpellSlots;
+}) {
+  const updateSlot = useUpdateSpellSlot(characterId);
+  const toast = useToast();
+
+  function handleBlur(level: SpellSlotLevel, field: "used" | "max", raw: string, original: number) {
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 0 || value === original) return;
+    updateSlot.mutate(
+      { level, [field]: value },
+      {
+        onError: (err) =>
+          toast.error(toErrorMessage(err, "No se pudo actualizar el hueco de conjuro.")),
+      },
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="mb-2 font-display text-sm tracking-wide text-oxblood">Huecos de conjuro</h3>
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+        {SPELL_SLOT_LEVELS.map((level) => {
+          const slot = spellSlots[level];
+          return (
+            <div
+              key={level}
+              className="rounded-sm border border-rule bg-parchment-panel p-2 text-center"
+            >
+              <div className="font-display text-xs tracking-wide text-ink-muted">Nivel {level}</div>
+              <div className="mt-1 flex items-center justify-center gap-1">
+                <input
+                  key={`used-${level}-${slot.used}`}
+                  type="number"
+                  min={0}
+                  defaultValue={slot.used}
+                  onBlur={(e) => handleBlur(level, "used", e.target.value, slot.used)}
+                  aria-label={`Huecos de nivel ${level} usados`}
+                  className="w-10 rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-center text-sm text-ink outline-none focus:border-oxblood"
+                />
+                <span className="text-ink-muted">/</span>
+                <input
+                  key={`max-${level}-${slot.max}`}
+                  type="number"
+                  min={0}
+                  defaultValue={slot.max}
+                  onBlur={(e) => handleBlur(level, "max", e.target.value, slot.max)}
+                  aria-label={`Huecos de nivel ${level} máximos`}
+                  className="w-10 rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-center text-sm text-ink outline-none focus:border-oxblood"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

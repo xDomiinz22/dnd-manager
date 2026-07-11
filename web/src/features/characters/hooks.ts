@@ -5,6 +5,7 @@ import type {
   ImportCharacterInput,
   ImportCharacterMdInput,
   UpdateHpInput,
+  UpdateSpellSlotInput,
 } from "@dnd-manager/shared";
 import { charactersApi } from "./api";
 import { GROUPS_QUERY_KEY, groupDetailKey } from "../groups/hooks";
@@ -88,6 +89,25 @@ export function useUpdateHp(id: string) {
   return useMutation({
     mutationFn: (input: UpdateHpInput) => charactersApi.updateHp(id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: characterKey(id) }),
+  });
+}
+
+export function useUpdateSpellSlot(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateSpellSlotInput) => charactersApi.updateSpellSlot(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: characterKey(id) }),
+  });
+}
+
+export function useDeleteCharacter(id: string, groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => charactersApi.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) });
+      queryClient.invalidateQueries({ queryKey: MY_CHARACTERS_QUERY_KEY });
+    },
   });
 }
 

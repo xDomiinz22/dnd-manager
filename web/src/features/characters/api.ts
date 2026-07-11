@@ -8,6 +8,7 @@ import type {
   ImportCharacterInput,
   ImportCharacterMdInput,
   UpdateHpInput,
+  UpdateSpellSlotInput,
   UploadCharacterImageResponse,
 } from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
@@ -40,6 +41,12 @@ export const charactersApi = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
+  updateSpellSlot: (id: string, input: UpdateSpellSlotInput) =>
+    apiFetch<CharacterFull>(`/characters/${id}/spell-slots`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  remove: (id: string) => apiFetch<void>(`/characters/${id}`, { method: "DELETE" }),
   listImages: (id: string) => apiFetch<Asset[]>(`/characters/${id}/images`),
   uploadImage: (id: string, file: File) =>
     apiFetch<UploadCharacterImageResponse>(

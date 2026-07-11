@@ -66,6 +66,46 @@ export const updateHpSchema = z.object({
 });
 export type UpdateHpInput = z.infer<typeof updateHpSchema>;
 
+export const SPELL_SLOT_LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
+export const spellSlotLevelSchema = z.union([
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+  z.literal(7),
+]);
+export type SpellSlotLevel = z.infer<typeof spellSlotLevelSchema>;
+
+export const spellSlotSchema = z.object({
+  used: z.number().int().min(0),
+  max: z.number().int().min(0),
+});
+export type SpellSlot = z.infer<typeof spellSlotSchema>;
+
+export const spellSlotsSchema = z.object({
+  1: spellSlotSchema,
+  2: spellSlotSchema,
+  3: spellSlotSchema,
+  4: spellSlotSchema,
+  5: spellSlotSchema,
+  6: spellSlotSchema,
+  7: spellSlotSchema,
+});
+export type SpellSlots = z.infer<typeof spellSlotsSchema>;
+
+export const updateSpellSlotSchema = z
+  .object({
+    level: spellSlotLevelSchema,
+    used: z.number().int().min(0, "No puede ser negativo").optional(),
+    max: z.number().int().min(0, "No puede ser negativo").optional(),
+  })
+  .refine((v) => v.used !== undefined || v.max !== undefined, {
+    message: "Indica al menos usados o máximo",
+  });
+export type UpdateSpellSlotInput = z.infer<typeof updateSpellSlotSchema>;
+
 export const characterFullSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
@@ -80,6 +120,7 @@ export const characterFullSchema = z.object({
   portraitUrl: z.string().nullable(),
   portraitAssetId: z.string().nullable(),
   currentHp: z.number(),
+  spellSlots: spellSlotsSchema,
   rawSystem: z.unknown(),
   items: z.unknown(),
   derived: derivedStatsSchema,

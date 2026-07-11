@@ -116,6 +116,11 @@ model CharacterSheet {
   // se ha tocado manualmente, y se usa el valor importado del .md / el máximo.
   currentHp Int?
 
+  // Huecos de conjuro nivel 1-7: cuántos se han gastado hoy y cuántos hay como
+  // máximo. Null = todavía no se ha tocado, se usa el default (0 usados / 4
+  // máximo) porque el .md de Foundry no trae el máximo real de forma fiable.
+  spellSlots Json?
+
   // Datos crudos y derivados:
   rawSystem    Json
   items        Json

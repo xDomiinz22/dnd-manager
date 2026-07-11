@@ -10,7 +10,11 @@ import {
 } from "@dnd-manager/shared";
 import { useAuth } from "../context/AuthContext";
 import { useGroupDetail, useRegenerateInviteCode, useRemoveMember } from "../features/groups/hooks";
-import { useImportCharacter, useImportCharacterMd } from "../features/characters/hooks";
+import {
+  useDeleteCharacter,
+  useImportCharacter,
+  useImportCharacterMd,
+} from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -32,6 +36,7 @@ export function GroupDetailPage() {
   const [copied, setCopied] = useState(false);
   const [importing, setImporting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   if (isLoading || !group) {
     return (
@@ -183,12 +188,20 @@ export function GroupDetailPage() {
                     )}
                   </div>
                   {isMaster && (
-                    <Button
-                      variant="ghost"
-                      onClick={() => setUpdatingId(updatingId === c.id ? null : c.id)}
-                    >
-                      Actualizar .md
-                    </Button>
+                    <>
+                      <Button
+                        variant="ghost"
+                        onClick={() => setUpdatingId(updatingId === c.id ? null : c.id)}
+                      >
+                        Actualizar .md
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => setDeletingId(deletingId === c.id ? null : c.id)}
+                      >
+                        Borrar
+                      </Button>
+                    </>
                   )}
                 </div>
                 {updatingId === c.id && (
@@ -196,6 +209,14 @@ export function GroupDetailPage() {
                     characterId={c.id}
                     groupId={group.id}
                     onDone={() => setUpdatingId(null)}
+                  />
+                )}
+                {deletingId === c.id && (
+                  <DeleteCharacterConfirm
+                    characterId={c.id}
+                    characterName={c.name}
+                    groupId={group.id}
+                    onDone={() => setDeletingId(null)}
                   />
                 )}
               </li>
@@ -261,6 +282,53 @@ function ImportCharacterForm({ groupId, members, onDone }: ImportCharacterFormPr
         Importar
       </Button>
     </Card>
+  );
+}
+
+function DeleteCharacterConfirm({
+  characterId,
+  characterName,
+  groupId,
+  onDone,
+}: {
+  characterId: string;
+  characterName: string;
+  groupId: string;
+  onDone: () => void;
+}) {
+  const deleteCharacter = useDeleteCharacter(characterId, groupId);
+  const toast = useToast();
+
+  function handleConfirm() {
+    deleteCharacter.mutate(undefined, {
+      onSuccess: () => {
+        toast.success(`${characterName} borrado.`);
+        onDone();
+      },
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo borrar el personaje.")),
+    });
+  }
+
+  return (
+    <div className="mt-3 border-t border-rule pt-3">
+      <p className="mb-3 text-sm text-oxblood">
+        ⚠ Esto borra a {characterName} por completo, junto con su diario personal y sus imágenes. No
+        se puede deshacer.
+      </p>
+      <div className="flex gap-2">
+        <Button
+          variant="danger"
+          onClick={handleConfirm}
+          isLoading={deleteCharacter.isPending}
+          loadingText="Borrando..."
+        >
+          Confirmar borrado
+        </Button>
+        <Button variant="ghost" onClick={onDone} disabled={deleteCharacter.isPending}>
+          Cancelar
+        </Button>
+      </div>
+    </div>
   );
 }
 

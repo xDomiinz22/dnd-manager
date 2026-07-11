@@ -7,6 +7,7 @@ import {
 } from "../middlewares/characterAuth";
 import {
   changePortraitHandler,
+  deleteCharacterHandler,
   deleteCharacterImageHandler,
   duplicateCharacterHandler,
   getCharacterViewHandler,
@@ -16,6 +17,7 @@ import {
   listMyCharactersHandler,
   reassignOwnerHandler,
   updateHpHandler,
+  updateSpellSlotHandler,
   uploadCharacterImageHandler,
 } from "../controllers/characterController";
 
@@ -53,6 +55,18 @@ charactersRouter.patch(
   requireAuth,
   requireCharacterMasterOrOwner,
   updateHpHandler,
+);
+charactersRouter.patch(
+  "/characters/:id/spell-slots",
+  requireAuth,
+  requireCharacterMasterOrOwner,
+  updateSpellSlotHandler,
+);
+charactersRouter.delete(
+  "/characters/:id",
+  requireAuth,
+  requireCharacterMaster,
+  deleteCharacterHandler,
 );
 charactersRouter.post("/characters/:id/duplicate", requireAuth, duplicateCharacterHandler);
 

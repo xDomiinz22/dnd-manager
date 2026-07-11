@@ -3,7 +3,11 @@ import type {
   CharacterListItem,
   CharacterView,
   ImportCharacterInput,
+  SpellSlot,
+  SpellSlotLevel,
+  SpellSlots,
 } from "@dnd-manager/shared";
+import { SPELL_SLOT_LEVELS } from "@dnd-manager/shared";
 import { Prisma } from "@prisma/client";
 import type { Asset, CharacterSheet } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
@@ -32,6 +36,21 @@ function resolveCurrentHp(character: CharacterSheet): number {
   return derived?.hitPoints.override ?? derived?.hitPoints.max ?? 0;
 }
 
+const DEFAULT_SPELL_SLOT: SpellSlot = { used: 0, max: 4 };
+
+/**
+ * Huecos de conjuro nivel 1-7: el .md de Foundry no trae de forma fiable el
+ * máximo real (depende de clase/nivel/multiclase), así que tanto usados como
+ * máximo son editables a mano; por defecto 0 usados / 4 máximo hasta que se
+ * toquen (ver el comentario de `spellSlots` en schema.prisma).
+ */
+function resolveSpellSlots(character: CharacterSheet): SpellSlots {
+  const stored = (character.spellSlots as Partial<Record<SpellSlotLevel, SpellSlot>> | null) ?? {};
+  return Object.fromEntries(
+    SPELL_SLOT_LEVELS.map((level) => [level, stored[level] ?? DEFAULT_SPELL_SLOT]),
+  ) as SpellSlots;
+}
+
 function toCharacterFull(character: CharacterWithPortrait): CharacterFull {
   return {
     id: character.id,
@@ -47,6 +66,7 @@ function toCharacterFull(character: CharacterWithPortrait): CharacterFull {
     portraitUrl: character.portraitAsset ? resolveAssetUrl(character.portraitAsset) : null,
     portraitAssetId: character.portraitAssetId,
     currentHp: resolveCurrentHp(character),
+    spellSlots: resolveSpellSlots(character),
     rawSystem: character.rawSystem,
     items: character.items,
     // Guardamos exactamente lo que genera deriveCharacterStats, así que el shape coincide con DerivedStats.
@@ -212,6 +232,46 @@ export async function updateCurrentHp(id: string, currentHp: number): Promise<Ch
     include: { portraitAsset: true },
   });
   return toCharacterFull(character);
+}
+
+export async function updateSpellSlot(
+  id: string,
+  level: SpellSlotLevel,
+  used: number | undefined,
+  max: number | undefined,
+): Promise<CharacterFull> {
+  const existing = await getCharacterOrThrow(id);
+  const currentSlots = resolveSpellSlots(existing);
+  const currentSlot = currentSlots[level];
+
+  const nextSlots: SpellSlots = {
+    ...currentSlots,
+    [level]: {
+      used: used ?? currentSlot.used,
+      max: max ?? currentSlot.max,
+    },
+  };
+
+  const character = await prisma.characterSheet.update({
+    where: { id: existing.id },
+    data: { spellSlots: nextSlots },
+    include: { portraitAsset: true },
+  });
+  return toCharacterFull(character);
+}
+
+/**
+ * Borra la ficha por completo (solo Master). El diario personal cae en
+ * cascada (JournalEntry.characterId ON DELETE CASCADE); las imágenes de la
+ * galería/retrato de Asset.characterId son ON DELETE SET NULL, así que se
+ * borran explícitamente aquí para no dejar bytes huérfanos en la DB.
+ */
+export async function deleteCharacter(id: string): Promise<void> {
+  const existing = await getCharacterOrThrow(id);
+  await prisma.$transaction([
+    prisma.asset.deleteMany({ where: { characterId: existing.id } }),
+    prisma.characterSheet.delete({ where: { id: existing.id } }),
+  ]);
 }
 
 /**
