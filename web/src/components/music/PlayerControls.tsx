@@ -24,7 +24,11 @@ interface PlayerControlsProps {
 }
 
 const ICON_BUTTON =
-  "flex h-8 w-8 items-center justify-center rounded-sm hover:bg-parchment-deep/60 disabled:opacity-30";
+  "flex h-8 w-8 items-center justify-center rounded-sm transition-shadow disabled:opacity-30";
+
+const TOGGLE_ACTIVE =
+  "bg-oxblood text-parchment shadow-[0_0_0_1px_rgba(201,162,39,0.6)] hover:bg-oxblood-dark";
+const TOGGLE_INACTIVE = "text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood";
 
 /**
  * Fila de controles de transporte compartida entre la barra "reproduciendo
@@ -51,7 +55,7 @@ export function PlayerControls({
         onClick={onToggleShuffle}
         aria-label="Reproducción aleatoria"
         aria-pressed={shuffle}
-        className={`${ICON_BUTTON} ${shuffle ? "text-oxblood" : "text-ink-muted hover:text-oxblood"}`}
+        className={`${ICON_BUTTON} ${shuffle ? TOGGLE_ACTIVE : TOGGLE_INACTIVE}`}
       >
         <ShuffleIcon />
       </button>
@@ -59,7 +63,7 @@ export function PlayerControls({
         type="button"
         onClick={onPrev}
         aria-label="Track anterior"
-        className={`${ICON_BUTTON} text-ink hover:text-oxblood`}
+        className={`${ICON_BUTTON} text-ink hover:bg-parchment-deep/60 hover:text-oxblood`}
       >
         <SkipPrevIcon />
       </button>
@@ -68,7 +72,7 @@ export function PlayerControls({
         onClick={onTogglePlayPause}
         disabled={!isReady}
         aria-label={isPlaying ? "Pausar" : "Reproducir"}
-        className={`${ICON_BUTTON} text-oxblood`}
+        className={`${ICON_BUTTON} text-oxblood hover:bg-parchment-deep/60`}
       >
         {isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
       </button>
@@ -76,7 +80,7 @@ export function PlayerControls({
         type="button"
         onClick={onNext}
         aria-label="Siguiente track"
-        className={`${ICON_BUTTON} text-ink hover:text-oxblood`}
+        className={`${ICON_BUTTON} text-ink hover:bg-parchment-deep/60 hover:text-oxblood`}
       >
         <SkipNextIcon />
       </button>
@@ -85,7 +89,7 @@ export function PlayerControls({
         onClick={onToggleLoop}
         aria-label="Repetir este track"
         aria-pressed={loop}
-        className={`${ICON_BUTTON} ${loop ? "text-oxblood" : "text-ink-muted hover:text-oxblood"}`}
+        className={`${ICON_BUTTON} ${loop ? TOGGLE_ACTIVE : TOGGLE_INACTIVE}`}
       >
         <RepeatIcon />
       </button>

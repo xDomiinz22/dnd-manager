@@ -254,7 +254,14 @@ function PlaylistCard({
             const isCurrent = track.id === activeTrackId;
             const canDeleteThis = canEdit || track.addedByUserId === currentUserId;
             return (
-              <li key={track.id} className="rounded-sm px-2 py-1 hover:bg-parchment-deep/40">
+              <li
+                key={track.id}
+                className={`rounded-sm px-2 py-1 ${
+                  isCurrent
+                    ? "bg-oxblood/10 shadow-[inset_0_0_0_1px_rgba(107,22,32,0.35)]"
+                    : "hover:bg-parchment-deep/40"
+                }`}
+              >
                 <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
@@ -285,8 +292,10 @@ function PlaylistCard({
                       onClick={() => onToggleTrackLoop(track.id)}
                       aria-label={`Repetir ${track.title}`}
                       aria-pressed={track.loop}
-                      className={`flex h-6 w-6 items-center justify-center rounded-sm hover:bg-parchment-deep/60 ${
-                        track.loop ? "text-oxblood" : "text-ink-muted hover:text-oxblood"
+                      className={`flex h-6 w-6 items-center justify-center rounded-sm transition-shadow ${
+                        track.loop
+                          ? "bg-oxblood text-parchment shadow-[0_0_0_1px_rgba(201,162,39,0.6)] hover:bg-oxblood-dark"
+                          : "text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood"
                       }`}
                     >
                       <RepeatIcon className="h-3.5 w-3.5" />
