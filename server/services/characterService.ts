@@ -12,7 +12,7 @@ import { Prisma } from "@prisma/client";
 import type { Asset, CharacterSheet } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { convertImageToWebp } from "../../lib/imageConversion";
-import { parseFoundryMd } from "./foundryParser";
+import { classBreakdown, parseFoundryMd } from "./foundryParser";
 import { getMembership, resolveCharacterAccess } from "./authorization";
 import { resolveAssetUrl } from "./assetUrl";
 import { AppError } from "../errors/AppError";
@@ -59,6 +59,7 @@ function toCharacterFull(character: CharacterWithPortrait): CharacterFull {
     name: character.name,
     level: character.level,
     className: character.className,
+    classes: classBreakdown(character.items),
     subclassName: character.subclassName,
     species: character.species,
     background: character.background,
@@ -369,6 +370,7 @@ export async function listMyCharacters(userId: string): Promise<CharacterListIte
     name: c.name,
     level: c.level,
     className: c.className,
+    classes: classBreakdown(c.items),
     groupId: c.groupId,
     groupName: c.group.name,
     portraitUrl: c.portraitAsset ? resolveAssetUrl(c.portraitAsset) : null,

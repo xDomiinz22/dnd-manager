@@ -60,26 +60,6 @@ export function itemsOfType(items: unknown, types: string[]): FoundryItem[] {
   return asFoundryItems(items).filter((item) => types.includes(item.type ?? ""));
 }
 
-export interface ClassLevel {
-  name: string;
-  level: number;
-}
-
-/**
- * `CharacterSheet.className`/`level` guardan solo la clase original + el
- * nivel TOTAL sumado entre todas las clases (para multiclase, eso mezcla el
- * nombre de una clase con la suma de todas) — aquí se reconstruye el desglose
- * real clase por clase a partir de los items `type: "class"` del .md.
- */
-export function classBreakdown(items: unknown): ClassLevel[] {
-  return itemsOfType(items, ["class"])
-    .map((item) => ({
-      name: item.name ?? "Clase desconocida",
-      level: Number(item.system?.levels) || 0,
-    }))
-    .sort((a, b) => b.level - a.level);
-}
-
 export function sanitizeHtml(html: string | undefined | null): string {
   if (!html) return "";
   return DOMPurify.sanitize(html);

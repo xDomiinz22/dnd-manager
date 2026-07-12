@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import yaml from "js-yaml";
+import type { ClassLevel } from "@dnd-manager/shared";
 import {
   deriveCharacterStats,
   ABILITY_KEYS,
@@ -30,7 +31,7 @@ export interface ParsedCharacter {
 export function extractActorBlock(md: string): string {
   const match = md.match(ACTOR_BLOCK_PATTERN);
   if (!match) {
-    throw new FoundryParseError('No se encontró un bloque ```Actor en el archivo .md');
+    throw new FoundryParseError("No se encontró un bloque ```Actor en el archivo .md");
   }
   return match[1]!;
 }
@@ -45,7 +46,10 @@ export function hashMdContent(md: string): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type FoundryItem = Record<string, any>;
 
-function findItemById(items: FoundryItem[], id: string | null | undefined): FoundryItem | undefined {
+function findItemById(
+  items: FoundryItem[],
+  id: string | null | undefined,
+): FoundryItem | undefined {
   if (!id) return undefined;
   return items.find((item) => item._id === id);
 }
@@ -77,12 +81,29 @@ function totalLevelFromItems(items: FoundryItem[]): number {
     .reduce((sum, item) => sum + (Number(item.system?.levels) || 0), 0);
 }
 
+/**
+ * Desglose de multiclase: cada clase con su propio nivel, a partir de los
+ * items `type: "class"`. `CharacterSheet.className`/`level` solo guardan la
+ * clase "original" + la suma total, lo que mezcla el nombre de una clase con
+ * el nivel de todas para un personaje multiclase.
+ */
+export function classBreakdown(items: unknown): ClassLevel[] {
+  const list = Array.isArray(items) ? (items as FoundryItem[]) : [];
+  return list
+    .filter((item) => item.type === "class")
+    .map((item) => ({
+      name: item.name ?? "Clase desconocida",
+      level: Number(item.system?.levels) || 0,
+    }))
+    .sort((a, b) => b.level - a.level);
+}
+
 export function parseFoundryMd(md: string): ParsedCharacter {
   const block = extractActorBlock(md);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const parsed = yaml.load(block) as any;
   if (!parsed || typeof parsed !== "object") {
-    throw new FoundryParseError('El bloque ```Actor no contiene YAML válido');
+    throw new FoundryParseError("El bloque ```Actor no contiene YAML válido");
   }
 
   const name: string = typeof parsed.name === "string" && parsed.name ? parsed.name : "Sin nombre";
@@ -119,13 +140,16 @@ export function parseFoundryMd(md: string): ParsedCharacter {
       value: Number(skill.value) || 0,
     }));
 
-  const hitDieSize = Number(String(classItem?.system?.hd?.denomination ?? "").replace(/\D/g, "")) || 6;
+  const hitDieSize =
+    Number(String(classItem?.system?.hd?.denomination ?? "").replace(/\D/g, "")) || 6;
 
   const ac = system.attributes?.ac ?? {};
   const acBonus = sumAcBonusFromEffects(items);
 
   const spellcastingRaw = system.attributes?.spellcasting;
-  const spellcastingAbility: AbilityKey | null = ABILITY_KEYS.includes(spellcastingRaw as AbilityKey)
+  const spellcastingAbility: AbilityKey | null = ABILITY_KEYS.includes(
+    spellcastingRaw as AbilityKey,
+  )
     ? (spellcastingRaw as AbilityKey)
     : null;
 
@@ -140,6 +164,18 @@ export function parseFoundryMd(md: string): ParsedCharacter {
     spellcastingAbility,
   };
 
+  const derived = deriveCharacterStats(deriveInput);
+  // maxHitPoints() asume que TODOS los niveles usan el dado de golpe de una
+  // sola clase (la "original"), lo cual es incorrecto para multiclase (cada
+  // nivel debería promediar el dado de SU propia clase). Foundry sí calcula
+  // esto bien internamente, así que cuando system.attributes.hp.max viene
+  // relleno (no siempre lo trae el .md) se usa ese valor real en vez de la
+  // estimación por fórmula.
+  const rawHpMax = Number(system.attributes?.hp?.max);
+  if (Number.isFinite(rawHpMax) && rawHpMax > 0) {
+    derived.hitPoints.max = rawHpMax;
+  }
+
   return {
     name,
     level,
@@ -147,10 +183,11 @@ export function parseFoundryMd(md: string): ParsedCharacter {
     subclassName: subclassItem?.name ?? null,
     species: raceItem?.name ?? null,
     background: backgroundItem?.name ?? null,
-    alignment: typeof details.alignment === "string" && details.alignment ? details.alignment : null,
+    alignment:
+      typeof details.alignment === "string" && details.alignment ? details.alignment : null,
     rawSystem: system,
     items,
-    derived: deriveCharacterStats(deriveInput),
+    derived,
     sourceMdHash: hashMdContent(md),
   };
 }

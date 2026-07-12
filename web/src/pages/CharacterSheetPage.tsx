@@ -23,7 +23,6 @@ import {
   ABILITY_FULL_LABELS,
   ABILITY_LABELS,
   SKILL_LABELS,
-  classBreakdown,
   formatModifier,
   itemsOfType,
   sanitizeHtml,
@@ -91,10 +90,9 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const speed = attributes.movement?.walk
     ? `${attributes.movement.walk} ${attributes.movement.units ?? "ft"}`
     : "—";
-  const classes = classBreakdown(character.items);
   const classLine =
-    classes.length > 0
-      ? classes.map((c) => `${c.name} ${c.level}`).join(" / ")
+    character.classes.length > 0
+      ? character.classes.map((c) => `${c.name} ${c.level}`).join(" / ")
       : `${character.className ?? "Sin clase"} ${character.level}`;
 
   return (

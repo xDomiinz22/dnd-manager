@@ -44,7 +44,10 @@ export function MyCharactersPage() {
                   {c.name}
                 </Link>
                 <p className="text-sm text-ink-muted">
-                  {c.className ?? "Sin clase"} {c.level} · {c.groupName}
+                  {c.classes.length > 0
+                    ? c.classes.map((cl) => `${cl.name} ${cl.level}`).join(" / ")
+                    : `${c.className ?? "Sin clase"} ${c.level}`}{" "}
+                  · {c.groupName}
                 </p>
               </div>
               <Button

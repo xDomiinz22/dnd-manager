@@ -4,6 +4,14 @@ import { assetSchema } from "./assets";
 export const abilityKeySchema = z.enum(["str", "dex", "con", "int", "wis", "cha"]);
 export type AbilityKey = z.infer<typeof abilityKeySchema>;
 
+// Desglose de multiclase (nombre de clase + su propio nivel). `CharacterSheet.className`/
+// `level` solo guardan la clase "original" + la suma total de niveles.
+export const classLevelSchema = z.object({
+  name: z.string(),
+  level: z.number(),
+});
+export type ClassLevel = z.infer<typeof classLevelSchema>;
+
 const abilityRecordSchema = z.object({
   str: z.number(),
   dex: z.number(),
@@ -113,6 +121,7 @@ export const characterFullSchema = z.object({
   name: z.string(),
   level: z.number(),
   className: z.string().nullable(),
+  classes: z.array(classLevelSchema),
   subclassName: z.string().nullable(),
   species: z.string().nullable(),
   background: z.string().nullable(),
@@ -151,6 +160,7 @@ export const characterListItemSchema = z.object({
   name: z.string(),
   level: z.number(),
   className: z.string().nullable(),
+  classes: z.array(classLevelSchema),
   groupId: z.string(),
   groupName: z.string(),
   portraitUrl: z.string().nullable(),

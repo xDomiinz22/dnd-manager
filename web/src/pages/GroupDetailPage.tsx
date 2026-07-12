@@ -183,7 +183,10 @@ export function GroupDetailPage() {
                     </Link>
                     {c.className && (
                       <p className="text-sm text-ink-muted">
-                        {c.className} {c.level} {c.ownerUsername ? `· ${c.ownerUsername}` : ""}
+                        {c.classes && c.classes.length > 0
+                          ? c.classes.map((cl) => `${cl.name} ${cl.level}`).join(" / ")
+                          : `${c.className} ${c.level}`}
+                        {c.ownerUsername ? ` · ${c.ownerUsername}` : ""}
                       </p>
                     )}
                   </div>

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseFoundryMd } from "./foundryParser";
+import { maxHitPoints } from "../../lib/dnd5e-derive";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixturePath = path.join(__dirname, "../../fixtures/XxAlbertoPro01xX.md");
@@ -49,13 +50,86 @@ describe("parseFoundryMd (fixture real XxAlbertoPro01xX.md)", () => {
 
   it("derived: toda la tabla de aceptación", () => {
     expect(parsed.derived.proficiencyBonus).toBe(2);
-    expect(parsed.derived.abilityModifiers).toEqual({ str: -1, dex: 2, con: 1, int: 0, wis: 1, cha: 4 });
-    expect(parsed.derived.savingThrows).toEqual({ str: -1, dex: 2, con: 3, int: 0, wis: 1, cha: 6 });
+    expect(parsed.derived.abilityModifiers).toEqual({
+      str: -1,
+      dex: 2,
+      con: 1,
+      int: 0,
+      wis: 1,
+      cha: 4,
+    });
+    expect(parsed.derived.savingThrows).toEqual({
+      str: -1,
+      dex: 2,
+      con: 3,
+      int: 0,
+      wis: 1,
+      cha: 6,
+    });
     expect(parsed.derived.passivePerception).toBe(11);
     expect(parsed.derived.skills.dec?.bonus).toBe(6);
     expect(parsed.derived.skills.arc?.bonus).toBe(2);
     expect(parsed.derived.spellcastingAbility).toBe("cha");
     expect(parsed.derived.armorClass.computed).toBe(14);
     expect(parsed.derived.hitPoints.max).toBe(22);
+  });
+});
+
+// Personaje multiclase sintético (Bárbaro d12 x2 + Pícaro d8 x3): la fórmula
+// maxHitPoints() asume un solo dado de golpe para todos los niveles, lo que
+// sobreestima el máximo real si se usa el dado de la clase "original" (d12)
+// para los 5 niveles. Reproduce el bug reportado por el usuario (Foundry
+// calculaba 42, la fórmula de un solo dado daba 50).
+function buildMulticlassMd(hpMax: string): string {
+  return `\`\`\`Actor
+name: Test Multiclase
+system:
+  attributes:
+    hp:
+      value: 42
+      max: ${hpMax}
+    ac:
+      calc: default
+      flat: null
+  abilities:
+    str: { value: 10 }
+    dex: { value: 10 }
+    con: { value: 15 }
+    int: { value: 10 }
+    wis: { value: 10 }
+    cha: { value: 10 }
+  skills: {}
+  details:
+    originalClass: barbId
+items:
+  - _id: barbId
+    type: class
+    name: Bárbaro
+    system:
+      levels: 2
+      hd:
+        denomination: d12
+  - _id: rogueId
+    type: class
+    name: Pícaro
+    system:
+      levels: 3
+      hd:
+        denomination: d8
+\`\`\`
+`;
+}
+
+describe("parseFoundryMd (multiclase sintético): PG máximos", () => {
+  it("usa el hp.max real de Foundry cuando está presente, en vez de la fórmula de un solo dado", () => {
+    const parsed = parseFoundryMd(buildMulticlassMd("42"));
+    expect(parsed.level).toBe(5);
+    expect(parsed.derived.hitPoints.max).toBe(42);
+  });
+
+  it("cae a la fórmula (dado de la clase original) cuando Foundry no trae hp.max", () => {
+    const parsed = parseFoundryMd(buildMulticlassMd("null"));
+    const conMod = 2; // con 15 -> floor((15-10)/2)
+    expect(parsed.derived.hitPoints.max).toBe(maxHitPoints(12, conMod, 5));
   });
 });

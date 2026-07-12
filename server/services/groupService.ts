@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import type { GroupRoleValue, GroupDetail, GroupSummary } from "@dnd-manager/shared";
 import { prisma } from "../../lib/prisma";
 import { getMembership } from "./authorization";
+import { classBreakdown } from "./foundryParser";
 import { resolveAssetUrl } from "./assetUrl";
 import { AppError } from "../errors/AppError";
 
@@ -114,6 +115,7 @@ export async function getGroupDetail(userId: string, groupId: string): Promise<G
         ownerUsername: fullAccess ? c.owner.username : null,
         level: fullAccess ? c.level : null,
         className: fullAccess ? c.className : null,
+        classes: fullAccess ? classBreakdown(c.items) : null,
       };
     }),
     createdAt: group.createdAt.toISOString(),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { classLevelSchema } from "./characters";
 
 export const groupRoleSchema = z.enum(["MASTER", "PLAYER"]);
 export type GroupRoleValue = z.infer<typeof groupRoleSchema>;
@@ -40,6 +41,7 @@ export const characterRosterEntrySchema = z.object({
   ownerUsername: z.string().nullable(),
   level: z.number().nullable(),
   className: z.string().nullable(),
+  classes: z.array(classLevelSchema).nullable(),
 });
 export type CharacterRosterEntry = z.infer<typeof characterRosterEntrySchema>;
 
