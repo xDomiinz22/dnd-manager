@@ -97,12 +97,18 @@ export function GroupDetailPage() {
     <div className="mx-auto max-w-2xl px-6 py-10">
       <ChapterHeading
         action={
-          <div className="flex flex-wrap gap-4">
-            <Link to={`/groups/${group.id}/music`} className="text-ink hover:text-oxblood">
-              Música ambiente →
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={`/groups/${group.id}/music`}
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+            >
+              Música ambiente
             </Link>
-            <Link to={`/groups/${group.id}/journal`} className="text-ink hover:text-oxblood">
-              Diario de grupo →
+            <Link
+              to={`/groups/${group.id}/journal`}
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+            >
+              Diario de grupo
             </Link>
           </div>
         }
