@@ -50,6 +50,7 @@ function CharacterImageModal({
   const uploadImage = useUploadCharacterImage(characterId);
   const changePortrait = useChangePortrait(characterId);
   const deleteImage = useDeleteCharacterImage(characterId);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -84,7 +85,10 @@ function CharacterImageModal({
 
   function handleDelete(assetId: string) {
     deleteImage.mutate(assetId, {
-      onSuccess: () => toast.success("Imagen borrada."),
+      onSuccess: () => {
+        toast.success("Imagen borrada.");
+        setConfirmingId(null);
+      },
       onError: (err) => toast.error(toErrorMessage(err, "No se pudo borrar la imagen.")),
     });
   }
@@ -139,12 +143,39 @@ function CharacterImageModal({
                     {!isActive && (
                       <button
                         type="button"
-                        onClick={() => handleDelete(img.id)}
+                        onClick={() => setConfirmingId(img.id)}
                         aria-label="Borrar imagen"
                         className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-parchment opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
                       >
                         ×
                       </button>
+                    )}
+                    {confirmingId === img.id && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-sm bg-ink/80 p-1 text-center">
+                        <span className="text-[0.65rem] leading-tight text-parchment">
+                          ¿Borrar?
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(img.id)}
+                            disabled={deleteImage.isPending}
+                            aria-label="Confirmar borrado"
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-parchment hover:bg-oxblood disabled:opacity-50"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingId(null)}
+                            disabled={deleteImage.isPending}
+                            aria-label="Cancelar"
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-parchment-panel text-xs leading-none text-ink hover:bg-parchment disabled:opacity-50"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );

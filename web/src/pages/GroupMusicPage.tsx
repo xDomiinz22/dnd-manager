@@ -25,6 +25,7 @@ import { Card } from "../components/ui/Card";
 import { TextField } from "../components/ui/TextField";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
+import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
@@ -167,6 +168,8 @@ function PlaylistCard({
 }) {
   const [renaming, setRenaming] = useState(false);
   const [addingTrack, setAddingTrack] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingTrackId, setConfirmingTrackId] = useState<string | null>(null);
   const deletePlaylist = useDeletePlaylist(groupId);
   const deleteTrack = useDeleteTrack(groupId);
   const toast = useToast();
@@ -180,6 +183,7 @@ function PlaylistCard({
 
   function handleDeleteTrack(trackId: string) {
     deleteTrack.mutate(trackId, {
+      onSuccess: () => setConfirmingTrackId(null),
       onError: (err) => toast.error(toErrorMessage(err, "No se pudo borrar el track.")),
     });
   }
@@ -201,11 +205,7 @@ function PlaylistCard({
                 <Button variant="ghost" onClick={() => setRenaming(true)}>
                   Renombrar
                 </Button>
-                <Button
-                  variant="danger"
-                  onClick={handleDeletePlaylist}
-                  isLoading={deletePlaylist.isPending}
-                >
+                <Button variant="danger" onClick={() => setConfirmingDelete((v) => !v)}>
                   Borrar
                 </Button>
               </div>
@@ -214,6 +214,18 @@ function PlaylistCard({
         )}
       </div>
 
+      {confirmingDelete && (
+        <ConfirmPanel
+          message={`Esto borra la lista "${playlist.name}" y todos sus tracks. No se puede deshacer.`}
+          confirmLabel="Confirmar borrado"
+          loadingText="Borrando..."
+          isLoading={deletePlaylist.isPending}
+          onConfirm={handleDeletePlaylist}
+          onCancel={() => setConfirmingDelete(false)}
+          className="mb-3"
+        />
+      )}
+
       {playlist.tracks.length === 0 ? (
         <p className="text-sm text-ink-muted">Sin tracks.</p>
       ) : (
@@ -221,29 +233,41 @@ function PlaylistCard({
           {playlist.tracks.map((track) => {
             const isCurrent = track.youtubeId === currentTrackId;
             return (
-              <li
-                key={track.id}
-                className="flex items-center justify-between gap-2 rounded-sm px-2 py-1 hover:bg-parchment-deep/40"
-              >
-                <button
-                  type="button"
-                  onClick={() => (isCurrent ? onTogglePlayPause() : onPlay(track.youtubeId))}
-                  className={`flex-1 truncate text-left text-sm ${
-                    isCurrent ? "text-oxblood" : "text-ink"
-                  }`}
-                >
-                  {isCurrent ? (isPlaying ? "▸ " : "‖ ") : ""}
-                  {track.title}
-                </button>
-                {canEdit && (
+              <li key={track.id} className="rounded-sm px-2 py-1 hover:bg-parchment-deep/40">
+                <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => handleDeleteTrack(track.id)}
-                    aria-label={`Borrar ${track.title}`}
-                    className="shrink-0 text-ink-muted hover:text-oxblood"
+                    onClick={() => (isCurrent ? onTogglePlayPause() : onPlay(track.youtubeId))}
+                    className={`flex-1 truncate text-left text-sm ${
+                      isCurrent ? "text-oxblood" : "text-ink"
+                    }`}
                   >
-                    ×
+                    {isCurrent ? (isPlaying ? "▸ " : "‖ ") : ""}
+                    {track.title}
                   </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfirmingTrackId(confirmingTrackId === track.id ? null : track.id)
+                      }
+                      aria-label={`Borrar ${track.title}`}
+                      className="shrink-0 text-ink-muted hover:text-oxblood"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+                {confirmingTrackId === track.id && (
+                  <ConfirmPanel
+                    message={`Vas a borrar "${track.title}" de esta lista.`}
+                    confirmLabel="Confirmar borrado"
+                    loadingText="Borrando..."
+                    isLoading={deleteTrack.isPending}
+                    onConfirm={() => handleDeleteTrack(track.id)}
+                    onCancel={() => setConfirmingTrackId(null)}
+                    className="mt-2 border-t-0 pt-0"
+                  />
                 )}
               </li>
             );

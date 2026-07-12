@@ -7,6 +7,7 @@ import { JOURNAL_PAGE_LINK_PREFIX, renderJournalHtml } from "../../features/jour
 import { TextField } from "../ui/TextField";
 import { TextAreaField } from "../ui/TextAreaField";
 import { Button } from "../ui/Button";
+import { ConfirmPanel } from "../ui/ConfirmPanel";
 
 interface JournalPageViewProps {
   page: JournalPageViewData;
@@ -28,6 +29,7 @@ export function JournalPageView({
   isSaving,
 }: JournalPageViewProps) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const {
     register,
     handleSubmit,
@@ -40,6 +42,7 @@ export function JournalPageView({
 
   useEffect(() => {
     reset({ title: page.title, bodyMarkdown: page.bodyMarkdown });
+    setConfirmingDelete(false);
   }, [page.id, page.title, page.bodyMarkdown, reset]);
 
   const html = useMemo(
@@ -113,13 +116,23 @@ export function JournalPageView({
               Editar
             </Button>
             {onDelete && (
-              <Button variant="danger" onClick={onDelete}>
+              <Button variant="danger" onClick={() => setConfirmingDelete((v) => !v)}>
                 Borrar
               </Button>
             )}
           </div>
         )}
       </div>
+
+      {confirmingDelete && onDelete && (
+        <ConfirmPanel
+          message={`Esto borra la página "${page.title}" por completo. No se puede deshacer.`}
+          confirmLabel="Confirmar borrado"
+          onConfirm={onDelete}
+          onCancel={() => setConfirmingDelete(false)}
+          className="mb-3"
+        />
+      )}
 
       <div
         className="journal-prose text-[0.95rem] leading-relaxed text-ink"

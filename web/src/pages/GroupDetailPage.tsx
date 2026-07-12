@@ -27,6 +27,7 @@ import { SelectField } from "../components/ui/SelectField";
 import { FileDropTextArea } from "../components/ui/FileDropTextArea";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
+import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
@@ -43,6 +44,7 @@ export function GroupDetailPage() {
   const [importing, setImporting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingMemberId, setConfirmingMemberId] = useState<string | null>(null);
 
   if (isLoading || !group) {
     return (
@@ -71,8 +73,10 @@ export function GroupDetailPage() {
 
   function handleRemoveMember(userId: string, isSelf: boolean) {
     removeMember.mutate(userId, {
-      onSuccess: () =>
-        toast.success(isSelf ? "Has salido del grupo." : "Miembro expulsado del grupo."),
+      onSuccess: () => {
+        toast.success(isSelf ? "Has salido del grupo." : "Miembro expulsado del grupo.");
+        setConfirmingMemberId(null);
+      },
       onError: (err) =>
         toast.error(
           toErrorMessage(
@@ -142,41 +146,61 @@ export function GroupDetailPage() {
         Miembros ({group.members.length})
       </h2>
       <ul className="mb-6 space-y-2">
-        {group.members.map((m) => (
-          <li
-            key={m.userId}
-            className="flex items-center justify-between rounded-sm border border-rule bg-parchment-panel px-4 py-3"
-          >
-            <span className="text-ink">{m.username}</span>
-            <div className="flex items-center gap-3">
-              <span
-                className={`text-sm ${m.role === "MASTER" ? "text-oxblood" : "text-ink-muted"}`}
-              >
-                {m.role === "MASTER" ? "Master" : "Jugador"}
-              </span>
-              {isMaster && m.role !== "MASTER" && (
-                <label className="flex items-center gap-1 text-sm text-ink-muted">
-                  <input
-                    type="checkbox"
-                    checked={m.canEditMusic}
-                    onChange={(e) => handleToggleMusicPermission(m.userId, e.target.checked)}
-                    className="accent-oxblood"
-                  />
-                  Gestiona música
-                </label>
-              )}
-              {m.role !== "MASTER" && (isMaster || m.userId === user?.id) && (
-                <Button
-                  variant="danger"
-                  onClick={() => handleRemoveMember(m.userId, m.userId === user?.id)}
+        {group.members.map((m) => {
+          const isSelf = m.userId === user?.id;
+          return (
+            <li
+              key={m.userId}
+              className="rounded-sm border border-rule bg-parchment-panel px-4 py-3"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-ink">{m.username}</span>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`text-sm ${m.role === "MASTER" ? "text-oxblood" : "text-ink-muted"}`}
+                  >
+                    {m.role === "MASTER" ? "Master" : "Jugador"}
+                  </span>
+                  {isMaster && m.role !== "MASTER" && (
+                    <label className="flex items-center gap-1 text-sm text-ink-muted">
+                      <input
+                        type="checkbox"
+                        checked={m.canEditMusic}
+                        onChange={(e) => handleToggleMusicPermission(m.userId, e.target.checked)}
+                        className="accent-oxblood"
+                      />
+                      Gestiona música
+                    </label>
+                  )}
+                  {m.role !== "MASTER" && (isMaster || isSelf) && (
+                    <Button
+                      variant="danger"
+                      onClick={() =>
+                        setConfirmingMemberId(confirmingMemberId === m.userId ? null : m.userId)
+                      }
+                    >
+                      {isSelf ? "Salir" : "Expulsar"}
+                    </Button>
+                  )}
+                </div>
+              </div>
+              {confirmingMemberId === m.userId && (
+                <ConfirmPanel
+                  message={
+                    isSelf
+                      ? "Vas a salir de este grupo. Tendrás que volver a unirte con el código de invitación si quieres volver."
+                      : `Vas a expulsar a ${m.username} del grupo. Podrá volver a unirse con el código de invitación.`
+                  }
+                  confirmLabel={isSelf ? "Confirmar salida" : "Confirmar expulsión"}
+                  loadingText={isSelf ? "Saliendo..." : "Expulsando..."}
                   isLoading={removeMember.isPending}
-                >
-                  {m.userId === user?.id ? "Salir" : "Expulsar"}
-                </Button>
+                  onConfirm={() => handleRemoveMember(m.userId, isSelf)}
+                  onCancel={() => setConfirmingMemberId(null)}
+                />
               )}
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
 
       <div className="mb-3 flex items-center justify-between">
@@ -351,25 +375,14 @@ function DeleteCharacterConfirm({
   }
 
   return (
-    <div className="mt-3 border-t border-rule pt-3">
-      <p className="mb-3 text-sm text-oxblood">
-        ⚠ Esto borra a {characterName} por completo, junto con su diario personal y sus imágenes. No
-        se puede deshacer.
-      </p>
-      <div className="flex gap-2">
-        <Button
-          variant="danger"
-          onClick={handleConfirm}
-          isLoading={deleteCharacter.isPending}
-          loadingText="Borrando..."
-        >
-          Confirmar borrado
-        </Button>
-        <Button variant="ghost" onClick={onDone} disabled={deleteCharacter.isPending}>
-          Cancelar
-        </Button>
-      </div>
-    </div>
+    <ConfirmPanel
+      message={`Esto borra a ${characterName} por completo, junto con su diario personal y sus imágenes. No se puede deshacer.`}
+      confirmLabel="Confirmar borrado"
+      loadingText="Borrando..."
+      isLoading={deleteCharacter.isPending}
+      onConfirm={handleConfirm}
+      onCancel={onDone}
+    />
   );
 }
 
