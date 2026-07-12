@@ -5,6 +5,8 @@ import type {
   MusicPlaylist,
   MusicTrack,
   RenamePlaylistInput,
+  SetPlaylistOpenInput,
+  SetTrackLoopInput,
 } from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
 
@@ -29,4 +31,14 @@ export const musicApi = {
     }),
   deleteTrack: (groupId: string, trackId: string) =>
     apiFetch<void>(`/groups/${groupId}/music/tracks/${trackId}`, { method: "DELETE" }),
+  setPlaylistOpenToAll: (groupId: string, playlistId: string, input: SetPlaylistOpenInput) =>
+    apiFetch<MusicPlaylist>(`/groups/${groupId}/music/playlists/${playlistId}/open-to-all`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  setTrackLoop: (groupId: string, trackId: string, input: SetTrackLoopInput) =>
+    apiFetch<MusicTrack>(`/groups/${groupId}/music/tracks/${trackId}/loop`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
 };

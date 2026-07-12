@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AddTrackInput, CreatePlaylistInput, RenamePlaylistInput } from "@dnd-manager/shared";
+import type {
+  AddTrackInput,
+  CreatePlaylistInput,
+  RenamePlaylistInput,
+  SetPlaylistOpenInput,
+} from "@dnd-manager/shared";
 import { musicApi } from "./api";
 
 export const groupMusicKey = (groupId: string) => ["groups", groupId, "music"] as const;
@@ -50,6 +55,15 @@ export function useDeleteTrack(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (trackId: string) => musicApi.deleteTrack(groupId, trackId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupMusicKey(groupId) }),
+  });
+}
+
+export function useSetPlaylistOpenToAll(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ playlistId, input }: { playlistId: string; input: SetPlaylistOpenInput }) =>
+      musicApi.setPlaylistOpenToAll(groupId, playlistId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupMusicKey(groupId) }),
   });
 }

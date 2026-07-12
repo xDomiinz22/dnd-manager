@@ -26,6 +26,7 @@ model User {
   memberships GroupMember[]
   characters  CharacterSheet[]
   assets      Asset[]
+  addedTracks MusicTrack[]     @relation("MusicTrackAddedBy")
 }
 
 model Group {
@@ -75,6 +76,10 @@ model MusicPlaylist {
 
   name      String
   order     Int      @default(0)
+  // Si está activo, cualquier miembro del grupo (no solo Master/canEditMusic)
+  // puede añadir tracks a esta lista — como una cola colaborativa de Spotify.
+  // Borrar/renombrar la lista y borrar tracks ajenos sigue restringido.
+  openToAll Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -91,7 +96,18 @@ model MusicTrack {
   // al añadir el track, ver shared/src/music.ts → extractYoutubeId).
   youtubeId String
   order     Int      @default(0)
+  // Si está activo, al terminar este track se repite solo en vez de avanzar
+  // al siguiente (aunque el botón manual "siguiente" sí lo salta). Es una
+  // preferencia de escucha compartida por todo el grupo, no una edición de
+  // contenido — cualquier miembro puede tocarla.
+  loop      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  // Quién lo añadió (null en tracks ya existentes antes de este campo).
+  // Permite que un jugador sin canEditMusic borre lo que él mismo añadió a
+  // una lista abierta, aunque no pueda tocar lo de los demás.
+  addedByUserId String?
+  addedBy       User?   @relation("MusicTrackAddedBy", fields: [addedByUserId], references: [id], onDelete: SetNull)
 }
 
 enum AssetKind {

@@ -1,5 +1,11 @@
 import type { RequestHandler } from "express";
-import { addTrackSchema, createPlaylistSchema, renamePlaylistSchema } from "@dnd-manager/shared";
+import {
+  addTrackSchema,
+  createPlaylistSchema,
+  renamePlaylistSchema,
+  setPlaylistOpenSchema,
+  setTrackLoopSchema,
+} from "@dnd-manager/shared";
 import * as musicService from "../services/musicService";
 
 export const getGroupMusicHandler: RequestHandler = async (req, res, next) => {
@@ -14,8 +20,26 @@ export const getGroupMusicHandler: RequestHandler = async (req, res, next) => {
 export const createPlaylistHandler: RequestHandler = async (req, res, next) => {
   try {
     const input = createPlaylistSchema.parse(req.body);
-    const playlist = await musicService.createPlaylist(req.params.groupId!, input.name);
+    const playlist = await musicService.createPlaylist(
+      req.params.groupId!,
+      input.name,
+      input.openToAll,
+    );
     res.status(201).json(playlist);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const setPlaylistOpenToAllHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = setPlaylistOpenSchema.parse(req.body);
+    const playlist = await musicService.setPlaylistOpenToAll(
+      req.params.playlistId!,
+      req.params.groupId!,
+      input.openToAll,
+    );
+    res.json(playlist);
   } catch (err) {
     next(err);
   }
@@ -52,6 +76,8 @@ export const addTrackHandler: RequestHandler = async (req, res, next) => {
       req.params.groupId!,
       input.title,
       input.url,
+      req.userId!,
+      req.groupMembership!,
     );
     res.status(201).json(track);
   } catch (err) {
@@ -61,8 +87,27 @@ export const addTrackHandler: RequestHandler = async (req, res, next) => {
 
 export const deleteTrackHandler: RequestHandler = async (req, res, next) => {
   try {
-    await musicService.deleteTrack(req.params.trackId!, req.params.groupId!);
+    await musicService.deleteTrack(
+      req.params.trackId!,
+      req.params.groupId!,
+      req.userId!,
+      req.groupMembership!,
+    );
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const setTrackLoopHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = setTrackLoopSchema.parse(req.body);
+    const track = await musicService.setTrackLoop(
+      req.params.trackId!,
+      req.params.groupId!,
+      input.loop,
+    );
+    res.json(track);
   } catch (err) {
     next(err);
   }

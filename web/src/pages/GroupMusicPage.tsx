@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,7 @@ import {
   type MusicPlaylist,
   type RenamePlaylistInput,
 } from "@dnd-manager/shared";
+import { useAuth } from "../context/AuthContext";
 import {
   useAddTrack,
   useCreatePlaylist,
@@ -18,8 +19,9 @@ import {
   useDeleteTrack,
   useGroupMusic,
   useRenamePlaylist,
+  useSetPlaylistOpenToAll,
 } from "../features/music/hooks";
-import { useAmbientPlayer, type AmbientPlayerControls } from "../features/music/useAmbientPlayer";
+import { useAmbientPlayerContext } from "../features/music/AmbientPlayerContext";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { TextField } from "../components/ui/TextField";
@@ -27,35 +29,30 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
+import { PauseIcon, PlayIcon, RepeatIcon } from "../components/ui/PlayerIcons";
+import { PlayerControls } from "../components/music/PlayerControls";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function GroupMusicPage() {
   const { id: groupId } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const { data, isLoading, isError, error } = useGroupMusic(groupId!);
-  const player = useAmbientPlayer();
+  const player = useAmbientPlayerContext();
   const [showNewPlaylist, setShowNewPlaylist] = useState(false);
 
-  /*
-    Player oculto: solo audio, sin vídeo visible. `display:none` hace que el
-    widget de YouTube no llegue a crear el iframe (necesita un contenedor con
-    layout real) — por eso va 1x1px con opacity 0 en vez de `hidden`. Se
-    renderiza siempre, incluso durante isLoading/isError: el efecto de montaje
-    de useAmbientPlayer solo se ejecuta una vez, así que si este div no
-    existiera todavía en el primer commit, containerRef.current se quedaría en
-    null para siempre y el player nunca llegaría a crearse.
-  */
-  const hiddenPlayer = (
-    <div
-      ref={player.containerRef}
-      className="pointer-events-none fixed left-0 top-0 h-px w-px overflow-hidden opacity-0"
-      aria-hidden="true"
-    />
-  );
+  // Mantiene sincronizado el snapshot activo del reproductor si la lista que
+  // suena ahora mismo es una de las de este grupo (p.ej. si alguien añade un
+  // track mientras sigues viendo esta página).
+  const syncRef = useRef(player.syncPlaylistIfActive);
+  syncRef.current = player.syncPlaylistIfActive;
+  useEffect(() => {
+    if (!data || player.groupId !== groupId) return;
+    data.playlists.forEach((pl) => syncRef.current(pl));
+  }, [data, groupId, player.groupId]);
 
   if (isLoading || !data) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-10">
-        {hiddenPlayer}
         <SkeletonPage rows={4} />
       </div>
     );
@@ -63,20 +60,15 @@ export function GroupMusicPage() {
   if (isError) {
     return (
       <div className="mx-auto max-w-2xl px-6 py-10 text-oxblood-dark">
-        {hiddenPlayer}
         {(error as Error).message}
       </div>
     );
   }
 
-  const currentTrackTitle = data.playlists
-    .flatMap((pl) => pl.tracks)
-    .find((t) => t.youtubeId === player.currentTrackId)?.title;
+  const isActiveHere = player.groupId === groupId && !!player.currentTrack;
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
-      {hiddenPlayer}
-
       <ChapterHeading
         action={
           data.canEdit && (
@@ -93,7 +85,32 @@ export function GroupMusicPage() {
         <NewPlaylistForm groupId={groupId!} onDone={() => setShowNewPlaylist(false)} />
       )}
 
-      {player.currentTrackId && <NowPlayingBar player={player} trackTitle={currentTrackTitle} />}
+      {isActiveHere && player.currentTrack && (
+        <div className="mb-6 rounded-sm border border-rule bg-parchment-panel p-3">
+          <p className="mb-2 truncate text-sm text-ink">
+            {player.currentTrack.title}
+            {player.currentTrack.addedByUsername && (
+              <span className="text-ink-muted">
+                {" "}
+                · añadido por {player.currentTrack.addedByUsername}
+              </span>
+            )}
+          </p>
+          <PlayerControls
+            isPlaying={player.isPlaying}
+            isReady={player.isReady}
+            shuffle={player.shuffle}
+            loop={player.currentTrack.loop}
+            volume={player.volume}
+            onTogglePlayPause={player.togglePlayPause}
+            onNext={player.playNext}
+            onPrev={player.playPrev}
+            onToggleShuffle={player.toggleShuffle}
+            onToggleLoop={() => player.toggleTrackLoop(player.currentTrack!.id)}
+            onVolumeChange={player.setVolume}
+          />
+        </div>
+      )}
 
       {data.playlists.length === 0 ? (
         <EmptyState
@@ -108,10 +125,12 @@ export function GroupMusicPage() {
               groupId={groupId!}
               playlist={playlist}
               canEdit={data.canEdit}
-              currentTrackId={player.currentTrackId}
+              currentUserId={user?.id ?? null}
+              activeTrackId={isActiveHere ? player.currentTrack!.id : null}
               isPlaying={player.isPlaying}
-              onPlay={(youtubeId) => player.play(youtubeId)}
+              onPlayTrack={(trackId) => player.playFromPlaylist(groupId!, playlist, trackId)}
               onTogglePlayPause={player.togglePlayPause}
+              onToggleTrackLoop={(trackId) => player.toggleTrackLoop(trackId)}
             />
           ))}
         </div>
@@ -120,51 +139,26 @@ export function GroupMusicPage() {
   );
 }
 
-function NowPlayingBar({
-  player,
-  trackTitle,
-}: {
-  player: AmbientPlayerControls;
-  trackTitle?: string;
-}) {
-  return (
-    <div className="mb-6 flex items-center gap-3 rounded-sm border border-rule bg-parchment-panel p-3">
-      <Button variant="ghost" onClick={player.togglePlayPause} disabled={!player.isReady}>
-        {player.isPlaying ? "Pausa" : "Reproducir"}
-      </Button>
-      <span className="flex-1 truncate text-sm text-ink">{trackTitle ?? "Cargando..."}</span>
-      <input
-        type="range"
-        min={0}
-        max={100}
-        value={player.volume}
-        onChange={(e) => player.setVolume(Number(e.target.value))}
-        aria-label="Volumen"
-        className="w-24 accent-oxblood"
-      />
-      <Button variant="ghost" onClick={player.stop}>
-        Detener
-      </Button>
-    </div>
-  );
-}
-
 function PlaylistCard({
   groupId,
   playlist,
   canEdit,
-  currentTrackId,
+  currentUserId,
+  activeTrackId,
   isPlaying,
-  onPlay,
+  onPlayTrack,
   onTogglePlayPause,
+  onToggleTrackLoop,
 }: {
   groupId: string;
   playlist: MusicPlaylist;
   canEdit: boolean;
-  currentTrackId: string | null;
+  currentUserId: string | null;
+  activeTrackId: string | null;
   isPlaying: boolean;
-  onPlay: (youtubeId: string) => void;
+  onPlayTrack: (trackId: string) => void;
   onTogglePlayPause: () => void;
+  onToggleTrackLoop: (trackId: string) => void;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [addingTrack, setAddingTrack] = useState(false);
@@ -172,6 +166,7 @@ function PlaylistCard({
   const [confirmingTrackId, setConfirmingTrackId] = useState<string | null>(null);
   const deletePlaylist = useDeletePlaylist(groupId);
   const deleteTrack = useDeleteTrack(groupId);
+  const setOpenToAll = useSetPlaylistOpenToAll(groupId);
   const toast = useToast();
 
   function handleDeletePlaylist() {
@@ -186,6 +181,16 @@ function PlaylistCard({
       onSuccess: () => setConfirmingTrackId(null),
       onError: (err) => toast.error(toErrorMessage(err, "No se pudo borrar el track.")),
     });
+  }
+
+  function handleToggleOpenToAll(openToAll: boolean) {
+    setOpenToAll.mutate(
+      { playlistId: playlist.id, input: { openToAll } },
+      {
+        onError: (err) =>
+          toast.error(toErrorMessage(err, "No se pudo cambiar el permiso de la lista.")),
+      },
+    );
   }
 
   return (
@@ -214,6 +219,21 @@ function PlaylistCard({
         )}
       </div>
 
+      {canEdit && !renaming && (
+        <label className="mb-2 flex items-center gap-2 text-xs text-ink-muted">
+          <input
+            type="checkbox"
+            checked={playlist.openToAll}
+            onChange={(e) => handleToggleOpenToAll(e.target.checked)}
+            className="accent-oxblood"
+          />
+          Cualquiera puede añadir canciones
+        </label>
+      )}
+      {!canEdit && playlist.openToAll && (
+        <p className="mb-2 text-xs text-ink-muted">Lista abierta: cualquiera puede añadir.</p>
+      )}
+
       {confirmingDelete && (
         <ConfirmPanel
           message={`Esto borra la lista "${playlist.name}" y todos sus tracks. No se puede deshacer.`}
@@ -231,32 +251,59 @@ function PlaylistCard({
       ) : (
         <ul className="space-y-1">
           {playlist.tracks.map((track) => {
-            const isCurrent = track.youtubeId === currentTrackId;
+            const isCurrent = track.id === activeTrackId;
+            const canDeleteThis = canEdit || track.addedByUserId === currentUserId;
             return (
               <li key={track.id} className="rounded-sm px-2 py-1 hover:bg-parchment-deep/40">
                 <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={() => (isCurrent ? onTogglePlayPause() : onPlay(track.youtubeId))}
-                    className={`flex-1 truncate text-left text-sm ${
+                    onClick={() => (isCurrent ? onTogglePlayPause() : onPlayTrack(track.id))}
+                    className={`flex flex-1 items-center gap-2 truncate text-left text-sm ${
                       isCurrent ? "text-oxblood" : "text-ink"
                     }`}
                   >
-                    {isCurrent ? (isPlaying ? "▸ " : "‖ ") : ""}
-                    {track.title}
+                    {isCurrent ? (
+                      isPlaying ? (
+                        <PauseIcon className="h-3.5 w-3.5 shrink-0" />
+                      ) : (
+                        <PlayIcon className="h-3.5 w-3.5 shrink-0" />
+                      )
+                    ) : (
+                      <PlayIcon className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+                    )}
+                    <span className="truncate">
+                      {track.title}
+                      {track.addedByUsername && (
+                        <span className="text-ink-muted"> · {track.addedByUsername}</span>
+                      )}
+                    </span>
                   </button>
-                  {canEdit && (
+                  <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
-                      onClick={() =>
-                        setConfirmingTrackId(confirmingTrackId === track.id ? null : track.id)
-                      }
-                      aria-label={`Borrar ${track.title}`}
-                      className="shrink-0 text-ink-muted hover:text-oxblood"
+                      onClick={() => onToggleTrackLoop(track.id)}
+                      aria-label={`Repetir ${track.title}`}
+                      aria-pressed={track.loop}
+                      className={`flex h-6 w-6 items-center justify-center rounded-sm hover:bg-parchment-deep/60 ${
+                        track.loop ? "text-oxblood" : "text-ink-muted hover:text-oxblood"
+                      }`}
                     >
-                      ×
+                      <RepeatIcon className="h-3.5 w-3.5" />
                     </button>
-                  )}
+                    {canDeleteThis && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setConfirmingTrackId(confirmingTrackId === track.id ? null : track.id)
+                        }
+                        aria-label={`Borrar ${track.title}`}
+                        className="text-ink-muted hover:text-oxblood"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {confirmingTrackId === track.id && (
                   <ConfirmPanel
@@ -275,7 +322,7 @@ function PlaylistCard({
         </ul>
       )}
 
-      {canEdit &&
+      {(canEdit || playlist.openToAll) &&
         (addingTrack ? (
           <AddTrackForm
             groupId={groupId}
@@ -318,6 +365,10 @@ function NewPlaylistForm({ groupId, onDone }: { groupId: string; onDone: () => v
         error={errors.name?.message}
         {...register("name")}
       />
+      <label className="mb-4 flex items-center gap-2 text-sm text-ink-muted">
+        <input type="checkbox" className="accent-oxblood" {...register("openToAll")} />
+        Lista abierta a todos (cualquier miembro puede añadir canciones)
+      </label>
       <Button type="submit" isLoading={createPlaylist.isPending} loadingText="Creando...">
         Crear
       </Button>

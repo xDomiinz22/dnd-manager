@@ -1,11 +1,25 @@
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLogout } from "../features/auth/hooks";
+import {
+  AmbientPlayerProvider,
+  useAmbientPlayerContext,
+} from "../features/music/AmbientPlayerContext";
+import { MiniPlayerBar } from "./music/MiniPlayerBar";
 import { Button } from "./ui/Button";
 
 export function AppLayout() {
+  return (
+    <AmbientPlayerProvider>
+      <AppLayoutContent />
+    </AmbientPlayerProvider>
+  );
+}
+
+function AppLayoutContent() {
   const { user } = useAuth();
   const logout = useLogout();
+  const player = useAmbientPlayerContext();
 
   return (
     <div className="min-h-screen bg-parchment text-ink">
@@ -33,7 +47,27 @@ export function AppLayout() {
           </Button>
         </div>
       </header>
-      <Outlet />
+
+      {/*
+        Player oculto: solo audio, sin vídeo visible. `display:none` hace que
+        el widget de YouTube no llegue a crear el iframe (necesita un
+        contenedor con layout real) — por eso va 1x1px con opacity 0 en vez
+        de `hidden`. Vive aquí (no en GroupMusicPage) para que sobreviva a la
+        navegación entre páginas y nunca esté detrás de un `return` de
+        loading — si lo estuviera, containerRef.current se quedaría en null
+        para siempre en el montaje del hook (bug ya visto una vez).
+      */}
+      <div
+        ref={player.containerRef}
+        className="pointer-events-none fixed left-0 top-0 h-px w-px overflow-hidden opacity-0"
+        aria-hidden="true"
+      />
+
+      <div className={player.currentTrack ? "pb-16" : undefined}>
+        <Outlet />
+      </div>
+
+      <MiniPlayerBar />
     </div>
   );
 }

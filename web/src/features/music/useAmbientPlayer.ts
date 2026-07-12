@@ -15,18 +15,29 @@ export interface AmbientPlayerControls {
 
 const DEFAULT_VOLUME = 70;
 
+export interface UseAmbientPlayerOptions {
+  /** Llamado cuando el track actual termina solo (no en pausa/stop manual). */
+  onEnded?: () => void;
+}
+
 /**
  * Reproductor de solo-audio: crea un player oculto de la IFrame API de
  * YouTube y expone controles imperativos para montar encima una UI propia.
- * Al terminar un track lo repite en bucle (música ambiente, no playlist
- * autoavanzable) en vez de pararse.
+ * No sabe nada de playlists — al terminar un track solo avisa vía `onEnded`;
+ * decidir qué toca después (bucle/aleatorio/secuencial) es responsabilidad
+ * de quien use este hook (ver AmbientPlayerContext).
  */
-export function useAmbientPlayer(): AmbientPlayerControls {
+export function useAmbientPlayer(options: UseAmbientPlayerOptions = {}): AmbientPlayerControls {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
   const isReadyRef = useRef(false);
   const volumeRef = useRef(DEFAULT_VOLUME);
   const pendingTrackRef = useRef<string | null>(null);
+  // Ref con el callback más reciente: el efecto de montaje solo corre una
+  // vez, así que el listener de la YT API cerraría sobre una versión
+  // obsoleta de `onEnded` si lo leyera directamente de `options`.
+  const onEndedRef = useRef(options.onEnded);
+  onEndedRef.current = options.onEnded;
 
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -56,8 +67,7 @@ export function useAmbientPlayer(): AmbientPlayerControls {
           },
           onStateChange: (e) => {
             if (e.data === YT.PlayerState.ENDED) {
-              player.seekTo(0, true);
-              player.playVideo();
+              onEndedRef.current?.();
               return;
             }
             setIsPlaying(e.data === YT.PlayerState.PLAYING);

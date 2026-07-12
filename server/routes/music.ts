@@ -8,6 +8,8 @@ import {
   deleteTrackHandler,
   getGroupMusicHandler,
   renamePlaylistHandler,
+  setPlaylistOpenToAllHandler,
+  setTrackLoopHandler,
 } from "../controllers/musicController";
 
 export const musicRouter = Router();
@@ -31,15 +33,27 @@ musicRouter.delete(
   requireGroupMusicEdit,
   deletePlaylistHandler,
 );
+musicRouter.patch(
+  "/groups/:groupId/music/playlists/:playlistId/open-to-all",
+  requireAuth,
+  requireGroupMusicEdit,
+  setPlaylistOpenToAllHandler,
+);
 musicRouter.post(
   "/groups/:groupId/music/playlists/:playlistId/tracks",
   requireAuth,
-  requireGroupMusicEdit,
+  requireGroupMember,
   addTrackHandler,
 );
 musicRouter.delete(
   "/groups/:groupId/music/tracks/:trackId",
   requireAuth,
-  requireGroupMusicEdit,
+  requireGroupMember,
   deleteTrackHandler,
+);
+musicRouter.patch(
+  "/groups/:groupId/music/tracks/:trackId/loop",
+  requireAuth,
+  requireGroupMember,
+  setTrackLoopHandler,
 );
