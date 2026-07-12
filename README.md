@@ -22,6 +22,7 @@ Monorepo **pnpm** desplegado como **un solo proyecto en Vercel** (frontend está
 | Tests           | Vitest                                                                                                                      |
 | Parsing fichas  | `js-yaml` (bloque `Actor` del `.md` de Foundry)                                                                             |
 | Parsing journal | `jszip` + `js-yaml` (frontmatter) + `marked` + `dompurify` (todo en el navegador)                                           |
+| Imágenes        | `sharp` (conversión automática a webp en la subida), `compression` (gzip/brotli en las respuestas de la API)                |
 
 ### Estructura del repo
 
@@ -31,11 +32,12 @@ Monorepo **pnpm** desplegado como **un solo proyecto en Vercel** (frontend está
 │  └─ src/features/journal/  → parser del .zip (zipImport.ts), render markdown (render.ts), api/hooks
 ├─ api/index.ts         → función serverless: monta la app Express (todas las rutas /api/*)
 ├─ server/              → Express: routes / controllers / services / middlewares
-├─ lib/                 → prisma (singleton), auth (jwt+argon2), dnd5e-derive, storage
+├─ lib/                 → prisma (singleton), auth (jwt+argon2), dnd5e-derive, storage, imageConversion (webp)
 ├─ shared/              → paquete @dnd-manager/shared: schemas zod + tipos (COMPILA a dist/)
-├─ prisma/              → schema.prisma, migraciones, seed.ts
+├─ prisma/              → schema.prisma, migraciones, seed.ts, backfillWebp.ts (script one-off)
 ├─ fixtures/            → XxAlbertoPro01xX.md (ficha real de ejemplo para tests)
-├─ vercel.json          → rewrites (/api/* → función, resto → SPA) + maxDuration
+├─ vercel.json          → rewrites (/api/* → función, resto → SPA) + maxDuration + regions
+├─ PRODUCT.md/DESIGN.md → brief y sistema de diseño ("Tomo del Jugador", ver skill impeccable)
 └─ docker-compose.yml   → SOLO Postgres local para desarrollo (no se despliega)
 ```
 
@@ -62,13 +64,14 @@ pnpm --filter @dnd-manager/web dev   # Vite en :5173
 
 ### Scripts útiles
 
-| Script               | Qué hace                                                                                           |
-| -------------------- | -------------------------------------------------------------------------------------------------- |
-| `pnpm run typecheck` | tsc en shared, web y raíz                                                                          |
-| `pnpm run lint`      | ESLint en todo el repo                                                                             |
-| `pnpm run test`      | Vitest (22 tests: dnd5e-derive + foundryParser contra el fixture real)                             |
-| `pnpm run build`     | `prisma generate` + `prisma migrate deploy` + build de shared + build de web (lo que corre Vercel) |
-| `pnpm run db:studio` | Prisma Studio                                                                                      |
+| Script                          | Qué hace                                                                                                    |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `pnpm run typecheck`            | tsc en shared, web y raíz                                                                                   |
+| `pnpm run lint`                 | ESLint en todo el repo                                                                                      |
+| `pnpm run test`                 | Vitest (24 tests: dnd5e-derive + foundryParser contra el fixture real y casos multiclase sintéticos)        |
+| `pnpm run build`                | `prisma generate` + `prisma migrate deploy` + build de shared + build de web (lo que corre Vercel)          |
+| `pnpm run db:studio`            | Prisma Studio                                                                                               |
+| `pnpm run images:backfill-webp` | Convierte a webp in-place los `Asset` de tipo `IMAGE` ya existentes (one-off, ver "Mejoras de rendimiento") |
 
 ### Variables de entorno (`.env`)
 
@@ -111,6 +114,7 @@ La app está desplegada en Vercel como **un solo proyecto** (frontend estático 
 3. **Configuración del proyecto en Vercel**:
    - **Root Directory**: vacío (raíz del repo). No hay que tocarlo ni poner overrides manuales de Output Directory — todo lo define `vercel.json` (`buildCommand`, `installCommand`, `outputDirectory: web/dist`, rewrites de `/api/*`).
    - **Install Command** / **Build Command**: los que trae `vercel.json` (`pnpm install` / `pnpm run build`). No hace falta cambiarlos en el dashboard.
+   - **Región de la función** (`vercel.json` → `regions`): fijada a `["fra1"]` porque la Neon de este proyecto está en `eu-central-1` (Fráncfort) — si tu Postgres está en otra región, cambia este valor a la región de Vercel más cercana a la tuya, si no cada query paga la latencia de ida y vuelta entre continentes.
 4. **Variables de entorno** (Settings → Environment Variables, en **Production** y **Preview**):
    ```
    DATABASE_URL             # Neon pooled
@@ -135,8 +139,9 @@ Al añadir un modelo o campo nuevo: `pnpm run db:migrate` en local genera la mig
 
 - **Assets (imágenes/PDF) se guardan como bytes en Postgres**, no en Vercel Blob. Columna `Asset.data Bytes`. Subida en una sola petición `POST /api/assets?kind=IMAGE&name=...` (bytes en el body), y se sirven públicamente en `GET /api/assets/:id/raw`. Vercel Blob quedó **pausado** ("por si acaso"): `lib/storage.ts` conserva la implementación pero no se usa. Si algún archivo individual supera ~4 MB, habría que reactivar Blob.
 - **Fichas**: se importan del `.md` export de Foundry (`server/services/foundryParser.ts`, extrae el bloque ` ```Actor `). Los stats derivados (mods, PB, salvaciones, CA, PG…) se calculan en `lib/dnd5e-derive.ts` (funciones puras con tests). Fixture de referencia: `fixtures/XxAlbertoPro01xX.md` (Hechicero nivel 4; CA 14 sale de un active-effect homebrew que suma +2).
-- **Permisos de ficha** FULL / LIMITED / NONE en `server/services/authorization.ts`: el Master del grupo o el dueño ven la ficha completa; el resto de miembros solo nombre+foto.
+- **Permisos de ficha** FULL / LIMITED / NONE en `server/services/authorization.ts`: el Master del grupo o el dueño ven la ficha completa; el resto de miembros solo nombre+foto. **Excepción confirmada**: borrar la ficha (`DELETE /characters/:id`) es más estricto que el resto — solo el Master, ni siquiera el dueño puede borrar su propio personaje (`requireCharacterMaster`, no `requireCharacterMasterOrOwner`).
 - **Master sin personaje**: regla de negocio; al importar sin `ownerId` explícito, el fallback es asignar al Master (decisión confirmada).
+- **Preferir el dato real del sistema origen sobre una fórmula propia, siempre que esté presente**: aplicado ya dos veces (CA con `armorClass.needsOverride`, PG máximo con `hp.max` de Foundry) — cuando Foundry ya calculó algo correctamente internamente (multiclase, active effects, homebrew) pero nuestra fórmula de derivación no lo modela, hay que leer el valor real del `.md` cuando venga relleno y usar la fórmula solo como fallback para cuando no venga. Si se añaden más stats derivados, revisar primero si Foundry ya trae el valor real en `rawSystem` antes de reinventar el cálculo.
 - **Journals**: el `.zip` de Obsidian se parsea **entero en el navegador** (JSZip), nunca pasa por la API — evita el límite de body serverless. Los wiki-links `[[Título]]` se dejan tal cual en el `bodyMarkdown` (no se resuelven a `tempId` en el cliente); el servidor los resuelve a `JournalPageLink` por título **después** de insertar todas las páginas de una importación, y también los recalcula en cada edición manual de página (así los backlinks nunca quedan desactualizados). Los embeds `![[archivo]]` sí se resuelven en el cliente a un marcador estable `![[asset:ID]]` tras subir el asset.
 - **Wiki-links renderizados como fragmento, no esquema custom**: el link interno se genera como `#journal-page:ID` (URI relativa estándar) en vez de `journal-page:ID` (esquema propio), porque DOMPurify descarta silenciosamente el `href` de esquemas de URI que no reconoce.
 
@@ -154,6 +159,10 @@ El deploy costó porque hubo **cuatro** causas encadenadas. Si algo se rompe de 
 Además: en el dashboard de Vercel, **Root Directory** debe estar vacío (raíz del repo) y sin overrides manuales de Output Directory (se usa `vercel.json`).
 
 **NO poner `envDir` en `web/vite.config.ts`** apuntando a la raíz del monorepo para compartir el `.env` con el server: por alguna razón (no investigada a fondo — posiblemente afecta cómo esbuild/Vite resuelve el `mode`/target al ver un `.env` fuera del root por defecto) el bundle de producción pasó de ~557 kB a ~821 kB con el mismo código, reproducible incluso con la caché de Vite limpia. `web/.env` (gitignorado) con las variables `VITE_*` es la alternativa segura; en Vercel no hace falta ni eso, ya que Vite recoge `VITE_*` de `process.env` en build sin importar el `envDir`.
+
+**Región de la función vs. región de Neon** (no rompe el deploy, pero lo deja lento en silencio): por defecto Vercel construye/ejecuta en `iad1` (Virginia); si tu Postgres está en otra región (esta Neon está en `eu-central-1`, Fráncfort), cada query paga la ida y vuelta transatlántica. Fijar `regions` en `vercel.json` a la región de Vercel más cercana a tu DB. Descubierto 2026-07-11 mientras se buscaban formas de mejorar los tiempos de respuesta — hasta entonces llevaba así desde el primer deploy sin que nada avisara.
+
+**Cambiar de cuenta en la Vercel CLI local rompe el auto-deploy por push a GitHub** (pasó dos veces en 2026-07-11): tras `vercel logout`/`vercel login` con otra cuenta, los pushes a `main` dejan de disparar deploys automáticos aunque el repo siga bien conectado — hay que lanzar `vercel --prod` a mano (con `vercel whoami` y `.vercel/project.json` ya apuntando a la cuenta/proyecto correctos) hasta que se revise/reconecte la integración de GitHub desde el dashboard de Vercel.
 
 ---
 
