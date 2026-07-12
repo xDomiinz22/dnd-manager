@@ -153,16 +153,16 @@ export function GroupDetailPage() {
               key={m.userId}
               className="rounded-sm border border-rule bg-parchment-panel px-4 py-3"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-ink">{m.username}</span>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <span
-                    className={`text-sm ${m.role === "MASTER" ? "text-oxblood" : "text-ink-muted"}`}
+                    className={`whitespace-nowrap text-sm ${m.role === "MASTER" ? "text-oxblood" : "text-ink-muted"}`}
                   >
                     {m.role === "MASTER" ? "Master" : "Jugador"}
                   </span>
                   {isMaster && m.role !== "MASTER" && (
-                    <label className="flex items-center gap-1 text-sm text-ink-muted">
+                    <label className="flex items-center gap-1 whitespace-nowrap text-sm text-ink-muted">
                       <input
                         type="checkbox"
                         checked={m.canEditMusic}
@@ -233,18 +233,18 @@ export function GroupDetailPage() {
             const isLimited = !isMaster && c.ownerId !== user?.id;
             return (
               <li key={c.id} className="rounded-sm border border-rule bg-parchment-panel p-4">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <PortraitCircle url={c.portraitUrl} name={c.name} size={48} />
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <Link
                       to={`/characters/${c.id}`}
                       state={isLimited ? { backgroundLocation: location } : undefined}
-                      className="font-semibold text-ink hover:text-oxblood"
+                      className="block truncate font-semibold text-ink hover:text-oxblood"
                     >
                       {c.name}
                     </Link>
                     {c.className && (
-                      <p className="text-sm text-ink-muted">
+                      <p className="truncate text-sm text-ink-muted">
                         {c.classes && c.classes.length > 0
                           ? c.classes.map((cl) => `${cl.name} ${cl.level}`).join(" / ")
                           : `${c.className} ${c.level}`}
@@ -253,7 +253,7 @@ export function GroupDetailPage() {
                     )}
                   </div>
                   {isMaster && (
-                    <>
+                    <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                       <Button
                         variant="ghost"
                         onClick={() => setUpdatingId(updatingId === c.id ? null : c.id)}
@@ -266,7 +266,7 @@ export function GroupDetailPage() {
                       >
                         Borrar
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
                 {updatingId === c.id && (

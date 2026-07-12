@@ -238,7 +238,7 @@ function PlaylistCard({
                   <button
                     type="button"
                     onClick={() => (isCurrent ? onTogglePlayPause() : onPlayTrack(track.id))}
-                    className={`flex flex-1 items-center gap-2 truncate text-left text-sm ${
+                    className={`flex min-w-0 flex-1 items-center gap-2 text-left text-sm ${
                       isCurrent ? "text-oxblood" : "text-ink"
                     }`}
                   >
@@ -251,7 +251,7 @@ function PlaylistCard({
                     ) : (
                       <PlayIcon className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
                     )}
-                    <span className="truncate">
+                    <span className="min-w-0 flex-1 truncate">
                       {track.title}
                       {track.addedByUsername && (
                         <span className="text-ink-muted"> · {track.addedByUsername}</span>

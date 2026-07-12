@@ -108,10 +108,10 @@ export function GroupsPage() {
           <li key={g.id}>
             <Link
               to={`/groups/${g.id}`}
-              className="flex items-center justify-between rounded-sm border border-rule bg-parchment-panel px-4 py-3 hover:border-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-sm border border-rule bg-parchment-panel px-4 py-3 hover:border-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
             >
-              <span className="font-semibold text-ink">{g.name}</span>
-              <span className="flex items-center gap-3 text-sm text-ink-muted">
+              <span className="min-w-0 flex-1 truncate font-semibold text-ink">{g.name}</span>
+              <span className="flex shrink-0 items-center gap-3 text-sm text-ink-muted">
                 <span className={g.role === "MASTER" ? "text-oxblood" : undefined}>
                   {g.role === "MASTER" ? "Master" : "Jugador"}
                 </span>

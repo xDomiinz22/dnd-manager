@@ -34,16 +34,16 @@ export function MyCharactersPage() {
       <ul className="space-y-3">
         {characters?.map((c) => (
           <li key={c.id} className="rounded-sm border border-rule bg-parchment-panel p-4">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <PortraitCircle url={c.portraitUrl} name={c.name} size={56} />
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <Link
                   to={`/characters/${c.id}`}
-                  className="font-semibold text-ink hover:text-oxblood"
+                  className="block truncate font-semibold text-ink hover:text-oxblood"
                 >
                   {c.name}
                 </Link>
-                <p className="text-sm text-ink-muted">
+                <p className="truncate text-sm text-ink-muted">
                   {c.classes.length > 0
                     ? c.classes.map((cl) => `${cl.name} ${cl.level}`).join(" / ")
                     : `${c.className ?? "Sin clase"} ${c.level}`}{" "}
@@ -52,6 +52,7 @@ export function MyCharactersPage() {
               </div>
               <Button
                 variant="ghost"
+                className="w-full sm:w-auto"
                 onClick={() => setDuplicatingId(duplicatingId === c.id ? null : c.id)}
               >
                 Añadir a otro grupo

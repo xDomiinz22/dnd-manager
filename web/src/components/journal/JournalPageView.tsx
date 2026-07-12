@@ -102,10 +102,12 @@ export function JournalPageView({
 
   return (
     <div className="flex-1 rounded-sm border border-rule bg-parchment-panel p-4">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <h1 className="font-display text-xl tracking-wide text-oxblood">{page.title}</h1>
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <h1 className="min-w-0 flex-1 font-display text-xl tracking-wide text-oxblood">
+          {page.title}
+        </h1>
         {canEdit && (
-          <div className="flex shrink-0 gap-2">
+          <div className="flex w-full shrink-0 gap-2 sm:w-auto">
             <Button
               variant="ghost"
               onClick={() => {
