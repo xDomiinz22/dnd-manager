@@ -8,6 +8,7 @@ import {
   listGroupsHandler,
   regenerateInviteCodeHandler,
   removeMemberHandler,
+  setMemberMusicPermissionHandler,
 } from "../controllers/groupController";
 
 export const groupsRouter = Router();
@@ -27,4 +28,10 @@ groupsRouter.delete(
   requireAuth,
   requireGroupMember,
   removeMemberHandler,
+);
+groupsRouter.patch(
+  "/groups/:id/members/:userId/music-permission",
+  requireAuth,
+  requireGroupMaster,
+  setMemberMusicPermissionHandler,
 );

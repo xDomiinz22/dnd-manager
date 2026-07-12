@@ -104,6 +104,7 @@ export async function getGroupDetail(userId: string, groupId: string): Promise<G
       username: m.user.username,
       avatarUrl: m.user.avatarUrl,
       role: m.role,
+      canEditMusic: m.canEditMusic,
     })),
     characters: group.characters.map((c) => {
       const fullAccess = isMaster || c.ownerId === userId;
@@ -186,4 +187,19 @@ export async function removeMember(
   }
 
   await prisma.groupMember.delete({ where: { groupId_userId: { groupId, userId: targetUserId } } });
+}
+
+/** Solo el Master concede/revoca permiso de gestionar la música ambiente a otro miembro. */
+export async function setMemberMusicPermission(
+  groupId: string,
+  targetUserId: string,
+  canEditMusic: boolean,
+): Promise<void> {
+  const target = await getMembership(groupId, targetUserId);
+  if (!target) throw new AppError(404, "MEMBER_NOT_FOUND", "Ese usuario no es miembro del grupo");
+
+  await prisma.groupMember.update({
+    where: { groupId_userId: { groupId, userId: targetUserId } },
+    data: { canEditMusic },
+  });
 }

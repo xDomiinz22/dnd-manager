@@ -9,7 +9,12 @@ import {
   type ImportCharacterMdInput,
 } from "@dnd-manager/shared";
 import { useAuth } from "../context/AuthContext";
-import { useGroupDetail, useRegenerateInviteCode, useRemoveMember } from "../features/groups/hooks";
+import {
+  useGroupDetail,
+  useRegenerateInviteCode,
+  useRemoveMember,
+  useSetMemberMusicPermission,
+} from "../features/groups/hooks";
 import {
   useDeleteCharacter,
   useImportCharacter,
@@ -33,6 +38,7 @@ export function GroupDetailPage() {
   const { data: group, isLoading } = useGroupDetail(id!);
   const regenerate = useRegenerateInviteCode(id!);
   const removeMember = useRemoveMember(id!);
+  const setMemberMusicPermission = useSetMemberMusicPermission(id!);
   const [copied, setCopied] = useState(false);
   const [importing, setImporting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -77,13 +83,28 @@ export function GroupDetailPage() {
     });
   }
 
+  function handleToggleMusicPermission(userId: string, canEditMusic: boolean) {
+    setMemberMusicPermission.mutate(
+      { userId, input: { canEditMusic } },
+      {
+        onError: (err) =>
+          toast.error(toErrorMessage(err, "No se pudo cambiar el permiso de música.")),
+      },
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
       <ChapterHeading
         action={
-          <Link to={`/groups/${group.id}/journal`} className="text-ink hover:text-oxblood">
-            Diario de grupo →
-          </Link>
+          <div className="flex flex-wrap gap-4">
+            <Link to={`/groups/${group.id}/music`} className="text-ink hover:text-oxblood">
+              Música ambiente →
+            </Link>
+            <Link to={`/groups/${group.id}/journal`} className="text-ink hover:text-oxblood">
+              Diario de grupo →
+            </Link>
+          </div>
         }
       >
         {group.name}
@@ -127,6 +148,17 @@ export function GroupDetailPage() {
               >
                 {m.role === "MASTER" ? "Master" : "Jugador"}
               </span>
+              {isMaster && m.role !== "MASTER" && (
+                <label className="flex items-center gap-1 text-sm text-ink-muted">
+                  <input
+                    type="checkbox"
+                    checked={m.canEditMusic}
+                    onChange={(e) => handleToggleMusicPermission(m.userId, e.target.checked)}
+                    className="accent-oxblood"
+                  />
+                  Gestiona música
+                </label>
+              )}
               {m.role !== "MASTER" && (isMaster || m.userId === user?.id) && (
                 <Button
                   variant="danger"

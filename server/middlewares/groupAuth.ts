@@ -32,3 +32,25 @@ export const requireGroupMaster: RequestHandler = async (req, _res, next) => {
     next(err);
   }
 };
+
+/** Master siempre puede gestionar la música del grupo; un jugador solo si tiene `canEditMusic`. */
+export const requireGroupMusicEdit: RequestHandler = async (req, _res, next) => {
+  try {
+    const groupId = req.params.id ?? req.params.groupId!;
+    const membership = await getMembership(groupId, req.userId!);
+    if (!membership) {
+      throw new AppError(403, "NOT_GROUP_MEMBER", "No perteneces a este grupo");
+    }
+    if (membership.role !== "MASTER" && !membership.canEditMusic) {
+      throw new AppError(
+        403,
+        "NOT_ALLOWED",
+        "No tienes permiso para gestionar la música de este grupo",
+      );
+    }
+    req.groupMembership = membership;
+    next();
+  } catch (err) {
+    next(err);
+  }
+};

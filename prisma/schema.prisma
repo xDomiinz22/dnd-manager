@@ -36,9 +36,10 @@ model Group {
   master     User     @relation("GroupMaster", fields: [masterId], references: [id])
   createdAt  DateTime @default(now())
 
-  members      GroupMember[]
-  characters   CharacterSheet[]
-  groupJournal JournalEntry?    @relation("GroupJournal")
+  members        GroupMember[]
+  characters     CharacterSheet[]
+  groupJournal   JournalEntry?    @relation("GroupJournal")
+  musicPlaylists MusicPlaylist[]
 }
 
 enum GroupRole {
@@ -53,10 +54,44 @@ model GroupMember {
   role     GroupRole @default(PLAYER)
   joinedAt DateTime  @default(now())
 
+  // El Master siempre puede gestionar la música ambiente del grupo; este
+  // campo concede el mismo permiso a un jugador concreto (o a todos, si el
+  // Master lo activa en cada uno). No afecta a nada más.
+  canEditMusic Boolean @default(false)
+
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
+}
+
+// Música ambiente por grupo: listas temáticas (p.ej. "Taberna", "Combate")
+// con tracks que apuntan a un vídeo de YouTube (solo se reproduce el audio,
+// nunca se descarga ni se guarda el contenido — ver README).
+model MusicPlaylist {
+  id      String @id @default(cuid())
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  name      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tracks MusicTrack[]
+}
+
+model MusicTrack {
+  id         String        @id @default(cuid())
+  playlistId String
+  playlist   MusicPlaylist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  title     String
+  // ID de 11 caracteres del vídeo de YouTube (no la URL cruda; se normaliza
+  // al añadir el track, ver shared/src/music.ts → extractYoutubeId).
+  youtubeId String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
 }
 
 enum AssetKind {

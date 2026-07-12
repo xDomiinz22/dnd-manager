@@ -6,6 +6,7 @@ import { groupsRouter } from "./groups";
 import { assetsRouter } from "./assets";
 import { charactersRouter } from "./characters";
 import { journalRouter } from "./journal";
+import { musicRouter } from "./music";
 
 export const apiRouter = Router();
 
@@ -16,3 +17,4 @@ apiRouter.use(groupsRouter);
 apiRouter.use(assetsRouter);
 apiRouter.use(charactersRouter);
 apiRouter.use(journalRouter);
+apiRouter.use(musicRouter);

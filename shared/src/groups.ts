@@ -28,6 +28,7 @@ export const groupMemberSummarySchema = z.object({
   username: z.string(),
   avatarUrl: z.string().nullable(),
   role: groupRoleSchema,
+  canEditMusic: z.boolean(),
 });
 export type GroupMemberSummary = z.infer<typeof groupMemberSummarySchema>;
 

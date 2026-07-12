@@ -1,5 +1,9 @@
 import type { RequestHandler } from "express";
-import { createGroupSchema, joinGroupSchema } from "@dnd-manager/shared";
+import {
+  createGroupSchema,
+  joinGroupSchema,
+  updateMemberMusicPermissionSchema,
+} from "@dnd-manager/shared";
 import * as groupService from "../services/groupService";
 import { AppError } from "../errors/AppError";
 
@@ -59,6 +63,20 @@ export const removeMemberHandler: RequestHandler = async (req, res, next) => {
       req.params.userId!,
       req.userId!,
       membership.role,
+    );
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const setMemberMusicPermissionHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = updateMemberMusicPermissionSchema.parse(req.body);
+    await groupService.setMemberMusicPermission(
+      req.params.id!,
+      req.params.userId!,
+      input.canEditMusic,
     );
     res.status(204).end();
   } catch (err) {

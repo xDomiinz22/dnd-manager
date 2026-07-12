@@ -4,15 +4,16 @@ interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
   hideLabel?: boolean;
+  wrapperClassName?: string;
 }
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function TextField(
-  { label, error, hideLabel, id, name, className = "", ...rest },
+  { label, error, hideLabel, wrapperClassName = "mb-4", id, name, className = "", ...rest },
   ref,
 ) {
   const fieldId = id ?? name;
   return (
-    <div className="mb-4">
+    <div className={wrapperClassName}>
       <label
         className={hideLabel ? "sr-only" : "mb-1 block text-sm text-ink-muted"}
         htmlFor={fieldId}

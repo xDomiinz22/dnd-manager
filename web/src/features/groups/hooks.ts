@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CreateGroupInput, JoinGroupInput } from "@dnd-manager/shared";
+import type {
+  CreateGroupInput,
+  JoinGroupInput,
+  UpdateMemberMusicPermissionInput,
+} from "@dnd-manager/shared";
 import { groupsApi } from "./api";
 
 export const GROUPS_QUERY_KEY = ["groups"] as const;
@@ -45,6 +49,15 @@ export function useRemoveMember(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) => groupsApi.removeMember(groupId, userId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) }),
+  });
+}
+
+export function useSetMemberMusicPermission(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, input }: { userId: string; input: UpdateMemberMusicPermissionInput }) =>
+      groupsApi.setMemberMusicPermission(groupId, userId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) }),
   });
 }

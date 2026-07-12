@@ -3,6 +3,7 @@ import type {
   GroupDetail,
   GroupSummary,
   JoinGroupInput,
+  UpdateMemberMusicPermissionInput,
 } from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
 
@@ -17,4 +18,13 @@ export const groupsApi = {
     apiFetch<{ inviteCode: string }>(`/groups/${id}/regenerate-code`, { method: "POST" }),
   removeMember: (groupId: string, userId: string) =>
     apiFetch<void>(`/groups/${groupId}/members/${userId}`, { method: "DELETE" }),
+  setMemberMusicPermission: (
+    groupId: string,
+    userId: string,
+    input: UpdateMemberMusicPermissionInput,
+  ) =>
+    apiFetch<void>(`/groups/${groupId}/members/${userId}/music-permission`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
 };
