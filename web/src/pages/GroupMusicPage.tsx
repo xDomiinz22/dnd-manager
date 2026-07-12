@@ -30,7 +30,6 @@ import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { PauseIcon, PlayIcon, RepeatIcon } from "../components/ui/PlayerIcons";
-import { PlayerControls } from "../components/music/PlayerControls";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function GroupMusicPage() {
@@ -83,33 +82,6 @@ export function GroupMusicPage() {
 
       {showNewPlaylist && (
         <NewPlaylistForm groupId={groupId!} onDone={() => setShowNewPlaylist(false)} />
-      )}
-
-      {isActiveHere && player.currentTrack && (
-        <div className="mb-6 rounded-sm border border-rule bg-parchment-panel p-3">
-          <p className="mb-2 truncate text-sm text-ink">
-            {player.currentTrack.title}
-            {player.currentTrack.addedByUsername && (
-              <span className="text-ink-muted">
-                {" "}
-                · añadido por {player.currentTrack.addedByUsername}
-              </span>
-            )}
-          </p>
-          <PlayerControls
-            isPlaying={player.isPlaying}
-            isReady={player.isReady}
-            shuffle={player.shuffle}
-            loop={player.currentTrack.loop}
-            volume={player.volume}
-            onTogglePlayPause={player.togglePlayPause}
-            onNext={player.playNext}
-            onPrev={player.playPrev}
-            onToggleShuffle={player.toggleShuffle}
-            onToggleLoop={() => player.toggleTrackLoop(player.currentTrack!.id)}
-            onVolumeChange={player.setVolume}
-          />
-        </div>
       )}
 
       {data.playlists.length === 0 ? (
