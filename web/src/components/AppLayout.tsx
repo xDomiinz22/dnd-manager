@@ -63,7 +63,7 @@ function AppLayoutContent() {
         aria-hidden="true"
       />
 
-      <div className={player.currentTrack ? "pb-16" : undefined}>
+      <div className={player.currentTrack ? "pb-32" : undefined}>
         <Outlet />
       </div>
 

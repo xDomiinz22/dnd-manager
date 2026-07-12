@@ -94,3 +94,29 @@ body {
   max-width: 100%;
   overflow-x: auto;
 }
+
+/*
+ * Ticker del título en la mini-barra de música (ver MarqueeText.tsx): solo se
+ * activa cuando el texto no cabe en su contenedor. Pausa al principio y al
+ * final del recorrido para que se pueda empezar a leer antes de que se mueva.
+ */
+@keyframes marquee-track {
+  0%,
+  15% {
+    transform: translateX(0);
+  }
+  85%,
+  100% {
+    transform: translateX(var(--marquee-distance, 0px));
+  }
+}
+
+.marquee-track {
+  animation: marquee-track var(--marquee-duration, 8s) ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}

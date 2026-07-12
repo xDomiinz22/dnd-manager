@@ -7,10 +7,13 @@ export interface AmbientPlayerControls {
   isPlaying: boolean;
   currentTrackId: string | null;
   volume: number;
+  currentTime: number;
+  duration: number;
   play: (youtubeId: string) => void;
   togglePlayPause: () => void;
   stop: () => void;
   setVolume: (volume: number) => void;
+  seekTo: (seconds: number) => void;
 }
 
 const DEFAULT_VOLUME = 70;
@@ -43,6 +46,8 @@ export function useAmbientPlayer(options: UseAmbientPlayerOptions = {}): Ambient
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrackId, setCurrentTrackId] = useState<string | null>(null);
   const [volume, setVolumeState] = useState(DEFAULT_VOLUME);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,8 +90,23 @@ export function useAmbientPlayer(options: UseAmbientPlayerOptions = {}): Ambient
     };
   }, []);
 
+  // Poll de la posición actual: la IFrame API no empuja eventos de progreso,
+  // solo se puede preguntar getCurrentTime()/getDuration() a intervalos.
+  useEffect(() => {
+    if (!isReady) return;
+    const interval = setInterval(() => {
+      const player = playerRef.current;
+      if (!player) return;
+      setCurrentTime(player.getCurrentTime());
+      setDuration(player.getDuration());
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isReady]);
+
   const play = useCallback((youtubeId: string) => {
     setCurrentTrackId(youtubeId);
+    setCurrentTime(0);
+    setDuration(0);
     if (isReadyRef.current && playerRef.current) {
       playerRef.current.loadVideoById(youtubeId);
     } else {
@@ -115,15 +135,24 @@ export function useAmbientPlayer(options: UseAmbientPlayerOptions = {}): Ambient
     playerRef.current?.setVolume(next);
   }, []);
 
+  const seekTo = useCallback((seconds: number) => {
+    if (!isReadyRef.current || !playerRef.current) return;
+    playerRef.current.seekTo(seconds, true);
+    setCurrentTime(seconds);
+  }, []);
+
   return {
     containerRef,
     isReady,
     isPlaying,
     currentTrackId,
     volume,
+    currentTime,
+    duration,
     play,
     togglePlayPause,
     stop,
     setVolume,
+    seekTo,
   };
 }

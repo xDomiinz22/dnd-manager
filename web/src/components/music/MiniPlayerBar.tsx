@@ -1,71 +1,69 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAmbientPlayerContext } from "../../features/music/AmbientPlayerContext";
-import { PauseIcon, PlayIcon } from "../ui/PlayerIcons";
+import { MarqueeText } from "../ui/MarqueeText";
 import { PlayerControls } from "./PlayerControls";
+
+function formatTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
 
 /**
  * Barra fina fija abajo del todo mientras suena música ambiente, visible en
  * cualquier página de la app (vive en AppLayout, no en GroupMusicPage, para
- * sobrevivir a la navegación). Se expande hacia arriba con los controles
- * completos al pulsarla. Mismo componente en escritorio y móvil.
+ * sobrevivir a la navegación). Todos los controles están siempre visibles —
+ * sin desplegable — para no esconder nada tras un click extra.
  */
 export function MiniPlayerBar() {
   const player = useAmbientPlayerContext();
-  const [expanded, setExpanded] = useState(false);
 
   if (!player.currentTrack || !player.groupId) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-parchment-panel shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.15)]">
-      {expanded && (
-        <div className="mx-auto flex max-w-2xl flex-col gap-3 border-b border-rule px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-ink">{player.currentTrack.title}</p>
-            <Link
-              to={`/groups/${player.groupId}/music`}
-              className="text-xs text-oxblood hover:underline"
-            >
-              Música ambiente →
-            </Link>
-          </div>
-          <PlayerControls
-            isPlaying={player.isPlaying}
-            isReady={player.isReady}
-            shuffle={player.shuffle}
-            loop={player.currentTrack.loop}
-            volume={player.volume}
-            onTogglePlayPause={player.togglePlayPause}
-            onNext={player.playNext}
-            onPrev={player.playPrev}
-            onToggleShuffle={player.toggleShuffle}
-            onToggleLoop={() => player.toggleTrackLoop(player.currentTrack!.id)}
-            onVolumeChange={player.setVolume}
+      <div className="mx-auto max-w-2xl px-4 py-2 sm:py-3">
+        <div className="mb-1.5 flex items-center gap-2">
+          <MarqueeText
+            text={player.currentTrack.title}
+            className="min-w-0 flex-1 text-sm font-semibold text-ink"
           />
+          <Link
+            to={`/groups/${player.groupId}/music`}
+            className="shrink-0 rounded-sm border border-rule px-3 py-1.5 text-xs text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+          >
+            Música ambiente
+          </Link>
         </div>
-      )}
-      <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-2">
-        <button
-          type="button"
-          onClick={player.togglePlayPause}
-          disabled={!player.isReady}
-          aria-label={player.isPlaying ? "Pausar" : "Reproducir"}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm text-oxblood hover:bg-parchment-deep/60 disabled:opacity-30"
-        >
-          {player.isPlaying ? <PauseIcon className="h-5 w-5" /> : <PlayIcon className="h-5 w-5" />}
-        </button>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-          aria-label={expanded ? "Ocultar controles" : "Mostrar controles"}
-          className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
-        >
-          <span className="min-w-0 flex-1 truncate text-sm text-ink">
-            {player.currentTrack.title}
-          </span>
-          <span className="shrink-0 text-ink-muted">{expanded ? "▾" : "▴"}</span>
-        </button>
+
+        <div className="mb-1 flex items-center gap-2 text-xs text-ink-muted">
+          <span className="w-9 shrink-0 tabular-nums">{formatTime(player.currentTime)}</span>
+          <input
+            type="range"
+            min={0}
+            max={player.duration || 0}
+            value={player.currentTime}
+            onChange={(e) => player.seekTo(Number(e.target.value))}
+            aria-label="Posición en el track"
+            className="h-1 w-full flex-1 accent-oxblood"
+          />
+          <span className="w-9 shrink-0 tabular-nums">{formatTime(player.duration)}</span>
+        </div>
+
+        <PlayerControls
+          isPlaying={player.isPlaying}
+          isReady={player.isReady}
+          shuffle={player.shuffle}
+          loop={player.currentTrack.loop}
+          volume={player.volume}
+          onTogglePlayPause={player.togglePlayPause}
+          onNext={player.playNext}
+          onPrev={player.playPrev}
+          onToggleShuffle={player.toggleShuffle}
+          onToggleLoop={() => player.toggleTrackLoop(player.currentTrack!.id)}
+          onVolumeChange={player.setVolume}
+        />
       </div>
     </div>
   );
