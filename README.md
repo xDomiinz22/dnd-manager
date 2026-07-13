@@ -421,6 +421,12 @@ Primeras dos de siete funcionalidades pedidas por el usuario para música/fichas
 
 Verificado en navegador: edición de título feliz (toast "Track actualizado."), rechazo de URL de YouTube inválida (422, el formulario no se cierra); tras quitar el botón de bucle, la fila de un track ya no lo muestra pero la mini-barra inferior sigue ofreciendo "Repetir este track" con normalidad. `typecheck`/`test` limpios.
 
+### ✅ Botón de reproducción aleatoria por lista (parte 3 de 7)
+
+Nueva acción `playFromPlaylistShuffled(groupId, playlist)` en `AmbientPlayerContext.tsx`: elige un track al azar de la lista, activa el modo shuffle global y empieza a reproducirlo — así el avance automático y "siguiente"/"anterior" que vengan después también siguen en modo aleatorio, no solo el primer track. Botón nuevo (icono `ShuffleIcon`) en la cabecera de cada `PlaylistCard` de `GroupMusicPage.tsx`, junto al nombre de la lista; visible para **cualquier miembro** (no solo quien edita, es un control de escucha) y solo si la lista tiene al menos un track.
+
+Verificado en navegador: con 2 tracks en una lista, pulsar el botón arranca la reproducción de uno de ellos y dispara `aria-pressed="true"` en el botón de shuffle del reproductor; con la lista vacía el botón no aparece. `typecheck`/`test` limpios.
+
 ---
 
 ## Qué queda por hacer

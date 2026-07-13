@@ -11,6 +11,7 @@ interface AmbientPlayerContextValue extends Omit<AmbientPlayerControls, "play" |
   currentTrack: MusicTrack | null;
   shuffle: boolean;
   playFromPlaylist: (groupId: string, playlist: MusicPlaylist, trackId: string) => void;
+  playFromPlaylistShuffled: (groupId: string, playlist: MusicPlaylist) => void;
   playNext: () => void;
   playPrev: () => void;
   toggleShuffle: () => void;
@@ -94,6 +95,17 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     playRef.current(track.youtubeId);
   }
 
+  function playFromPlaylistShuffled(nextGroupId: string, nextPlaylist: MusicPlaylist) {
+    if (nextPlaylist.tracks.length === 0) return;
+    const track = nextPlaylist.tracks[Math.floor(Math.random() * nextPlaylist.tracks.length)]!;
+    setGroupId(nextGroupId);
+    setPlaylist(nextPlaylist);
+    setCurrentTrackDbId(track.id);
+    setShuffle(true);
+    shuffleHistoryRef.current = [];
+    playRef.current(track.youtubeId);
+  }
+
   function playPrev() {
     const list = playlistRef.current;
     if (!list || list.tracks.length === 0) return;
@@ -159,6 +171,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     currentTrack,
     shuffle,
     playFromPlaylist,
+    playFromPlaylistShuffled,
     playNext: advance,
     playPrev,
     toggleShuffle,

@@ -33,7 +33,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
-import { PauseIcon, PlayIcon } from "../components/ui/PlayerIcons";
+import { PauseIcon, PlayIcon, ShuffleIcon } from "../components/ui/PlayerIcons";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function GroupMusicPage() {
@@ -106,6 +106,7 @@ export function GroupMusicPage() {
               isPlaying={player.isPlaying}
               onPlayTrack={(trackId) => player.playFromPlaylist(groupId!, playlist, trackId)}
               onTogglePlayPause={player.togglePlayPause}
+              onPlayShuffled={() => player.playFromPlaylistShuffled(groupId!, playlist)}
             />
           ))}
         </div>
@@ -123,6 +124,7 @@ function PlaylistCard({
   isPlaying,
   onPlayTrack,
   onTogglePlayPause,
+  onPlayShuffled,
 }: {
   groupId: string;
   playlist: MusicPlaylist;
@@ -132,6 +134,7 @@ function PlaylistCard({
   isPlaying: boolean;
   onPlayTrack: (trackId: string) => void;
   onTogglePlayPause: () => void;
+  onPlayShuffled: () => void;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [addingTrack, setAddingTrack] = useState(false);
@@ -179,16 +182,29 @@ function PlaylistCard({
         ) : (
           <>
             <h2 className="font-display text-sm tracking-wide text-oxblood">{playlist.name}</h2>
-            {canEdit && (
-              <div className="flex shrink-0 gap-2">
-                <Button variant="ghost" onClick={() => setRenaming(true)}>
-                  Renombrar
-                </Button>
-                <Button variant="danger" onClick={() => setConfirmingDelete((v) => !v)}>
-                  Borrar
-                </Button>
-              </div>
-            )}
+            <div className="flex shrink-0 items-center gap-2">
+              {playlist.tracks.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onPlayShuffled}
+                  aria-label={`Reproducir "${playlist.name}" en orden aleatorio`}
+                  title="Reproducir en orden aleatorio"
+                  className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-muted transition-shadow hover:bg-parchment-deep/60 hover:text-oxblood"
+                >
+                  <ShuffleIcon className="h-4 w-4" />
+                </button>
+              )}
+              {canEdit && (
+                <>
+                  <Button variant="ghost" onClick={() => setRenaming(true)}>
+                    Renombrar
+                  </Button>
+                  <Button variant="danger" onClick={() => setConfirmingDelete((v) => !v)}>
+                    Borrar
+                  </Button>
+                </>
+              )}
+            </div>
           </>
         )}
       </div>
