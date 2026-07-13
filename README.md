@@ -433,6 +433,16 @@ El `ConfirmPanel` (mensaje + botones a todo lo ancho, insertado bajo la fila) re
 
 Verificado con clicks reales del DOM (`element.click()`, ya que el click sintético del tool de automatización de este entorno no disparaba el popup de forma fiable — un quirk conocido de esta sesión, no del código): el popup aparece con el mensaje `¿Borrar "..."?`; un click fuera lo cierra sin borrar; Escape lo cierra igual; confirmar dispara el `DELETE` real y el track desaparece de la lista. `typecheck`/`test` limpios.
 
+### ✅ Buscador de canciones: general y por lista (parte 5 de 7)
+
+El usuario pidió ambos: uno general (filtra en todas las listas del grupo a la vez) y uno por lista, con la condición explícita de que cualquier lista nueva también lo tenga automáticamente. Se extrajo el helper `normalize` (case/acento-insensitive, `normalize("NFD")` + strip diacríticos) que ya existía duplicado dentro de `JournalTreeSidebar.tsx` a un módulo compartido nuevo, `web/src/lib/text.ts` (`normalizeSearch`), y se reutilizó en ambos sitios.
+
+- **Buscador general**: input en la cabecera de `GroupMusicPage.tsx`; con texto, oculta listas completas que no tengan ningún track cuyo título coincida (para no llenar la página de secciones vacías cuando hay muchas listas), y si ninguna lista tiene resultados muestra un `EmptyState`. Con las listas visibles, además oculta los tracks no coincidentes dentro de cada una.
+- **Buscador por lista**: input propio dentro de cada `PlaylistCard` (solo visible si la lista tiene al menos un track), con estado local independiente — filtra solo esa lista sin tocar el resto de la página. Como vive dentro del componente reutilizable `PlaylistCard`, cualquier lista creada después ya lo tiene sin código adicional.
+- Ambos filtros se combinan con Y lógica sobre el mismo `track.title` normalizado — si una lista está visible (pasa el filtro general) y además tiene su propio término local, un track debe coincidir con los dos para mostrarse. Si una lista tiene tracks pero ninguno pasa el filtro combinado, se muestra "Sin resultados para la búsqueda." en vez de "Sin tracks." (para distinguir lista vacía de lista filtrada a cero).
+
+Verificado en navegador: con 2 tracks en una lista ("Canción del Dragón", "Tema de Taberna"), el buscador local "dragon" (sin tilde) encuentra "Dragón" y oculta el otro — confirma insensibilidad a acentos; el buscador general "taberna" filtra por título de track (no por nombre de lista) y un término sin coincidencias muestra el `EmptyState` de "Sin canciones que coincidan con la búsqueda."; la búsqueda del journal (`JournalTreeSidebar.tsx`, que ahora importa el helper compartido en vez de su copia local) se comprobó sin errores de consola tras el refactor. `typecheck`/`test` limpios.
+
 ---
 
 ## Qué queda por hacer

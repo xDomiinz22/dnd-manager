@@ -1,18 +1,13 @@
 import { useMemo, useState } from "react";
 import type { JournalTreeNode } from "@dnd-manager/shared";
 import { EmptyState } from "../ui/EmptyState";
+import { normalizeSearch } from "../../lib/text";
 
 interface JournalTreeSidebarProps {
   title: string;
   nodes: JournalTreeNode[];
   selectedId: string | null;
   onSelect: (pageId: string) => void;
-}
-
-const DIACRITICS_PATTERN = new RegExp("[\\u0300-\\u036f]", "g");
-
-function normalize(value: string): string {
-  return value.normalize("NFD").replace(DIACRITICS_PATTERN, "").toLowerCase();
 }
 
 // Mantiene una sección si su título coincide, o si alguna descendiente
@@ -23,7 +18,7 @@ function filterTree(nodes: JournalTreeNode[], query: string): JournalTreeNode[] 
   if (!query) return nodes;
   const result: JournalTreeNode[] = [];
   for (const node of nodes) {
-    const selfMatch = normalize(node.title).includes(query);
+    const selfMatch = normalizeSearch(node.title).includes(query);
     const filteredChildren = filterTree(node.children, query);
     if (selfMatch || filteredChildren.length > 0) {
       result.push({ ...node, children: selfMatch ? node.children : filteredChildren });
@@ -39,7 +34,7 @@ export function JournalTreeSidebar({
   onSelect,
 }: JournalTreeSidebarProps) {
   const [query, setQuery] = useState("");
-  const normalizedQuery = normalize(query.trim());
+  const normalizedQuery = normalizeSearch(query.trim());
   const filteredNodes = useMemo(() => filterTree(nodes, normalizedQuery), [nodes, normalizedQuery]);
 
   return (

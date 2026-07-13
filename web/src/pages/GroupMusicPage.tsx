@@ -26,6 +26,7 @@ import {
   useUpdateTrack,
 } from "../features/music/hooks";
 import { useAmbientPlayerContext } from "../features/music/AmbientPlayerContext";
+import { normalizeSearch } from "../lib/text";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { TextField } from "../components/ui/TextField";
@@ -43,6 +44,8 @@ export function GroupMusicPage() {
   const { data, isLoading, isError, error } = useGroupMusic(groupId!);
   const player = useAmbientPlayerContext();
   const [showNewPlaylist, setShowNewPlaylist] = useState(false);
+  const [globalQuery, setGlobalQuery] = useState("");
+  const normalizedGlobalQuery = normalizeSearch(globalQuery.trim());
 
   // Mantiene sincronizado el snapshot activo del reproductor si la lista que
   // suena ahora mismo es una de las de este grupo (p.ej. si alguien añade un
@@ -95,22 +98,47 @@ export function GroupMusicPage() {
           description={data.canEdit ? "Crea una lista para empezar." : undefined}
         />
       ) : (
-        <div className="space-y-4">
-          {data.playlists.map((playlist) => (
-            <PlaylistCard
-              key={playlist.id}
-              groupId={groupId!}
-              playlist={playlist}
-              canEdit={data.canEdit}
-              currentUserId={user?.id ?? null}
-              activeTrackId={isActiveHere ? player.currentTrack!.id : null}
-              isPlaying={player.isPlaying}
-              onPlayTrack={(trackId) => player.playFromPlaylist(groupId!, playlist, trackId)}
-              onTogglePlayPause={player.togglePlayPause}
-              onPlayShuffled={() => player.playFromPlaylistShuffled(groupId!, playlist)}
-            />
-          ))}
-        </div>
+        <>
+          <TextField
+            label="Buscar canciones en todas las listas"
+            hideLabel
+            placeholder="Buscar canciones en todas las listas..."
+            wrapperClassName="mb-4"
+            value={globalQuery}
+            onChange={(e) => setGlobalQuery(e.target.value)}
+          />
+          {(() => {
+            const visiblePlaylists = normalizedGlobalQuery
+              ? data.playlists.filter((playlist) =>
+                  playlist.tracks.some((t) =>
+                    normalizeSearch(t.title).includes(normalizedGlobalQuery),
+                  ),
+                )
+              : data.playlists;
+            if (visiblePlaylists.length === 0) {
+              return <EmptyState title="Sin canciones que coincidan con la búsqueda." />;
+            }
+            return (
+              <div className="space-y-4">
+                {visiblePlaylists.map((playlist) => (
+                  <PlaylistCard
+                    key={playlist.id}
+                    groupId={groupId!}
+                    playlist={playlist}
+                    canEdit={data.canEdit}
+                    currentUserId={user?.id ?? null}
+                    activeTrackId={isActiveHere ? player.currentTrack!.id : null}
+                    isPlaying={player.isPlaying}
+                    onPlayTrack={(trackId) => player.playFromPlaylist(groupId!, playlist, trackId)}
+                    onTogglePlayPause={player.togglePlayPause}
+                    onPlayShuffled={() => player.playFromPlaylistShuffled(groupId!, playlist)}
+                    globalQuery={normalizedGlobalQuery}
+                  />
+                ))}
+              </div>
+            );
+          })()}
+        </>
       )}
     </div>
   );
@@ -126,6 +154,7 @@ function PlaylistCard({
   onPlayTrack,
   onTogglePlayPause,
   onPlayShuffled,
+  globalQuery,
 }: {
   groupId: string;
   playlist: MusicPlaylist;
@@ -136,16 +165,27 @@ function PlaylistCard({
   onPlayTrack: (trackId: string) => void;
   onTogglePlayPause: () => void;
   onPlayShuffled: () => void;
+  /** Búsqueda general de la página, ya normalizada (minúsculas, sin acentos). */
+  globalQuery: string;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [addingTrack, setAddingTrack] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingTrackId, setConfirmingTrackId] = useState<string | null>(null);
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [localQuery, setLocalQuery] = useState("");
   const deletePlaylist = useDeletePlaylist(groupId);
   const deleteTrack = useDeleteTrack(groupId);
   const setOpenToAll = useSetPlaylistOpenToAll(groupId);
   const toast = useToast();
+
+  const normalizedLocalQuery = normalizeSearch(localQuery.trim());
+  const visibleTracks = playlist.tracks.filter((track) => {
+    const title = normalizeSearch(track.title);
+    if (globalQuery && !title.includes(globalQuery)) return false;
+    if (normalizedLocalQuery && !title.includes(normalizedLocalQuery)) return false;
+    return true;
+  });
 
   function handleDeletePlaylist() {
     deletePlaylist.mutate(playlist.id, {
@@ -237,11 +277,24 @@ function PlaylistCard({
         />
       )}
 
+      {playlist.tracks.length > 0 && (
+        <TextField
+          label={`Buscar en "${playlist.name}"`}
+          hideLabel
+          placeholder="Buscar en esta lista..."
+          wrapperClassName="mb-2"
+          value={localQuery}
+          onChange={(e) => setLocalQuery(e.target.value)}
+        />
+      )}
+
       {playlist.tracks.length === 0 ? (
         <p className="text-sm text-ink-muted">Sin tracks.</p>
+      ) : visibleTracks.length === 0 ? (
+        <p className="text-sm text-ink-muted">Sin resultados para la búsqueda.</p>
       ) : (
         <ul className="space-y-1">
-          {playlist.tracks.map((track) => {
+          {visibleTracks.map((track) => {
             const isCurrent = track.id === activeTrackId;
             const canDeleteThis = canEdit || track.addedByUserId === currentUserId;
             return (
