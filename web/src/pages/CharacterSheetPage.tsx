@@ -17,6 +17,7 @@ import {
 import { useCharacter, useUpdateHp, useUpdateSpellSlot } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { CharacterImageManager } from "../components/character/CharacterImageManager";
+import { ItemDetailModal } from "../components/character/ItemDetailModal";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 import {
@@ -390,56 +391,92 @@ function SkillsTab({ character }: { character: CharacterFull }) {
 
 function InventoryTab({ items }: { items: unknown }) {
   const inventory = itemsOfType(items, ["weapon", "equipment", "consumable", "container", "loot"]);
+  const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
   if (inventory.length === 0) {
     return <p className="text-ink-muted">Sin objetos.</p>;
   }
   return (
-    <ul className="space-y-2">
-      {inventory.map((item) => (
-        <li key={item._id} className="rounded-sm border border-rule bg-parchment-panel p-4">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-ink">{item.name}</span>
-            {item.system?.quantity != null && (
-              <span className="text-sm text-ink-muted">x{item.system.quantity}</span>
-            )}
-          </div>
-          {item.system?.description?.value && (
-            <details className="mt-2 text-sm text-ink">
-              <summary className="cursor-pointer text-ink-muted">Descripción</summary>
-              <div
-                className="prose-sm mt-2"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.system.description.value) }}
-              />
-            </details>
-          )}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="space-y-2">
+        {inventory.map((item) => {
+          const description = item.system?.description?.value;
+          return (
+            <li
+              key={item._id}
+              onClick={
+                description
+                  ? () =>
+                      setOpenItem({
+                        title: item.name ?? "Sin nombre",
+                        html: sanitizeHtml(description),
+                      })
+                  : undefined
+              }
+              className={`rounded-sm border border-rule bg-parchment-panel p-4 ${
+                description ? "cursor-pointer transition-colors hover:bg-parchment-deep/40" : ""
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-ink">{item.name}</span>
+                {item.system?.quantity != null && (
+                  <span className="text-sm text-ink-muted">x{item.system.quantity}</span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {openItem && (
+        <ItemDetailModal
+          title={openItem.title}
+          descriptionHtml={openItem.html}
+          onClose={() => setOpenItem(null)}
+        />
+      )}
+    </>
   );
 }
 
 function FeaturesTab({ items }: { items: unknown }) {
   const features = itemsOfType(items, ["feat", "class", "subclass", "race", "background"]);
+  const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
   if (features.length === 0) {
     return <p className="text-ink-muted">Sin rasgos.</p>;
   }
   return (
-    <ul className="space-y-2">
-      {features.map((item) => (
-        <li key={item._id} className="rounded-sm border border-rule bg-parchment-panel p-4">
-          <div className="font-semibold text-ink">{item.name}</div>
-          {item.system?.description?.value && (
-            <details className="mt-2 text-sm text-ink">
-              <summary className="cursor-pointer text-ink-muted">Descripción</summary>
-              <div
-                className="prose-sm mt-2"
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.system.description.value) }}
-              />
-            </details>
-          )}
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="space-y-2">
+        {features.map((item) => {
+          const description = item.system?.description?.value;
+          return (
+            <li
+              key={item._id}
+              onClick={
+                description
+                  ? () =>
+                      setOpenItem({
+                        title: item.name ?? "Sin nombre",
+                        html: sanitizeHtml(description),
+                      })
+                  : undefined
+              }
+              className={`rounded-sm border border-rule bg-parchment-panel p-4 ${
+                description ? "cursor-pointer transition-colors hover:bg-parchment-deep/40" : ""
+              }`}
+            >
+              <div className="font-semibold text-ink">{item.name}</div>
+            </li>
+          );
+        })}
+      </ul>
+      {openItem && (
+        <ItemDetailModal
+          title={openItem.title}
+          descriptionHtml={openItem.html}
+          onClose={() => setOpenItem(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -460,6 +497,7 @@ function SpellbookTab({
     byLevel.set(level, [...(byLevel.get(level) ?? []), spell]);
   }
   const levels = [...byLevel.keys()].sort((a, b) => a - b);
+  const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
 
   return (
     <div className="space-y-4">
@@ -473,25 +511,39 @@ function SpellbookTab({
             {level === 0 ? "Trucos" : `Nivel ${level}`}
           </h3>
           <ul className="space-y-2">
-            {byLevel.get(level)!.map((spell) => (
-              <li key={spell._id} className="rounded-sm border border-rule bg-parchment-panel p-4">
-                <div className="font-semibold text-ink">{spell.name}</div>
-                {spell.system?.description?.value && (
-                  <details className="mt-2 text-sm text-ink">
-                    <summary className="cursor-pointer text-ink-muted">Descripción</summary>
-                    <div
-                      className="prose-sm mt-2"
-                      dangerouslySetInnerHTML={{
-                        __html: sanitizeHtml(spell.system.description.value),
-                      }}
-                    />
-                  </details>
-                )}
-              </li>
-            ))}
+            {byLevel.get(level)!.map((spell) => {
+              const description = spell.system?.description?.value;
+              return (
+                <li
+                  key={spell._id}
+                  onClick={
+                    description
+                      ? () =>
+                          setOpenItem({
+                            title: spell.name ?? "Sin nombre",
+                            html: sanitizeHtml(description),
+                          })
+                      : undefined
+                  }
+                  className={`rounded-sm border border-rule bg-parchment-panel p-4 ${
+                    description ? "cursor-pointer transition-colors hover:bg-parchment-deep/40" : ""
+                  }`}
+                >
+                  <div className="font-semibold text-ink">{spell.name}</div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ))}
+
+      {openItem && (
+        <ItemDetailModal
+          title={openItem.title}
+          descriptionHtml={openItem.html}
+          onClose={() => setOpenItem(null)}
+        />
+      )}
     </div>
   );
 }

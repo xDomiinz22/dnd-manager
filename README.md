@@ -455,7 +455,17 @@ El usuario eligió explícitamente arrastrar-y-soltar en vez de flechas subir/ba
 
 Verificado en navegador: con 2 tracks ("Track 1", "Track 2"), arrastrar el primero sobre el segundo dispara `PATCH .../tracks/order` (200 OK) y el nuevo orden persiste tras recargar la página; con un filtro de búsqueda activo el icono de agarre desaparece de las filas visibles. `typecheck`/`test`/`build` (`web`) limpios.
 
-Con esto quedan completadas las **6 de las 7 partes pedidas** en esta ronda (editar canciones, quitar bucle duplicado, shuffle por lista, mini popup de borrado, buscadores, drag & drop) — queda pendiente la parte 7 (popups con blur para detalles de ficha de personaje, sustituyendo los `<details>/<summary>` de `CharacterSheetPage.tsx`).
+### ✅ Popups con blur en la ficha de personaje (parte 7 de 7, última)
+
+Sustituidos los tres `<details>/<summary>` nativos de `CharacterSheetPage.tsx` (objetos de inventario, rasgos y conjuros) por un popup con fondo difuminado, reutilizando el lenguaje visual ya establecido en `CharacterProfileModal.tsx`.
+
+- Nuevo `ItemDetailModal.tsx` (`components/character/`): tarjeta de pergamino translúcida con `backdrop-blur-xl` sobre un scrim `backdrop-blur-sm`, cierra con ×, click fuera o Escape, bloquea/restaura el scroll del body — mismo patrón exacto que el modal de perfil de personaje ajeno, sin inventar uno nuevo.
+- `InventoryTab`, `FeaturesTab` y `SpellbookTab` ganan cada uno su propio `useState<{ title, html } | null>` local (no se comparte entre pestañas, ya que solo una está visible a la vez); toda la tarjeta del objeto/rasgo/conjuro pasa a ser clicable (`cursor-pointer` + resalte al pasar el ratón) cuando tiene descripción — clicar en cualquier parte de la fila abre el popup, no hace falta un enlace "Descripción" aparte.
+- `item.name`/`spell.name` son opcionales en el tipo `FoundryItem` (dato crudo de Foundry); se añadió el fallback `?? "Sin nombre"` al construir el título del popup para que el tipo cuadre sin asumir que siempre viene relleno.
+
+Verificado en navegador sobre la ficha real de "XxAlbertoPro01xX": clicar "Manos Ardientes" en Spellbook abre el popup con el título y la descripción completa del conjuro; clicar "Cristal" en Inventory hace lo mismo con ese objeto; confirmado por `getComputedStyle` que el panel tiene `backdrop-filter: blur(24px)` y el scrim `blur(4px)` (mismos valores que el modal de perfil ya existente); Escape y click fuera cierran el popup y restauran `body.style.overflow`. `typecheck`/`test`/`build` (`web`) limpios.
+
+Con esto quedan completadas las **7 partes pedidas** en esta ronda: editar canciones, quitar bucle duplicado, shuffle por lista, mini popup de borrado, buscadores (general + por lista), drag & drop para reordenar, y popups con blur en la ficha de personaje.
 
 ---
 
