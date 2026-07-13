@@ -3,6 +3,7 @@ import {
   addTrackSchema,
   createPlaylistSchema,
   renamePlaylistSchema,
+  reorderTracksSchema,
   setPlaylistOpenSchema,
   setTrackLoopSchema,
   updateTrackSchema,
@@ -112,6 +113,20 @@ export const deleteTrackHandler: RequestHandler = async (req, res, next) => {
       req.groupMembership!,
     );
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const reorderTracksHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = reorderTracksSchema.parse(req.body);
+    const tracks = await musicService.reorderTracks(
+      req.params.playlistId!,
+      req.params.groupId!,
+      input.trackIds,
+    );
+    res.json(tracks);
   } catch (err) {
     next(err);
   }

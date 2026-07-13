@@ -5,6 +5,7 @@ import type {
   MusicPlaylist,
   MusicTrack,
   RenamePlaylistInput,
+  ReorderTracksInput,
   SetPlaylistOpenInput,
   SetTrackLoopInput,
   UpdateTrackInput,
@@ -37,6 +38,11 @@ export const musicApi = {
     }),
   deleteTrack: (groupId: string, trackId: string) =>
     apiFetch<void>(`/groups/${groupId}/music/tracks/${trackId}`, { method: "DELETE" }),
+  reorderTracks: (groupId: string, playlistId: string, input: ReorderTracksInput) =>
+    apiFetch<MusicTrack[]>(`/groups/${groupId}/music/playlists/${playlistId}/tracks/order`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
   setPlaylistOpenToAll: (groupId: string, playlistId: string, input: SetPlaylistOpenInput) =>
     apiFetch<MusicPlaylist>(`/groups/${groupId}/music/playlists/${playlistId}/open-to-all`, {
       method: "PATCH",

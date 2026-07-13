@@ -63,6 +63,11 @@ export const setTrackLoopSchema = z.object({
 });
 export type SetTrackLoopInput = z.infer<typeof setTrackLoopSchema>;
 
+export const reorderTracksSchema = z.object({
+  trackIds: z.array(z.string()).min(1),
+});
+export type ReorderTracksInput = z.infer<typeof reorderTracksSchema>;
+
 // Regex puro (nada de `URL`/`URLSearchParams`) para que funcione igual en
 // Node y en el navegador sin depender de qué libs ambiente tenga cada lado.
 const YOUTUBE_URL_PATTERNS = [

@@ -443,6 +443,20 @@ El usuario pidió ambos: uno general (filtra en todas las listas del grupo a la 
 
 Verificado en navegador: con 2 tracks en una lista ("Canción del Dragón", "Tema de Taberna"), el buscador local "dragon" (sin tilde) encuentra "Dragón" y oculta el otro — confirma insensibilidad a acentos; el buscador general "taberna" filtra por título de track (no por nombre de lista) y un término sin coincidencias muestra el `EmptyState` de "Sin canciones que coincidan con la búsqueda."; la búsqueda del journal (`JournalTreeSidebar.tsx`, que ahora importa el helper compartido en vez de su copia local) se comprobó sin errores de consola tras el refactor. `typecheck`/`test` limpios.
 
+### ✅ Reordenar canciones con drag & drop (parte 6 de 7, última)
+
+El usuario eligió explícitamente arrastrar-y-soltar en vez de flechas subir/bajar (recomendación que hice y rechazó). Nueva dependencia `@dnd-kit/core` + `@dnd-kit/sortable` + `@dnd-kit/utilities` (primera vez que este proyecto usa drag & drop).
+
+- **Backend**: `MusicTrack.order` ya existía desde el modelo original; nuevo `PATCH /groups/:groupId/music/playlists/:playlistId/tracks/order` (`reorderTracks` en `musicService.ts`, gateado por `requireGroupMusicEdit` — mismo criterio que renombrar/borrar la lista, ya que reordenar afecta al orden compartido que ven todos los miembros, no es una acción "sobre mi propio track"). Valida que el array de IDs recibido sea exactamente el mismo conjunto que los tracks reales de la lista (ni de más ni de menos) antes de persistir, y reescribe `order` 0..n-1 en una `$transaction`.
+- **Frontend**: cada fila de track (`TrackRow`, extraído de `PlaylistCard` a su propio componente para poder llamar a `useSortable` una vez por fila) gana un icono de agarre (grip de 6 puntos) visible solo si `canEdit` y la lista tiene 2+ tracks — y **solo si no hay ningún filtro de búsqueda activo** (local ni general): arrastrar un subconjunto filtrado dejaría ambiguo qué pasa con el resto de tracks ocultos, así que directamente se deshabilita (el icono desaparece) mientras se está buscando. El reordenado es optimista: `PlaylistCard` mantiene un `dragOrderIds` local que se aplica nada más soltar (sin esperar la respuesta del servidor) y se descarta automáticamente en cuanto llega un snapshot nuevo de la lista (tras el refetch de la propia mutación, o cualquier otro cambio).
+- `DndContext`/`SortableContext` envuelven siempre la lista (incluso cuando no se puede reordenar) y `useSortable({ disabled: !canReorder })` es quien realmente lo desactiva — necesario para no violar las reglas de hooks llamando a `useSortable` condicionalmente.
+
+**Gotcha de verificación**: el mismo click sintético del tool de automatización que no disparaba el mini-popup (parte 4) tampoco simula un drag real de dnd-kit — `PointerSensor` exige `event.isPrimary === true` además de `button === 0`, y un `PointerEvent` construido a mano por defecto trae `isPrimary: false`. Se verificó disparando la secuencia completa `pointerdown`/`pointermove`/`pointerup` vía `javascript_tool` con `isPrimary: true` explícito, reproduciendo un drag real de principio a fin.
+
+Verificado en navegador: con 2 tracks ("Track 1", "Track 2"), arrastrar el primero sobre el segundo dispara `PATCH .../tracks/order` (200 OK) y el nuevo orden persiste tras recargar la página; con un filtro de búsqueda activo el icono de agarre desaparece de las filas visibles. `typecheck`/`test`/`build` (`web`) limpios.
+
+Con esto quedan completadas las **6 de las 7 partes pedidas** en esta ronda (editar canciones, quitar bucle duplicado, shuffle por lista, mini popup de borrado, buscadores, drag & drop) — queda pendiente la parte 7 (popups con blur para detalles de ficha de personaje, sustituyendo los `<details>/<summary>` de `CharacterSheetPage.tsx`).
+
 ---
 
 ## Qué queda por hacer

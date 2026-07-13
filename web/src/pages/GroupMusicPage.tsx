@@ -2,6 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   addTrackSchema,
   createPlaylistSchema,
@@ -22,6 +30,7 @@ import {
   useDeleteTrack,
   useGroupMusic,
   useRenamePlaylist,
+  useReorderTracks,
   useSetPlaylistOpenToAll,
   useUpdateTrack,
 } from "../features/music/hooks";
@@ -174,18 +183,59 @@ function PlaylistCard({
   const [confirmingTrackId, setConfirmingTrackId] = useState<string | null>(null);
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
   const [localQuery, setLocalQuery] = useState("");
+  const [dragOrderIds, setDragOrderIds] = useState<string[] | null>(null);
   const deletePlaylist = useDeletePlaylist(groupId);
   const deleteTrack = useDeleteTrack(groupId);
   const setOpenToAll = useSetPlaylistOpenToAll(groupId);
+  const reorderTracks = useReorderTracks(groupId);
   const toast = useToast();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+  // El orden optimista se descarta en cuanto llega un snapshot nuevo del
+  // servidor (tras el refetch de la propia mutación de reordenar, o tras
+  // cualquier otro cambio ajeno a la lista).
+  const serverOrderKey = playlist.tracks.map((t) => t.id).join(",");
+  useEffect(() => {
+    setDragOrderIds(null);
+  }, [serverOrderKey]);
+
+  const orderedTracks = dragOrderIds
+    ? (dragOrderIds
+        .map((id) => playlist.tracks.find((t) => t.id === id))
+        .filter(Boolean) as MusicTrack[])
+    : playlist.tracks;
 
   const normalizedLocalQuery = normalizeSearch(localQuery.trim());
-  const visibleTracks = playlist.tracks.filter((track) => {
+  const visibleTracks = orderedTracks.filter((track) => {
     const title = normalizeSearch(track.title);
     if (globalQuery && !title.includes(globalQuery)) return false;
     if (normalizedLocalQuery && !title.includes(normalizedLocalQuery)) return false;
     return true;
   });
+  // Arrastrar solo tiene sentido si se ve la lista completa sin filtrar —
+  // reordenar un subconjunto visible dejaría ambiguo qué pasa con el resto.
+  const canReorder =
+    canEdit && visibleTracks.length === orderedTracks.length && orderedTracks.length > 1;
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const currentIds = orderedTracks.map((t) => t.id);
+    const oldIndex = currentIds.indexOf(active.id as string);
+    const newIndex = currentIds.indexOf(over.id as string);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const nextIds = arrayMove(currentIds, oldIndex, newIndex);
+    setDragOrderIds(nextIds);
+    reorderTracks.mutate(
+      { playlistId: playlist.id, input: { trackIds: nextIds } },
+      {
+        onError: (err) => {
+          setDragOrderIds(null);
+          toast.error(toErrorMessage(err, "No se pudo reordenar la lista."));
+        },
+      },
+    );
+  }
 
   function handleDeletePlaylist() {
     deletePlaylist.mutate(playlist.id, {
@@ -293,94 +343,38 @@ function PlaylistCard({
       ) : visibleTracks.length === 0 ? (
         <p className="text-sm text-ink-muted">Sin resultados para la búsqueda.</p>
       ) : (
-        <ul className="space-y-1">
-          {visibleTracks.map((track) => {
-            const isCurrent = track.id === activeTrackId;
-            const canDeleteThis = canEdit || track.addedByUserId === currentUserId;
-            return (
-              <li
-                key={track.id}
-                className={`rounded-sm px-2 py-1 ${
-                  isCurrent
-                    ? "bg-oxblood/10 shadow-[inset_0_0_0_1px_rgba(107,22,32,0.35)]"
-                    : "hover:bg-parchment-deep/40"
-                }`}
-              >
-                {editingTrackId === track.id ? (
-                  <EditTrackForm
-                    groupId={groupId}
-                    track={track}
-                    onDone={() => setEditingTrackId(null)}
-                  />
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => (isCurrent ? onTogglePlayPause() : onPlayTrack(track.id))}
-                        className={`flex min-w-0 flex-1 items-center gap-2 text-left text-sm ${
-                          isCurrent ? "text-oxblood" : "text-ink"
-                        }`}
-                      >
-                        {isCurrent ? (
-                          isPlaying ? (
-                            <PauseIcon className="h-3.5 w-3.5 shrink-0" />
-                          ) : (
-                            <PlayIcon className="h-3.5 w-3.5 shrink-0" />
-                          )
-                        ) : (
-                          <PlayIcon className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
-                        )}
-                        <span className="min-w-0 flex-1 truncate">
-                          {track.title}
-                          {track.addedByUsername && (
-                            <span className="text-ink-muted"> · {track.addedByUsername}</span>
-                          )}
-                        </span>
-                      </button>
-                      <div className="flex shrink-0 items-center gap-1">
-                        {canDeleteThis && (
-                          <button
-                            type="button"
-                            onClick={() => setEditingTrackId(track.id)}
-                            aria-label={`Editar ${track.title}`}
-                            className="text-xs text-ink-muted hover:text-oxblood"
-                          >
-                            Editar
-                          </button>
-                        )}
-                        {canDeleteThis && (
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setConfirmingTrackId(
-                                  confirmingTrackId === track.id ? null : track.id,
-                                )
-                              }
-                              aria-label={`Borrar ${track.title}`}
-                              className="text-ink-muted hover:text-oxblood"
-                            >
-                              ×
-                            </button>
-                            {confirmingTrackId === track.id && (
-                              <MiniConfirmPopover
-                                message={`¿Borrar "${track.title}"?`}
-                                isLoading={deleteTrack.isPending}
-                                onConfirm={() => handleDeleteTrack(track.id)}
-                                onCancel={() => setConfirmingTrackId(null)}
-                              />
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={visibleTracks.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="space-y-1">
+              {visibleTracks.map((track) => (
+                <TrackRow
+                  key={track.id}
+                  groupId={groupId}
+                  track={track}
+                  isCurrent={track.id === activeTrackId}
+                  isPlaying={isPlaying}
+                  canDeleteThis={canEdit || track.addedByUserId === currentUserId}
+                  canReorder={canReorder}
+                  isEditing={editingTrackId === track.id}
+                  onStartEdit={() => setEditingTrackId(track.id)}
+                  onDoneEdit={() => setEditingTrackId(null)}
+                  isConfirming={confirmingTrackId === track.id}
+                  onToggleConfirm={() =>
+                    setConfirmingTrackId(confirmingTrackId === track.id ? null : track.id)
+                  }
+                  onCancelConfirm={() => setConfirmingTrackId(null)}
+                  onConfirmDelete={() => handleDeleteTrack(track.id)}
+                  isDeleting={deleteTrack.isPending}
+                  onPlayTrack={() => onPlayTrack(track.id)}
+                  onTogglePlayPause={onTogglePlayPause}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
 
       {(canEdit || playlist.openToAll) &&
@@ -396,6 +390,148 @@ function PlaylistCard({
           </Button>
         ))}
     </Card>
+  );
+}
+
+function GripIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className} aria-hidden="true">
+      <circle cx="7" cy="5" r="1.4" />
+      <circle cx="13" cy="5" r="1.4" />
+      <circle cx="7" cy="10" r="1.4" />
+      <circle cx="13" cy="10" r="1.4" />
+      <circle cx="7" cy="15" r="1.4" />
+      <circle cx="13" cy="15" r="1.4" />
+    </svg>
+  );
+}
+
+function TrackRow({
+  groupId,
+  track,
+  isCurrent,
+  isPlaying,
+  canDeleteThis,
+  canReorder,
+  isEditing,
+  onStartEdit,
+  onDoneEdit,
+  isConfirming,
+  onToggleConfirm,
+  onCancelConfirm,
+  onConfirmDelete,
+  isDeleting,
+  onPlayTrack,
+  onTogglePlayPause,
+}: {
+  groupId: string;
+  track: MusicTrack;
+  isCurrent: boolean;
+  isPlaying: boolean;
+  canDeleteThis: boolean;
+  canReorder: boolean;
+  isEditing: boolean;
+  onStartEdit: () => void;
+  onDoneEdit: () => void;
+  isConfirming: boolean;
+  onToggleConfirm: () => void;
+  onCancelConfirm: () => void;
+  onConfirmDelete: () => void;
+  isDeleting: boolean;
+  onPlayTrack: () => void;
+  onTogglePlayPause: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: track.id,
+    disabled: !canReorder,
+  });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-sm px-2 py-1 ${
+        isDragging
+          ? "z-10 bg-parchment-panel shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)]"
+          : isCurrent
+            ? "bg-oxblood/10 shadow-[inset_0_0_0_1px_rgba(107,22,32,0.35)]"
+            : "hover:bg-parchment-deep/40"
+      }`}
+    >
+      {isEditing ? (
+        <EditTrackForm groupId={groupId} track={track} onDone={onDoneEdit} />
+      ) : (
+        <div className="flex items-center justify-between gap-2">
+          {canReorder && (
+            <button
+              type="button"
+              aria-label={`Reordenar ${track.title}`}
+              className="shrink-0 cursor-grab touch-none text-ink-muted hover:text-oxblood active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <GripIcon className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => (isCurrent ? onTogglePlayPause() : onPlayTrack())}
+            className={`flex min-w-0 flex-1 items-center gap-2 text-left text-sm ${
+              isCurrent ? "text-oxblood" : "text-ink"
+            }`}
+          >
+            {isCurrent ? (
+              isPlaying ? (
+                <PauseIcon className="h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <PlayIcon className="h-3.5 w-3.5 shrink-0" />
+              )
+            ) : (
+              <PlayIcon className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+            )}
+            <span className="min-w-0 flex-1 truncate">
+              {track.title}
+              {track.addedByUsername && (
+                <span className="text-ink-muted"> · {track.addedByUsername}</span>
+              )}
+            </span>
+          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {canDeleteThis && (
+              <button
+                type="button"
+                onClick={onStartEdit}
+                aria-label={`Editar ${track.title}`}
+                className="text-xs text-ink-muted hover:text-oxblood"
+              >
+                Editar
+              </button>
+            )}
+            {canDeleteThis && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={onToggleConfirm}
+                  aria-label={`Borrar ${track.title}`}
+                  className="text-ink-muted hover:text-oxblood"
+                >
+                  ×
+                </button>
+                {isConfirming && (
+                  <MiniConfirmPopover
+                    message={`¿Borrar "${track.title}"?`}
+                    isLoading={isDeleting}
+                    onConfirm={onConfirmDelete}
+                    onCancel={onCancelConfirm}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </li>
   );
 }
 

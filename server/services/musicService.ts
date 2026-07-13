@@ -196,6 +196,41 @@ export async function deleteTrack(
   await prisma.musicTrack.delete({ where: { id: trackId } });
 }
 
+export async function reorderTracks(
+  playlistId: string,
+  groupId: string,
+  trackIds: string[],
+): Promise<MusicTrackDto[]> {
+  const playlist = await prisma.musicPlaylist.findUnique({
+    where: { id: playlistId },
+    include: { tracks: true },
+  });
+  if (!playlist || playlist.groupId !== groupId) {
+    throw new AppError(404, "PLAYLIST_NOT_FOUND", "Lista no encontrada");
+  }
+  const existingIds = new Set(playlist.tracks.map((t) => t.id));
+  const isValidOrder =
+    trackIds.length === playlist.tracks.length && trackIds.every((id) => existingIds.has(id));
+  if (!isValidOrder) {
+    throw new AppError(
+      422,
+      "INVALID_TRACK_ORDER",
+      "El orden enviado no coincide con los tracks de la lista",
+    );
+  }
+  await prisma.$transaction(
+    trackIds.map((id, index) =>
+      prisma.musicTrack.update({ where: { id }, data: { order: index } }),
+    ),
+  );
+  const tracks = await prisma.musicTrack.findMany({
+    where: { playlistId },
+    orderBy: { order: "asc" },
+    include: TRACK_INCLUDE,
+  });
+  return tracks.map(toTrackDto);
+}
+
 export async function setTrackLoop(
   trackId: string,
   groupId: string,
