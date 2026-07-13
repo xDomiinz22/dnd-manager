@@ -497,7 +497,7 @@ function TrackRow({
               )}
             </span>
           </button>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-3">
             {canDeleteThis && (
               <button
                 type="button"
@@ -514,7 +514,7 @@ function TrackRow({
                   type="button"
                   onClick={onToggleConfirm}
                   aria-label={`Borrar ${track.title}`}
-                  className="text-ink-muted hover:text-oxblood"
+                  className="flex h-6 w-6 items-center justify-center rounded-sm text-base leading-none text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood"
                 >
                   ×
                 </button>

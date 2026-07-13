@@ -467,6 +467,19 @@ Verificado en navegador sobre la ficha real de "XxAlbertoPro01xX": clicar "Manos
 
 Con esto quedan completadas las **7 partes pedidas** en esta ronda: editar canciones, quitar bucle duplicado, shuffle por lista, mini popup de borrado, buscadores (general + por lista), drag & drop para reordenar, y popups con blur en la ficha de personaje.
 
+### ✅ Fix: botón de borrar canción sin hit target real + separación visual con Editar
+
+El usuario reportó que pulsar la "×" de borrar un track "no lanzaba nada" y pidió separar un poco ese botón del de "Editar". Investigado a fondo (incluyendo instrumentación temporal con `console.log` en los handlers y comparación de clicks reales vs. sintéticos): el botón "×" medía **9.6px de ancho** (solo el glifo, sin padding ni área de click propia) — un objetivo casi imposible de acertar con precisión, tanto para un usuario real como para el tool de automatización de esta sesión. No era un problema de lógica (el `onClick`/`MiniConfirmPopover` siempre funcionó correctamente cuando el click aterrizaba de verdad en el botón).
+
+- `GroupMusicPage.tsx` (`TrackRow`): el botón de borrar ahora es una caja `h-6 w-6` con fondo al pasar el ratón (mismo lenguaje visual que el resto de botones-icono de la app), en vez de solo el carácter "×" suelto.
+- El gap entre "Editar" y el grupo de borrar pasó de `gap-1` a `gap-3` para que no queden pegados.
+
+Verificado en navegador: con el nuevo tamaño, clicks reales del tool de automatización abren el popup de confirmación de forma consistente (antes fallaba de forma intermitente); confirmado con `getBoundingClientRect()` que el área pasó de 9.6×24px a 24×24px.
+
+### ✅ Auditoría completa del reproductor: sin bugs reales encontrados
+
+A petición del usuario ("da algunos errores al mover el minuto de reproducción... comprueba que todas las funcionalidades del reproductor funcionan"), se auditó cada control con el volumen a 0 (para no molestar durante las pruebas): play/pausa, siguiente/anterior (con dos tracks reales), shuffle, bucle (persistencia confirmada vía `PATCH .../tracks/:id/loop` → 200), arrastre de la barra de progreso (incluido un arrastre "rápido" simulando varios `input` seguidos, sin cuelgues) y ajuste de volumen. Se detectó un warning de React ("a component is changing a controlled input to be uncontrolled") en `MiniPlayerBar.tsx`, pero tras aislarlo se confirmó que era un **artefacto de Hot Module Reload** de Vite (arrastraba un timestamp de una edición anterior en esta misma sesión de depuración) — no se reprodujo ni una sola vez en una carga completamente limpia de la página repitiendo la secuencia completa de controles. No se encontró ningún bug real del reproductor; los controles funcionan correctamente. `typecheck`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer
