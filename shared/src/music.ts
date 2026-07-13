@@ -45,6 +45,9 @@ export const addTrackSchema = z.object({
 });
 export type AddTrackInput = z.infer<typeof addTrackSchema>;
 
+export const updateTrackSchema = addTrackSchema;
+export type UpdateTrackInput = z.infer<typeof updateTrackSchema>;
+
 export const updateMemberMusicPermissionSchema = z.object({
   canEditMusic: z.boolean(),
 });

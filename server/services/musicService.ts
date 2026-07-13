@@ -147,6 +147,36 @@ export async function addTrack(
   return toTrackDto(track);
 }
 
+export async function updateTrack(
+  trackId: string,
+  groupId: string,
+  title: string,
+  url: string,
+  userId: string,
+  membership: GroupMember,
+): Promise<MusicTrackDto> {
+  const track = await prisma.musicTrack.findUnique({
+    where: { id: trackId },
+    include: { playlist: true },
+  });
+  if (!track || track.playlist.groupId !== groupId) {
+    throw new AppError(404, "TRACK_NOT_FOUND", "Track no encontrado");
+  }
+  if (!canManageMusic(membership) && track.addedByUserId !== userId) {
+    throw new AppError(403, "NOT_ALLOWED", "No tienes permiso para editar este track");
+  }
+  const youtubeId = extractYoutubeId(url);
+  if (!youtubeId) {
+    throw new AppError(422, "INVALID_YOUTUBE_URL", "Ese enlace no es un vídeo de YouTube válido");
+  }
+  const updated = await prisma.musicTrack.update({
+    where: { id: trackId },
+    data: { title, youtubeId },
+    include: TRACK_INCLUDE,
+  });
+  return toTrackDto(updated);
+}
+
 export async function deleteTrack(
   trackId: string,
   groupId: string,

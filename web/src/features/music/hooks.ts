@@ -4,6 +4,7 @@ import type {
   CreatePlaylistInput,
   RenamePlaylistInput,
   SetPlaylistOpenInput,
+  UpdateTrackInput,
 } from "@dnd-manager/shared";
 import { musicApi } from "./api";
 
@@ -47,6 +48,15 @@ export function useAddTrack(groupId: string) {
   return useMutation({
     mutationFn: ({ playlistId, input }: { playlistId: string; input: AddTrackInput }) =>
       musicApi.addTrack(groupId, playlistId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupMusicKey(groupId) }),
+  });
+}
+
+export function useUpdateTrack(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ trackId, input }: { trackId: string; input: UpdateTrackInput }) =>
+      musicApi.updateTrack(groupId, trackId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupMusicKey(groupId) }),
   });
 }

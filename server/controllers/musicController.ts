@@ -5,6 +5,7 @@ import {
   renamePlaylistSchema,
   setPlaylistOpenSchema,
   setTrackLoopSchema,
+  updateTrackSchema,
 } from "@dnd-manager/shared";
 import * as musicService from "../services/musicService";
 
@@ -80,6 +81,23 @@ export const addTrackHandler: RequestHandler = async (req, res, next) => {
       req.groupMembership!,
     );
     res.status(201).json(track);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateTrackHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = updateTrackSchema.parse(req.body);
+    const track = await musicService.updateTrack(
+      req.params.trackId!,
+      req.params.groupId!,
+      input.title,
+      input.url,
+      req.userId!,
+      req.groupMembership!,
+    );
+    res.json(track);
   } catch (err) {
     next(err);
   }

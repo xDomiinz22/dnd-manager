@@ -412,6 +412,15 @@ A petición del usuario ("no quiero que se vean los campos comprimidos... esto l
 
 Verificado en navegador a 375px con datos de prueba reales (segundo jugador unido al grupo para poder ver la fila de "Gestiona música" + Expulsar; nombres de grupo/track/página deliberadamente largos): las 6 filas corregidas muestran su texto en una sola línea (o truncado con "…"), sin ningún botón partido a media palabra; `document.body.scrollWidth` sigue igual a `window.innerWidth` en todas las páginas tocadas (sin overflow horizontal de página). `typecheck`/`lint`/`test`/`build` limpios.
 
+### ✅ Editar canciones y quitar el bucle duplicado de cada fila (partes 1-2 de 7)
+
+Primeras dos de siete funcionalidades pedidas por el usuario para música/fichas de personaje, implementadas una a una:
+
+- **Editar canciones** (título/enlace): nuevo `PATCH /groups/:groupId/music/tracks/:trackId` (`updateTrack` en `musicService.ts`) con el mismo criterio de permiso que borrar (Master/`canEditMusic`/quien añadió el track). `updateTrackSchema` en `shared/src/music.ts` reutiliza la forma de `addTrackSchema`. En `GroupMusicPage.tsx`, pulsar "Editar" en una fila sustituye su contenido por `EditTrackForm` (mismo patrón inline-form ya usado para renombrar lista/añadir track); el campo de enlace se rellena reconstruyendo la URL canónica a partir del `youtubeId` guardado (`https://www.youtube.com/watch?v=...`), ya que la DB nunca guarda la URL original pegada.
+- **Quitado el botón de bucle por track**: cada fila de track tenía su propio botón de bucle, duplicando el que ya existe en la mini-barra del reproductor (`PlayerControls.tsx`, siempre visible mientras suena música). Se quitó el botón, el prop `onToggleTrackLoop` y el import de `RepeatIcon` de `GroupMusicPage.tsx` — el bucle ahora solo se controla desde el reproductor, donde tiene sentido (afecta al track que está sonando, no a uno cualquiera de la lista).
+
+Verificado en navegador: edición de título feliz (toast "Track actualizado."), rechazo de URL de YouTube inválida (422, el formulario no se cierra); tras quitar el botón de bucle, la fila de un track ya no lo muestra pero la mini-barra inferior sigue ofreciendo "Repetir este track" con normalidad. `typecheck`/`test` limpios.
+
 ---
 
 ## Qué queda por hacer

@@ -10,6 +10,7 @@ import {
   renamePlaylistHandler,
   setPlaylistOpenToAllHandler,
   setTrackLoopHandler,
+  updateTrackHandler,
 } from "../controllers/musicController";
 
 export const musicRouter = Router();
@@ -44,6 +45,12 @@ musicRouter.post(
   requireAuth,
   requireGroupMember,
   addTrackHandler,
+);
+musicRouter.patch(
+  "/groups/:groupId/music/tracks/:trackId",
+  requireAuth,
+  requireGroupMember,
+  updateTrackHandler,
 );
 musicRouter.delete(
   "/groups/:groupId/music/tracks/:trackId",

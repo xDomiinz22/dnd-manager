@@ -6,10 +6,13 @@ import {
   addTrackSchema,
   createPlaylistSchema,
   renamePlaylistSchema,
+  updateTrackSchema,
   type AddTrackInput,
   type CreatePlaylistInput,
   type MusicPlaylist,
+  type MusicTrack,
   type RenamePlaylistInput,
+  type UpdateTrackInput,
 } from "@dnd-manager/shared";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -20,6 +23,7 @@ import {
   useGroupMusic,
   useRenamePlaylist,
   useSetPlaylistOpenToAll,
+  useUpdateTrack,
 } from "../features/music/hooks";
 import { useAmbientPlayerContext } from "../features/music/AmbientPlayerContext";
 import { Button } from "../components/ui/Button";
@@ -29,7 +33,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
-import { PauseIcon, PlayIcon, RepeatIcon } from "../components/ui/PlayerIcons";
+import { PauseIcon, PlayIcon } from "../components/ui/PlayerIcons";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
 export function GroupMusicPage() {
@@ -102,7 +106,6 @@ export function GroupMusicPage() {
               isPlaying={player.isPlaying}
               onPlayTrack={(trackId) => player.playFromPlaylist(groupId!, playlist, trackId)}
               onTogglePlayPause={player.togglePlayPause}
-              onToggleTrackLoop={(trackId) => player.toggleTrackLoop(trackId)}
             />
           ))}
         </div>
@@ -120,7 +123,6 @@ function PlaylistCard({
   isPlaying,
   onPlayTrack,
   onTogglePlayPause,
-  onToggleTrackLoop,
 }: {
   groupId: string;
   playlist: MusicPlaylist;
@@ -130,12 +132,12 @@ function PlaylistCard({
   isPlaying: boolean;
   onPlayTrack: (trackId: string) => void;
   onTogglePlayPause: () => void;
-  onToggleTrackLoop: (trackId: string) => void;
 }) {
   const [renaming, setRenaming] = useState(false);
   const [addingTrack, setAddingTrack] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingTrackId, setConfirmingTrackId] = useState<string | null>(null);
+  const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
   const deletePlaylist = useDeletePlaylist(groupId);
   const deleteTrack = useDeleteTrack(groupId);
   const setOpenToAll = useSetPlaylistOpenToAll(groupId);
@@ -234,68 +236,75 @@ function PlaylistCard({
                     : "hover:bg-parchment-deep/40"
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => (isCurrent ? onTogglePlayPause() : onPlayTrack(track.id))}
-                    className={`flex min-w-0 flex-1 items-center gap-2 text-left text-sm ${
-                      isCurrent ? "text-oxblood" : "text-ink"
-                    }`}
-                  >
-                    {isCurrent ? (
-                      isPlaying ? (
-                        <PauseIcon className="h-3.5 w-3.5 shrink-0" />
-                      ) : (
-                        <PlayIcon className="h-3.5 w-3.5 shrink-0" />
-                      )
-                    ) : (
-                      <PlayIcon className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
-                    )}
-                    <span className="min-w-0 flex-1 truncate">
-                      {track.title}
-                      {track.addedByUsername && (
-                        <span className="text-ink-muted"> · {track.addedByUsername}</span>
-                      )}
-                    </span>
-                  </button>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => onToggleTrackLoop(track.id)}
-                      aria-label={`Repetir ${track.title}`}
-                      aria-pressed={track.loop}
-                      className={`flex h-6 w-6 items-center justify-center rounded-sm transition-shadow ${
-                        track.loop
-                          ? "bg-oxblood text-parchment shadow-[0_0_0_1px_rgba(201,162,39,0.6)] hover:bg-oxblood-dark"
-                          : "text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood"
-                      }`}
-                    >
-                      <RepeatIcon className="h-3.5 w-3.5" />
-                    </button>
-                    {canDeleteThis && (
+                {editingTrackId === track.id ? (
+                  <EditTrackForm
+                    groupId={groupId}
+                    track={track}
+                    onDone={() => setEditingTrackId(null)}
+                  />
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-2">
                       <button
                         type="button"
-                        onClick={() =>
-                          setConfirmingTrackId(confirmingTrackId === track.id ? null : track.id)
-                        }
-                        aria-label={`Borrar ${track.title}`}
-                        className="text-ink-muted hover:text-oxblood"
+                        onClick={() => (isCurrent ? onTogglePlayPause() : onPlayTrack(track.id))}
+                        className={`flex min-w-0 flex-1 items-center gap-2 text-left text-sm ${
+                          isCurrent ? "text-oxblood" : "text-ink"
+                        }`}
                       >
-                        ×
+                        {isCurrent ? (
+                          isPlaying ? (
+                            <PauseIcon className="h-3.5 w-3.5 shrink-0" />
+                          ) : (
+                            <PlayIcon className="h-3.5 w-3.5 shrink-0" />
+                          )
+                        ) : (
+                          <PlayIcon className="h-3.5 w-3.5 shrink-0 text-ink-muted" />
+                        )}
+                        <span className="min-w-0 flex-1 truncate">
+                          {track.title}
+                          {track.addedByUsername && (
+                            <span className="text-ink-muted"> · {track.addedByUsername}</span>
+                          )}
+                        </span>
                       </button>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {canDeleteThis && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingTrackId(track.id)}
+                            aria-label={`Editar ${track.title}`}
+                            className="text-xs text-ink-muted hover:text-oxblood"
+                          >
+                            Editar
+                          </button>
+                        )}
+                        {canDeleteThis && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setConfirmingTrackId(confirmingTrackId === track.id ? null : track.id)
+                            }
+                            aria-label={`Borrar ${track.title}`}
+                            className="text-ink-muted hover:text-oxblood"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {confirmingTrackId === track.id && (
+                      <ConfirmPanel
+                        message={`Vas a borrar "${track.title}" de esta lista.`}
+                        confirmLabel="Confirmar borrado"
+                        loadingText="Borrando..."
+                        isLoading={deleteTrack.isPending}
+                        onConfirm={() => handleDeleteTrack(track.id)}
+                        onCancel={() => setConfirmingTrackId(null)}
+                        className="mt-2 border-t-0 pt-0"
+                      />
                     )}
-                  </div>
-                </div>
-                {confirmingTrackId === track.id && (
-                  <ConfirmPanel
-                    message={`Vas a borrar "${track.title}" de esta lista.`}
-                    confirmLabel="Confirmar borrado"
-                    loadingText="Borrando..."
-                    isLoading={deleteTrack.isPending}
-                    onConfirm={() => handleDeleteTrack(track.id)}
-                    onCancel={() => setConfirmingTrackId(null)}
-                    className="mt-2 border-t-0 pt-0"
-                  />
+                  </>
                 )}
               </li>
             );
@@ -458,6 +467,70 @@ function AddTrackForm({
       <div className="flex gap-2">
         <Button type="submit" isLoading={addTrack.isPending} loadingText="Añadiendo...">
           Añadir
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Cancelar
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function EditTrackForm({
+  groupId,
+  track,
+  onDone,
+}: {
+  groupId: string;
+  track: MusicTrack;
+  onDone: () => void;
+}) {
+  const updateTrack = useUpdateTrack(groupId);
+  const toast = useToast();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<UpdateTrackInput>({
+    resolver: zodResolver(updateTrackSchema),
+    defaultValues: {
+      title: track.title,
+      url: `https://www.youtube.com/watch?v=${track.youtubeId}`,
+    },
+  });
+
+  function onSubmit(values: UpdateTrackInput) {
+    updateTrack.mutate(
+      { trackId: track.id, input: values },
+      {
+        onSuccess: () => {
+          toast.success("Track actualizado.");
+          onDone();
+        },
+        onError: (err) => toast.error(toErrorMessage(err, "No se pudo actualizar el track.")),
+      },
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="py-1">
+      <TextField
+        label="Título"
+        placeholder="Título del track"
+        wrapperClassName="mb-2"
+        error={errors.title?.message}
+        {...register("title")}
+      />
+      <TextField
+        label="Enlace de YouTube"
+        placeholder="https://www.youtube.com/watch?v=..."
+        wrapperClassName="mb-2"
+        error={errors.url?.message}
+        {...register("url")}
+      />
+      <div className="flex gap-2">
+        <Button type="submit" isLoading={updateTrack.isPending} loadingText="Guardando...">
+          Guardar
         </Button>
         <Button type="button" variant="ghost" onClick={onDone}>
           Cancelar
