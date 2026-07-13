@@ -427,6 +427,12 @@ Nueva acción `playFromPlaylistShuffled(groupId, playlist)` en `AmbientPlayerCon
 
 Verificado en navegador: con 2 tracks en una lista, pulsar el botón arranca la reproducción de uno de ellos y dispara `aria-pressed="true"` en el botón de shuffle del reproductor; con la lista vacía el botón no aparece. `typecheck`/`test` limpios.
 
+### ✅ Mini popup de confirmación al borrar una canción (parte 4 de 7)
+
+El `ConfirmPanel` (mensaje + botones a todo lo ancho, insertado bajo la fila) resultaba desproporcionado para borrar un solo track. Nuevo `MiniConfirmPopover.tsx` (`components/ui/`): una tarjeta flotante compacta anclada al propio botón "×" (`position: absolute`, el botón vive en un contenedor `relative`), con el mensaje y dos botones icono (✓/✕) en vez de texto largo. Se cierra solo al pulsar fuera (listener de `click` en `document`, añadido en un `useEffect` — deliberadamente **no** `mousedown`/`pointerdown`, para no cerrarse en el mismo click que lo abre: el listener se registra después de que ese primer click ya terminó de burbujear) o con Escape. Solo se aplicó a borrar tracks (lo que pidió el usuario explícitamente); borrar listas sigue usando el `ConfirmPanel` de siempre.
+
+Verificado con clicks reales del DOM (`element.click()`, ya que el click sintético del tool de automatización de este entorno no disparaba el popup de forma fiable — un quirk conocido de esta sesión, no del código): el popup aparece con el mensaje `¿Borrar "..."?`; un click fuera lo cierra sin borrar; Escape lo cierra igual; confirmar dispara el `DELETE` real y el track desaparece de la lista. `typecheck`/`test` limpios.
+
 ---
 
 ## Qué queda por hacer

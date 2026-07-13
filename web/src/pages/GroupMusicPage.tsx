@@ -32,6 +32,7 @@ import { TextField } from "../components/ui/TextField";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
+import { MiniConfirmPopover } from "../components/ui/MiniConfirmPopover";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { PauseIcon, PlayIcon, ShuffleIcon } from "../components/ui/PlayerIcons";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
@@ -296,30 +297,31 @@ function PlaylistCard({
                           </button>
                         )}
                         {canDeleteThis && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setConfirmingTrackId(confirmingTrackId === track.id ? null : track.id)
-                            }
-                            aria-label={`Borrar ${track.title}`}
-                            className="text-ink-muted hover:text-oxblood"
-                          >
-                            ×
-                          </button>
+                          <div className="relative">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setConfirmingTrackId(
+                                  confirmingTrackId === track.id ? null : track.id,
+                                )
+                              }
+                              aria-label={`Borrar ${track.title}`}
+                              className="text-ink-muted hover:text-oxblood"
+                            >
+                              ×
+                            </button>
+                            {confirmingTrackId === track.id && (
+                              <MiniConfirmPopover
+                                message={`¿Borrar "${track.title}"?`}
+                                isLoading={deleteTrack.isPending}
+                                onConfirm={() => handleDeleteTrack(track.id)}
+                                onCancel={() => setConfirmingTrackId(null)}
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>
-                    {confirmingTrackId === track.id && (
-                      <ConfirmPanel
-                        message={`Vas a borrar "${track.title}" de esta lista.`}
-                        confirmLabel="Confirmar borrado"
-                        loadingText="Borrando..."
-                        isLoading={deleteTrack.isPending}
-                        onConfirm={() => handleDeleteTrack(track.id)}
-                        onCancel={() => setConfirmingTrackId(null)}
-                        className="mt-2 border-t-0 pt-0"
-                      />
-                    )}
                   </>
                 )}
               </li>
