@@ -61,7 +61,10 @@ export function PlayerControls({
       </button>
       <button
         type="button"
-        onClick={onPrev}
+        onClick={(e) => {
+          onPrev();
+          e.currentTarget.blur();
+        }}
         aria-label="Track anterior"
         className={`${ICON_BUTTON} text-ink hover:bg-parchment-deep/60 hover:text-oxblood`}
       >
@@ -78,7 +81,10 @@ export function PlayerControls({
       </button>
       <button
         type="button"
-        onClick={onNext}
+        onClick={(e) => {
+          onNext();
+          e.currentTarget.blur();
+        }}
         aria-label="Siguiente track"
         className={`${ICON_BUTTON} text-ink hover:bg-parchment-deep/60 hover:text-oxblood`}
       >

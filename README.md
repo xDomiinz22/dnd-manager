@@ -480,6 +480,12 @@ Verificado en navegador: con el nuevo tamaño, clicks reales del tool de automat
 
 A petición del usuario ("da algunos errores al mover el minuto de reproducción... comprueba que todas las funcionalidades del reproductor funcionan"), se auditó cada control con el volumen a 0 (para no molestar durante las pruebas): play/pausa, siguiente/anterior (con dos tracks reales), shuffle, bucle (persistencia confirmada vía `PATCH .../tracks/:id/loop` → 200), arrastre de la barra de progreso (incluido un arrastre "rápido" simulando varios `input` seguidos, sin cuelgues) y ajuste de volumen. Se detectó un warning de React ("a component is changing a controlled input to be uncontrolled") en `MiniPlayerBar.tsx`, pero tras aislarlo se confirmó que era un **artefacto de Hot Module Reload** de Vite (arrastraba un timestamp de una edición anterior en esta misma sesión de depuración) — no se reprodujo ni una sola vez en una carga completamente limpia de la página repitiendo la secuencia completa de controles. No se encontró ningún bug real del reproductor; los controles funcionan correctamente. `typecheck`/`test`/`build` limpios.
 
+### ✅ Fix: los botones de siguiente/anterior quedaban con aspecto "pulsado"
+
+A diferencia de shuffle/bucle (que sí necesitan mostrar un estado activo persistente porque son toggles), los botones de saltar de track no tienen ningún estado que mostrar — el foco/hover que quedaba pegado tras pulsarlos no aportaba información, solo ruido visual. `PlayerControls.tsx`: los `onClick` de "Track anterior" y "Siguiente track" ahora llaman a `e.currentTarget.blur()` justo después de disparar la acción, para que el botón vuelva a su estado neutro en vez de quedarse marcado.
+
+Verificado en navegador: tras un click real en cualquiera de los dos botones, `document.activeElement` vuelve a ser `<body>` (antes se quedaba en el propio botón). `typecheck`/`test` limpios.
+
 ---
 
 ## Qué queda por hacer
