@@ -2,7 +2,7 @@ import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNod
 import { useCloseOnOutsideClick } from "../../lib/useCloseOnOutsideClick";
 
 const DELETE_WIDTH = 72;
-const RIGHT_HINT_WIDTH = 96;
+const RIGHT_HINT_WIDTH = 112;
 const RIGHT_ACTION_THRESHOLD = 64;
 const OPEN_THRESHOLD = DELETE_WIDTH * 0.6;
 const GESTURE_TOLERANCE = 8;
@@ -52,36 +52,89 @@ export function SwipeableRow({
   children,
   contentClassName = "",
   onSwipeRight,
-  swipeRightLabel = "Añadir a Reproducir después",
+  swipeRightLabel = "A la cola",
   onDelete,
   deleteLabel = "Borrar",
   className = "",
 }: SwipeableRowProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [translateX, setTranslateX] = useState(0);
-  const [openSide, setOpenSide] = useState<"left" | null>(null);
+  const [translateX, setTranslateXState] = useState(0);
+  // Espejo síncrono del estado: `endGesture` necesita el valor final exacto
+  // al soltar. Leerlo desde la forma funcional de `setState` (como se hacía
+  // antes) permitía que StrictMode invocara el efecto secundario
+  // (onSwipeRight/onDelete) más de una vez al comprobar la pureza del
+  // updater — de ahí los toasts duplicados. Con el ref, la decisión se toma
+  // una sola vez, fuera de cualquier updater de setState.
+  const translateXRef = useRef(0);
+  // No necesita ser estado de React: no se lee en el JSX, solo en la lógica
+  // de gestos (qué posición base usar al iniciar el siguiente arrastre).
+  const openSideRef = useRef<"left" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const gestureRef = useRef<{
     startX: number;
     startY: number;
     horizontal: boolean | null;
-    pointerId: number;
   } | null>(null);
+
+  function setTranslateX(value: number) {
+    translateXRef.current = value;
+    setTranslateXState(value);
+  }
+
+  function setOpenSide(value: "left" | null) {
+    openSideRef.current = value;
+  }
 
   useCloseOnOutsideClick(containerRef, () => {
     setOpenSide(null);
     setTranslateX(0);
   });
 
+  function endGesture() {
+    window.removeEventListener("pointerup", stableEndGesture);
+    window.removeEventListener("pointercancel", stableEndGesture);
+    const g = gestureRef.current;
+    gestureRef.current = null;
+    setIsDragging(false);
+    if (!g || !g.horizontal) return;
+
+    const current = translateXRef.current;
+    if (current > RIGHT_ACTION_THRESHOLD && onSwipeRight) {
+      setOpenSide(null);
+      setTranslateX(0);
+      onSwipeRight();
+      return;
+    }
+    if (current < -OPEN_THRESHOLD && onDelete) {
+      setOpenSide("left");
+      setTranslateX(-DELETE_WIDTH);
+      return;
+    }
+    setOpenSide(null);
+    setTranslateX(openSideRef.current === "left" ? -DELETE_WIDTH : 0);
+  }
+
+  // `endGesture` se redefine en cada render (cierra sobre las props/estado
+  // de ese render), pero los listeners de `window` necesitan una referencia
+  // de función ESTABLE para poder añadirse/quitarse de forma fiable entre
+  // renders — si no, `removeEventListener` apunta a una copia distinta a la
+  // que se añadió y el listener se queda pegado para siempre (la fila
+  // quedaba "atascada" a medio deslizar). `stableEndGesture` (creada una
+  // sola vez vía `useRef`) siempre delega en la versión más reciente.
+  const endGestureRef = useRef(endGesture);
+  endGestureRef.current = endGesture;
+  const stableEndGestureRefObj = useRef(() => endGestureRef.current());
+  const stableEndGesture = stableEndGestureRefObj.current;
+
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest("[data-no-swipe]")) return;
-    gestureRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      horizontal: null,
-      pointerId: e.pointerId,
-    };
+    gestureRef.current = { startX: e.clientX, startY: e.clientY, horizontal: null };
+    // Red de seguridad: si el pointerup/cancel no llega al propio elemento
+    // (p.ej. pérdida de captura del puntero durante un re-render a mitad de
+    // gesto), esto garantiza que el gesto siempre termine. Idempotente.
+    window.addEventListener("pointerup", stableEndGesture);
+    window.addEventListener("pointercancel", stableEndGesture);
   }
 
   function handlePointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -95,37 +148,18 @@ export function SwipeableRow({
       g.horizontal = Math.abs(deltaX) > Math.abs(deltaY);
       if (!g.horizontal) {
         gestureRef.current = null;
+        window.removeEventListener("pointerup", stableEndGesture);
+        window.removeEventListener("pointercancel", stableEndGesture);
         return;
       }
-      e.currentTarget.setPointerCapture(g.pointerId);
+      e.currentTarget.setPointerCapture(e.pointerId);
       setIsDragging(true);
     }
 
-    const base = openSide === "left" ? -DELETE_WIDTH : 0;
+    const base = openSideRef.current === "left" ? -DELETE_WIDTH : 0;
     const maxRight = onSwipeRight ? RIGHT_HINT_WIDTH : 0;
     const maxLeft = onDelete ? -DELETE_WIDTH : 0;
     setTranslateX(Math.min(maxRight, Math.max(maxLeft, base + deltaX)));
-  }
-
-  function endGesture() {
-    const g = gestureRef.current;
-    gestureRef.current = null;
-    setIsDragging(false);
-    if (!g || !g.horizontal) return;
-
-    setTranslateX((current) => {
-      if (current > RIGHT_ACTION_THRESHOLD && onSwipeRight) {
-        onSwipeRight();
-        setOpenSide(null);
-        return 0;
-      }
-      if (current < -OPEN_THRESHOLD && onDelete) {
-        setOpenSide("left");
-        return -DELETE_WIDTH;
-      }
-      setOpenSide(null);
-      return 0;
-    });
   }
 
   function handleConfirmDelete() {
@@ -151,7 +185,7 @@ export function SwipeableRow({
       {onSwipeRight && (
         <div
           aria-hidden="true"
-          className="absolute inset-y-0 left-0 flex w-[96px] items-center bg-oxblood pl-3 text-xs font-medium text-parchment"
+          className="absolute inset-y-0 left-0 flex w-[112px] items-center bg-oxblood px-3 text-center text-[0.7rem] font-medium leading-tight text-parchment"
           style={{ opacity: Math.max(0, Math.min(1, translateX / RIGHT_ACTION_THRESHOLD)) }}
         >
           {swipeRightLabel}
@@ -160,8 +194,8 @@ export function SwipeableRow({
       <div
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
-        onPointerUp={endGesture}
-        onPointerCancel={endGesture}
+        onPointerUp={stableEndGesture}
+        onPointerCancel={stableEndGesture}
         style={{
           transform: `translateX(${translateX}px)`,
           transition: isDragging ? "none" : "transform 200ms cubic-bezier(0.22, 1, 0.36, 1)",

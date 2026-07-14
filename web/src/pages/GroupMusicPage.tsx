@@ -144,7 +144,7 @@ export function GroupMusicPage() {
                     onPlayTrack={(trackId) => player.playFromPlaylist(groupId!, playlist, trackId)}
                     onTogglePlayPause={player.togglePlayPause}
                     onPlayShuffled={() => player.playFromPlaylistShuffled(groupId!, playlist)}
-                    onAddToTempQueue={player.addToTempQueue}
+                    onAddToTempQueue={(track) => player.addToTempQueue(track, groupId!)}
                     globalQuery={normalizedGlobalQuery}
                   />
                 ))}

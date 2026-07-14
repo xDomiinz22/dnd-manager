@@ -72,7 +72,10 @@ export function PlayerControls({
       </button>
       <button
         type="button"
-        onClick={onTogglePlayPause}
+        onClick={(e) => {
+          onTogglePlayPause();
+          e.currentTarget.blur();
+        }}
         disabled={!isReady}
         aria-label={isPlaying ? "Pausar" : "Reproducir"}
         className={`${ICON_BUTTON} text-oxblood hover:bg-parchment-deep/60`}

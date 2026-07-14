@@ -27,7 +27,7 @@ interface AmbientPlayerContextValue extends Omit<AmbientPlayerControls, "play" |
    * "borrada" en cuanto vuelve a quedar vacía — no hay estado aparte.
    */
   tempQueue: MusicTrack[];
-  addToTempQueue: (track: MusicTrack) => void;
+  addToTempQueue: (track: MusicTrack, groupId: string) => void;
   removeFromTempQueue: (trackId: string) => void;
 }
 
@@ -200,7 +200,23 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     setPlaylist((prev) => (prev && prev.id === next.id ? next : prev));
   }
 
-  function addToTempQueue(track: MusicTrack) {
+  function addToTempQueue(track: MusicTrack, groupIdForTrack: string) {
+    // Si no suena nada (ni de la lista normal ni de la propia cola), el
+    // track no llega a "esperar" en la cola — se reproduce directamente,
+    // igual que si `advance()` lo hubiera sacado ya. Comprobado con refs
+    // (no con `currentTrack`/estado de React) porque esto puede llamarse
+    // justo después de otro cambio en el mismo tick, antes de que React
+    // haya vuelto a renderizar con el valor fresco.
+    const isIdle = !currentTrackDbIdRef.current && !activeTempTrackRef.current;
+    if (isIdle) {
+      // La mini-barra solo se muestra si `groupId` está fijado (normalmente
+      // solo lo hace `playFromPlaylist`); si el reproductor estaba inactivo,
+      // hay que fijarlo aquí también o el track suena "a ciegas", sin barra.
+      setGroupId(groupIdForTrack);
+      setActiveTempTrack(track);
+      playRef.current(track.youtubeId);
+      return;
+    }
     setTempQueue((prev) => (prev.some((t) => t.id === track.id) ? prev : [...prev, track]));
   }
 
