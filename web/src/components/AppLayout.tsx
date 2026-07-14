@@ -6,6 +6,7 @@ import {
   useAmbientPlayerContext,
 } from "../features/music/AmbientPlayerContext";
 import { MiniPlayerBar } from "./music/MiniPlayerBar";
+import { TempQueueLauncher } from "./music/TempQueueLauncher";
 import { Button } from "./ui/Button";
 
 export function AppLayout() {
@@ -68,6 +69,7 @@ function AppLayoutContent() {
       </div>
 
       <MiniPlayerBar />
+      <TempQueueLauncher />
     </div>
   );
 }

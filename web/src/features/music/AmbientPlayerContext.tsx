@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { MusicPlaylist, MusicTrack } from "@dnd-manager/shared";
 import { useAmbientPlayer, type AmbientPlayerControls } from "./useAmbientPlayer";
@@ -18,6 +18,17 @@ interface AmbientPlayerContextValue extends Omit<AmbientPlayerControls, "play" |
   toggleTrackLoop: (trackId: string) => void;
   /** Refresca el snapshot activo con datos más recientes (no-op si `next` no es la lista que suena ahora mismo). */
   syncPlaylistIfActive: (next: MusicPlaylist) => void;
+  /**
+   * Cola "reproducir a continuación": puramente local a este navegador (no
+   * se guarda en el backend, es una preferencia de escucha efímera). Un
+   * track se añade deslizando su fila de izquierda a derecha; `playNext`/el
+   * fin natural de un track la vacían por orden antes de seguir con la
+   * lista normal. Se considera "creada" en cuanto tiene algún elemento y
+   * "borrada" en cuanto vuelve a quedar vacía — no hay estado aparte.
+   */
+  tempQueue: MusicTrack[];
+  addToTempQueue: (track: MusicTrack) => void;
+  removeFromTempQueue: (trackId: string) => void;
 }
 
 const AmbientPlayerContext = createContext<AmbientPlayerContextValue | null>(null);
@@ -29,6 +40,12 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   const [playlist, setPlaylist] = useState<MusicPlaylist | null>(null);
   const [currentTrackDbId, setCurrentTrackDbId] = useState<string | null>(null);
   const [shuffle, setShuffle] = useState(false);
+  const [tempQueue, setTempQueue] = useState<MusicTrack[]>([]);
+  // Distinto de `currentTrackDbId`: cuando se está reproduciendo un track que
+  // vino de la cola temporal, el puntero de la lista normal (`currentTrackDbId`)
+  // se deja quieto donde estaba, para poder retomar la lista normal en el
+  // punto correcto en cuanto la cola temporal se vacíe.
+  const [activeTempTrack, setActiveTempTrack] = useState<MusicTrack | null>(null);
 
   // Refs con el estado más reciente: `handleEnded` corre dentro de un
   // listener de la YT API creado una sola vez, así que necesita leer siempre
@@ -40,12 +57,29 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   const shuffleRef = useRef(shuffle);
   shuffleRef.current = shuffle;
   const shuffleHistoryRef = useRef<string[]>([]);
+  const tempQueueRef = useRef(tempQueue);
+  tempQueueRef.current = tempQueue;
+  const activeTempTrackRef = useRef(activeTempTrack);
+  activeTempTrackRef.current = activeTempTrack;
   // `player.play` todavía no existe cuando se define `handleEnded` más abajo
   // (hace falta pasársela a useAmbientPlayer antes de tener `player`) — este
   // ref rompe esa dependencia circular.
   const playRef = useRef<(youtubeId: string) => void>(() => {});
 
   function advance() {
+    // La cola temporal siempre tiene prioridad sobre la lista normal —
+    // mismo criterio que "reproducir a continuación" en Spotify: se vacía
+    // en orden (FIFO) antes de retomar la lista de donde se había quedado.
+    const queue = tempQueueRef.current;
+    if (queue.length > 0) {
+      const [next, ...rest] = queue;
+      setTempQueue(rest);
+      setActiveTempTrack(next!);
+      playRef.current(next!.youtubeId);
+      return;
+    }
+    setActiveTempTrack(null);
+
     const list = playlistRef.current;
     if (!list || list.tracks.length === 0) return;
     const tracks = list.tracks;
@@ -71,9 +105,11 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   function handleEnded() {
+    // Un track de la cola temporal no tiene bucle propio (no hay UI para
+    // ello) — `current` sale undefined y cae directo a `advance()`.
     const list = playlistRef.current;
     const current = list?.tracks.find((t) => t.id === currentTrackDbIdRef.current);
-    if (current?.loop) {
+    if (current?.loop && !activeTempTrackRef.current) {
       // Bucle solo se respeta al terminar solo; "siguiente" manual (advance
       // llamado directamente desde fuera) siempre cambia de canción.
       playRef.current(current.youtubeId);
@@ -88,6 +124,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   function playFromPlaylist(nextGroupId: string, nextPlaylist: MusicPlaylist, trackId: string) {
     const track = nextPlaylist.tracks.find((t) => t.id === trackId);
     if (!track) return;
+    setActiveTempTrack(null);
     setGroupId(nextGroupId);
     setPlaylist(nextPlaylist);
     setCurrentTrackDbId(trackId);
@@ -98,6 +135,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   function playFromPlaylistShuffled(nextGroupId: string, nextPlaylist: MusicPlaylist) {
     if (nextPlaylist.tracks.length === 0) return;
     const track = nextPlaylist.tracks[Math.floor(Math.random() * nextPlaylist.tracks.length)]!;
+    setActiveTempTrack(null);
     setGroupId(nextGroupId);
     setPlaylist(nextPlaylist);
     setCurrentTrackDbId(track.id);
@@ -107,6 +145,15 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   function playPrev() {
+    // Reproduciendo un track de la cola temporal: no hay un "anterior"
+    // razonable que reconstruir (la cola ya perdió el que sonaba justo
+    // antes), así que reinicia el propio track desde el principio — mismo
+    // fallback simple que usan la mayoría de reproductores para este caso.
+    if (activeTempTrackRef.current) {
+      player.seekTo(0);
+      return;
+    }
+
     const list = playlistRef.current;
     if (!list || list.tracks.length === 0) return;
 
@@ -153,7 +200,137 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     setPlaylist((prev) => (prev && prev.id === next.id ? next : prev));
   }
 
-  const currentTrack = playlist?.tracks.find((t) => t.id === currentTrackDbId) ?? null;
+  function addToTempQueue(track: MusicTrack) {
+    setTempQueue((prev) => (prev.some((t) => t.id === track.id) ? prev : [...prev, track]));
+  }
+
+  function removeFromTempQueue(trackId: string) {
+    setTempQueue((prev) => prev.filter((t) => t.id !== trackId));
+  }
+
+  const currentTrack =
+    activeTempTrack ?? playlist?.tracks.find((t) => t.id === currentTrackDbId) ?? null;
+
+  // Refs con el estado más reciente para los atajos de teclado: el listener
+  // se registra una sola vez (deps vacías) para no reañadirlo en cada tick
+  // del poll de `currentTime` (cada 500ms) — así que todo lo que lee debe
+  // venir de un ref, nunca cerrar sobre una variable de un render concreto.
+  const playerLatestRef = useRef(player);
+  playerLatestRef.current = player;
+  const currentTimeRef = useRef(player.currentTime);
+  currentTimeRef.current = player.currentTime;
+  const durationRef = useRef(player.duration);
+  durationRef.current = player.duration;
+  const volumeRef = useRef(player.volume);
+  volumeRef.current = player.volume;
+  const currentTrackRef = useRef(currentTrack);
+  currentTrackRef.current = currentTrack;
+  const lastNonZeroVolumeRef = useRef(player.volume || 70);
+  if (player.volume > 0) lastNonZeroVolumeRef.current = player.volume;
+  // `handleKeyDown` (definido más abajo) se reasigna en cada render — pasar
+  // por un ref aquí (en vez de referenciar la función directamente) es
+  // necesario para que este `useEffect` solo lea un `.current` en vez de
+  // una función "inestable": el analizador de dependencias de
+  // `react-hooks/exhaustive-deps` de esta instalación de ESLint 9 crashea
+  // (`context.getSource is not a function`, gotcha ya conocido de esta
+  // sesión) al intentar recorrer el cuerpo de una función de componente
+  // referenciada así de directo.
+  const handleKeyDownRef = useRef((_e: KeyboardEvent) => {});
+
+  useEffect(() => {
+    function listener(e: KeyboardEvent) {
+      handleKeyDownRef.current(e);
+    }
+    document.addEventListener("keydown", listener);
+    return () => document.removeEventListener("keydown", listener);
+  }, []);
+
+  function isTypingTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName;
+    return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
+  }
+
+  function isAtFirstTrack(): boolean {
+    const list = playlistRef.current;
+    if (!list || list.tracks.length === 0) return true;
+    const idx = list.tracks.findIndex((t) => t.id === currentTrackDbIdRef.current);
+    return idx <= 0;
+  }
+
+  function isAtLastTrack(): boolean {
+    const list = playlistRef.current;
+    if (!list || list.tracks.length === 0) return true;
+    const idx = list.tracks.findIndex((t) => t.id === currentTrackDbIdRef.current);
+    return idx === -1 || idx === list.tracks.length - 1;
+  }
+
+  function shiftPrev() {
+    // El límite de "primera canción" solo tiene sentido para la lista
+    // normal en orden — con shuffle o reproduciendo desde la cola temporal
+    // no hay un "primero" bien definido, así que ahí nunca se bloquea.
+    if (activeTempTrackRef.current || shuffleRef.current || !isAtFirstTrack()) {
+      playPrev();
+    }
+  }
+
+  function shiftNext() {
+    if (
+      tempQueueRef.current.length > 0 ||
+      activeTempTrackRef.current ||
+      shuffleRef.current ||
+      !isAtLastTrack()
+    ) {
+      advance();
+    }
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (isTypingTarget(e.target)) return;
+    if (!currentTrackRef.current) return;
+
+    switch (e.key) {
+      case " ":
+      case "Spacebar":
+        e.preventDefault();
+        playerLatestRef.current.togglePlayPause();
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        if (e.shiftKey) shiftPrev();
+        else playerLatestRef.current.seekTo(Math.max(0, currentTimeRef.current - 10));
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        if (e.shiftKey) shiftNext();
+        else {
+          const max = durationRef.current || currentTimeRef.current;
+          playerLatestRef.current.seekTo(Math.min(max, currentTimeRef.current + 10));
+        }
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        playerLatestRef.current.setVolume(Math.min(100, volumeRef.current + 10));
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        playerLatestRef.current.setVolume(Math.max(0, volumeRef.current - 10));
+        break;
+      case "m":
+      case "M":
+        e.preventDefault();
+        if (volumeRef.current > 0) {
+          lastNonZeroVolumeRef.current = volumeRef.current;
+          playerLatestRef.current.setVolume(0);
+        } else {
+          playerLatestRef.current.setVolume(lastNonZeroVolumeRef.current || 70);
+        }
+        break;
+      default:
+        return;
+    }
+  }
+  handleKeyDownRef.current = handleKeyDown;
 
   const value: AmbientPlayerContextValue = {
     containerRef: player.containerRef,
@@ -177,6 +354,9 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     toggleShuffle,
     toggleTrackLoop,
     syncPlaylistIfActive,
+    tempQueue,
+    addToTempQueue,
+    removeFromTempQueue,
   };
 
   return <AmbientPlayerContext.Provider value={value}>{children}</AmbientPlayerContext.Provider>;

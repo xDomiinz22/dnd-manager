@@ -44,6 +44,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { MiniConfirmPopover } from "../components/ui/MiniConfirmPopover";
 import { MoveTrackMenu } from "../components/ui/MoveTrackMenu";
+import { SwipeableRow } from "../components/ui/SwipeableRow";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { PauseIcon, PlayIcon, ShuffleIcon } from "../components/ui/PlayerIcons";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
@@ -143,6 +144,7 @@ export function GroupMusicPage() {
                     onPlayTrack={(trackId) => player.playFromPlaylist(groupId!, playlist, trackId)}
                     onTogglePlayPause={player.togglePlayPause}
                     onPlayShuffled={() => player.playFromPlaylistShuffled(groupId!, playlist)}
+                    onAddToTempQueue={player.addToTempQueue}
                     globalQuery={normalizedGlobalQuery}
                   />
                 ))}
@@ -166,6 +168,7 @@ function PlaylistCard({
   onPlayTrack,
   onTogglePlayPause,
   onPlayShuffled,
+  onAddToTempQueue,
   globalQuery,
 }: {
   groupId: string;
@@ -178,6 +181,7 @@ function PlaylistCard({
   onPlayTrack: (trackId: string) => void;
   onTogglePlayPause: () => void;
   onPlayShuffled: () => void;
+  onAddToTempQueue: (track: MusicTrack) => void;
   /** Búsqueda general de la página, ya normalizada (minúsculas, sin acentos). */
   globalQuery: string;
 }) {
@@ -271,6 +275,11 @@ function PlaylistCard({
         onError: (err) => toast.error(toErrorMessage(err, "No se pudo mover el track.")),
       },
     );
+  }
+
+  function handleAddToTempQueue(track: MusicTrack) {
+    onAddToTempQueue(track);
+    toast.success(`"${track.title}" añadido a Reproducir después.`);
   }
 
   function handleToggleOpenToAll(openToAll: boolean) {
@@ -398,6 +407,7 @@ function PlaylistCard({
                   isMoveLoading={moveTrack.isPending}
                   onPlayTrack={() => onPlayTrack(track.id)}
                   onTogglePlayPause={onTogglePlayPause}
+                  onAddToTempQueue={() => handleAddToTempQueue(track)}
                 />
               ))}
             </ul>
@@ -457,6 +467,7 @@ function TrackRow({
   isMoveLoading,
   onPlayTrack,
   onTogglePlayPause,
+  onAddToTempQueue,
 }: {
   groupId: string;
   track: MusicTrack;
@@ -480,6 +491,8 @@ function TrackRow({
   isMoveLoading: boolean;
   onPlayTrack: () => void;
   onTogglePlayPause: () => void;
+  /** Deslizar de izquierda a derecha: añadir a la cola "Reproducir después". */
+  onAddToTempQueue: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: track.id,
@@ -488,24 +501,27 @@ function TrackRow({
   const style = { transform: CSS.Transform.toString(transform), transition };
 
   return (
-    <li
-      ref={setNodeRef}
-      style={style}
-      className={`rounded-sm px-2 py-1 ${
-        isDragging
-          ? "z-10 bg-parchment-panel shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)]"
-          : isCurrent
-            ? "bg-oxblood/10 shadow-[inset_0_0_0_1px_rgba(107,22,32,0.35)]"
-            : "hover:bg-parchment-deep/40"
-      }`}
-    >
+    <li ref={setNodeRef} style={style} className="overflow-hidden rounded-sm">
       {isEditing ? (
-        <EditTrackForm groupId={groupId} track={track} onDone={onDoneEdit} />
+        <div className="px-2 py-1">
+          <EditTrackForm groupId={groupId} track={track} onDone={onDoneEdit} />
+        </div>
       ) : (
-        <div className="flex items-center justify-between gap-2">
+        <SwipeableRow
+          onSwipeRight={onAddToTempQueue}
+          onDelete={canDeleteThis ? onConfirmDelete : undefined}
+          contentClassName={`flex items-center justify-between gap-2 px-2 py-1 ${
+            isDragging
+              ? "z-10 bg-parchment-panel shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)]"
+              : isCurrent
+                ? "bg-oxblood/10 shadow-[inset_0_0_0_1px_rgba(107,22,32,0.35)]"
+                : "bg-parchment-panel hover:bg-parchment-deep/40"
+          }`}
+        >
           {canReorder && (
             <button
               type="button"
+              data-no-swipe
               aria-label={`Reordenar ${track.title}`}
               className="shrink-0 cursor-grab touch-none text-ink-muted hover:text-oxblood active:cursor-grabbing"
               {...attributes}
@@ -541,6 +557,7 @@ function TrackRow({
             {canDeleteThis && (
               <button
                 type="button"
+                data-no-swipe
                 onClick={onStartEdit}
                 aria-label={`Editar ${track.title}`}
                 className="text-xs text-ink-muted hover:text-oxblood"
@@ -549,7 +566,7 @@ function TrackRow({
               </button>
             )}
             {canDeleteThis && otherPlaylists.length > 0 && (
-              <div className="relative">
+              <div className="relative" data-no-swipe>
                 <button
                   type="button"
                   onClick={onToggleMove}
@@ -569,7 +586,7 @@ function TrackRow({
               </div>
             )}
             {canDeleteThis && (
-              <div className="relative">
+              <div className="relative" data-no-swipe>
                 <button
                   type="button"
                   onClick={onToggleConfirm}
@@ -589,7 +606,7 @@ function TrackRow({
               </div>
             )}
           </div>
-        </div>
+        </SwipeableRow>
       )}
     </li>
   );
