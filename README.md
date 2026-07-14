@@ -555,6 +555,12 @@ Verificado en navegador: arrastrar por el asa dentro de la cola reordena los tra
 
 Verificado en navegador: forzando un `:hover` real (vía `computer.hover`, no eventos sintéticos, que no activan `:hover` de CSS) sobre una fila normal, `getComputedStyle(...).backgroundColor` da `rgb(223, 203, 155)` — sólido, sin alfa, coincide exactamente con el `#dfcb9b` calculado. `typecheck`/`lint`/`test` (24/24)/`build` limpios.
 
+Confirmado por el usuario tras probarlo: fix definitivo. Preguntó también si un timeout de ~3s para auto-cerrar el botón de borrar revelado sería buena idea — se recomendó NO añadirlo (el patrón Gmail/iOS Mail ya usado aquí lo mantiene abierto hasta que se pulsa fuera o se actúa, un timer introduciría el riesgo de que desaparezca justo cuando el usuario se para a leer/decidir, y el síntoma real que motivaba la pregunta ya estaba resuelto por el fix del hover).
+
+### ✅ Botón "Volver al grupo" en música y diario
+
+Ninguna de las dos páginas (`GroupMusicPage.tsx`, `GroupJournalPage.tsx`) tenía forma de volver a la página del grupo salvo el navegador — solo existían los links de IDA (`GroupDetailPage.tsx` → "Música ambiente"/"Diario de grupo"), nunca la vuelta. Añadido un link `← Volver al grupo` (`text-ink-muted hover:text-oxblood`, mismo tono que el resto de la app) encima de cada `ChapterHeading`, apuntando a `/groups/:id`. Verificado en navegador en ambas páginas: el link aparece y su `href` apunta al grupo correcto. `typecheck`/`lint`/`test` (24/24)/`build` limpios.
+
 ---
 
 ## Qué queda por hacer

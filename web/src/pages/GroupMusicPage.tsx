@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
@@ -87,6 +87,12 @@ export function GroupMusicPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
+      <Link
+        to={`/groups/${groupId}`}
+        className="mb-4 inline-block text-sm text-ink-muted hover:text-oxblood"
+      >
+        ← Volver al grupo
+      </Link>
       <ChapterHeading
         action={
           data.canEdit && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useGroupDetail } from "../features/groups/hooks";
 import {
@@ -64,6 +64,12 @@ export function GroupJournalPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
+      <Link
+        to={`/groups/${groupId}`}
+        className="mb-4 inline-block text-sm text-ink-muted hover:text-oxblood"
+      >
+        ← Volver al grupo
+      </Link>
       <ChapterHeading
         action={
           <div className="flex gap-3">
