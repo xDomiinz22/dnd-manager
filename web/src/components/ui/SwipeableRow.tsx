@@ -66,13 +66,16 @@ export function SwipeableRow({
   // updater — de ahí los toasts duplicados. Con el ref, la decisión se toma
   // una sola vez, fuera de cualquier updater de setState.
   const translateXRef = useRef(0);
-  // No necesita ser estado de React: no se lee en el JSX, solo en la lógica
-  // de gestos (qué posición base usar al iniciar el siguiente arrastre).
-  const openSideRef = useRef<"left" | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const gestureRef = useRef<{
     startX: number;
     startY: number;
+    // Posición de reposo de la que partía la fila al empezar este gesto —
+    // única fuente de verdad para "qué lado estaba revelado" (antes había un
+    // `openSideRef` aparte que podía desincronizarse del `translateX` real
+    // en algún caso límite, dejando el cubo de basura revelado de forma
+    // permanente pese a que la fila "parecía" cerrada).
+    startTranslateX: number;
     horizontal: boolean | null;
   } | null>(null);
 
@@ -81,12 +84,7 @@ export function SwipeableRow({
     setTranslateXState(value);
   }
 
-  function setOpenSide(value: "left" | null) {
-    openSideRef.current = value;
-  }
-
   useCloseOnOutsideClick(containerRef, () => {
-    setOpenSide(null);
     setTranslateX(0);
   });
 
@@ -100,18 +98,17 @@ export function SwipeableRow({
 
     const current = translateXRef.current;
     if (current > RIGHT_ACTION_THRESHOLD && onSwipeRight) {
-      setOpenSide(null);
       setTranslateX(0);
       onSwipeRight();
       return;
     }
     if (current < -OPEN_THRESHOLD && onDelete) {
-      setOpenSide("left");
       setTranslateX(-DELETE_WIDTH);
       return;
     }
-    setOpenSide(null);
-    setTranslateX(openSideRef.current === "left" ? -DELETE_WIDTH : 0);
+    // No cruzó ningún umbral: vuelve a la posición de reposo previa al
+    // gesto (abierta o cerrada), no siempre a 0.
+    setTranslateX(g.startTranslateX);
   }
 
   // `endGesture` se redefine en cada render (cierra sobre las props/estado
@@ -129,7 +126,12 @@ export function SwipeableRow({
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest("[data-no-swipe]")) return;
-    gestureRef.current = { startX: e.clientX, startY: e.clientY, horizontal: null };
+    gestureRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startTranslateX: translateXRef.current,
+      horizontal: null,
+    };
     // Red de seguridad: si el pointerup/cancel no llega al propio elemento
     // (p.ej. pérdida de captura del puntero durante un re-render a mitad de
     // gesto), esto garantiza que el gesto siempre termine. Idempotente.
@@ -156,15 +158,13 @@ export function SwipeableRow({
       setIsDragging(true);
     }
 
-    const base = openSideRef.current === "left" ? -DELETE_WIDTH : 0;
     const maxRight = onSwipeRight ? RIGHT_HINT_WIDTH : 0;
     const maxLeft = onDelete ? -DELETE_WIDTH : 0;
-    setTranslateX(Math.min(maxRight, Math.max(maxLeft, base + deltaX)));
+    setTranslateX(Math.min(maxRight, Math.max(maxLeft, g.startTranslateX + deltaX)));
   }
 
   function handleConfirmDelete() {
     onDelete?.();
-    setOpenSide(null);
     setTranslateX(0);
   }
 

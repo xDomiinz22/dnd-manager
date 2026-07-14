@@ -29,6 +29,8 @@ interface AmbientPlayerContextValue extends Omit<AmbientPlayerControls, "play" |
   tempQueue: MusicTrack[];
   addToTempQueue: (track: MusicTrack, groupId: string) => void;
   removeFromTempQueue: (trackId: string) => void;
+  /** Reordena la cola arrastrando, igual que las listas normales — recibe el array completo de ids en el nuevo orden. */
+  reorderTempQueue: (orderedIds: string[]) => void;
 }
 
 const AmbientPlayerContext = createContext<AmbientPlayerContextValue | null>(null);
@@ -224,6 +226,14 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     setTempQueue((prev) => prev.filter((t) => t.id !== trackId));
   }
 
+  function reorderTempQueue(orderedIds: string[]) {
+    setTempQueue((prev) => {
+      const byId = new Map(prev.map((t) => [t.id, t]));
+      const reordered = orderedIds.map((id) => byId.get(id)).filter((t): t is MusicTrack => !!t);
+      return reordered.length === prev.length ? reordered : prev;
+    });
+  }
+
   const currentTrack =
     activeTempTrack ?? playlist?.tracks.find((t) => t.id === currentTrackDbId) ?? null;
 
@@ -373,6 +383,7 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
     tempQueue,
     addToTempQueue,
     removeFromTempQueue,
+    reorderTempQueue,
   };
 
   return <AmbientPlayerContext.Provider value={value}>{children}</AmbientPlayerContext.Provider>;
