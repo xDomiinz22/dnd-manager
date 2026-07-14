@@ -510,12 +510,19 @@ function TrackRow({
         <SwipeableRow
           onSwipeRight={onAddToTempQueue}
           onDelete={canDeleteThis ? onConfirmDelete : undefined}
+          // Fondos siempre OPACOS a propósito (nunca `/NN` de opacidad): esta
+          // fila se desliza por encima de los "bolsillos" de borrar/añadir de
+          // `SwipeableRow` — un fondo translúcido deja que se transparenten
+          // en reposo (bug real reportado: el cubo de borrar se veía con solo
+          // pasar el ratón por encima, porque el hover anterior usaba
+          // `bg-parchment-deep/40`). Los tonos de abajo son el resultado ya
+          // mezclado (mismo aspecto visual que antes, pero sólido).
           contentClassName={`flex items-center justify-between gap-2 px-2 py-1 ${
             isDragging
               ? "z-10 bg-parchment-panel shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)]"
               : isCurrent
-                ? "bg-oxblood/10 shadow-[inset_0_0_0_1px_rgba(107,22,32,0.35)]"
-                : "bg-parchment-panel hover:bg-parchment-deep/40"
+                ? "bg-[#d8c099] shadow-[inset_0_0_0_1px_rgba(107,22,32,0.35)]"
+                : "bg-parchment-panel hover:bg-[#dfcb9b]"
           }`}
         >
           {canReorder && (
