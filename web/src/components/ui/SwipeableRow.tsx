@@ -183,9 +183,13 @@ export function SwipeableRow({
         </div>
       )}
       {onSwipeRight && (
+        // Verde "moss" (mismo tono que los toasts de éxito) a propósito, NO
+        // oxblood: si esta pista usara el mismo rojo que el botón de borrar,
+        // se leería como "modo borrar" activándose al deslizar para AÑADIR,
+        // justo lo contrario de lo que hace (acción positiva, sin peligro).
         <div
           aria-hidden="true"
-          className="absolute inset-y-0 left-0 flex w-[112px] items-center bg-oxblood px-3 text-center text-[0.7rem] font-medium leading-tight text-parchment"
+          className="absolute inset-y-0 left-0 flex w-[112px] items-center bg-moss px-3 text-center text-[0.7rem] font-medium leading-tight text-parchment"
           style={{ opacity: Math.max(0, Math.min(1, translateX / RIGHT_ACTION_THRESHOLD)) }}
         >
           {swipeRightLabel}
