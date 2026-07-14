@@ -486,6 +486,18 @@ A diferencia de shuffle/bucle (que sí necesitan mostrar un estado activo persis
 
 Verificado en navegador: tras un click real en cualquiera de los dos botones, `document.activeElement` vuelve a ser `<body>` (antes se quedaba en el propio botón). `typecheck`/`test` limpios.
 
+### ✅ Fix real: el popup de confirmar borrado se abría y cerraba en el mismo click
+
+El usuario reportó que la "×" de borrar una canción seguía "sin lanzar nada" pese al fix anterior de agrandar el botón (necesario, pero no era la causa raíz). Diagnóstico definitivo: con un click **real** (de ratón/CDP), el popup SÍ se abre (confirmado con logs de render mostrando `isConfirming=true`) pero se vuelve a cerrar dentro del mismo evento, todo antes de que el usuario llegue a verlo. Con un `.click()` sintético desde JS el bug no se reproducía nunca — de ahí que las verificaciones anteriores (que usaban `.click()` para sortear la limitación del tool de automatización) dieran un falso positivo.
+
+**Causa real**: `MiniConfirmPopover.tsx` registraba su listener de "click fuera" (`document.addEventListener("click", ...)`) dentro de un `useEffect` normal. Para eventos _trusted_ (un click real de ratón, no uno disparado por JS), React fuerza un flush síncrono de los efectos pendientes antes de que el propio evento termine de burbujear hasta `document` — así que ese mismo `useEffect` queda registrado a tiempo de capturar el click que ABRIÓ el popup, interpretándolo como "click fuera" y cerrándolo al instante. Los eventos `isTrusted: false` (como `.click()`) no disparan ese flush síncrono, por lo que el bug era invisible a cualquier prueba que usara clicks sintéticos.
+
+**Fix**: el `addEventListener("click", ...)` se registra ahora dentro de un `setTimeout(..., 0)`, empujándolo a un macrotask aparte — así se garantiza que el click que abrió el popup ya ha terminado de propagarse antes de que el listener de "fuera" exista. El de `keydown` (Escape) no necesita el mismo tratamiento porque una tecla no es el evento que abrió el popup.
+
+**Patrón a recordar**: cualquier hook de "cerrar al hacer click fuera" que registre su listener en un `useEffect` corre este mismo riesgo con clicks reales — el fix estándar es diferir el `addEventListener` con `setTimeout(fn, 0)` (o comprobar un flag de "recién abierto" por un tick). Además, verificar manualmente un popup con `element.click()` desde JS **no detecta este bug** — hace falta un click real (del usuario o simulado con la secuencia completa `pointerdown/mousedown/pointerup/mouseup/click` con `isTrusted` real) para reproducirlo.
+
+Verificado en navegador con clicks reales repetidos: abrir → Cancelar (cierra sin borrar), abrir → Confirmar borrado (borra el track y refresca la lista), ambos consistentes en múltiples intentos. `typecheck`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer
