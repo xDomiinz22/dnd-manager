@@ -29,6 +29,7 @@ import {
   useDeletePlaylist,
   useDeleteTrack,
   useGroupMusic,
+  useMoveTrack,
   useRenamePlaylist,
   useReorderTracks,
   useSetPlaylistOpenToAll,
@@ -42,6 +43,7 @@ import { TextField } from "../components/ui/TextField";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { MiniConfirmPopover } from "../components/ui/MiniConfirmPopover";
+import { MoveTrackMenu } from "../components/ui/MoveTrackMenu";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { PauseIcon, PlayIcon, ShuffleIcon } from "../components/ui/PlayerIcons";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
@@ -133,6 +135,7 @@ export function GroupMusicPage() {
                     key={playlist.id}
                     groupId={groupId!}
                     playlist={playlist}
+                    allPlaylists={data.playlists}
                     canEdit={data.canEdit}
                     currentUserId={user?.id ?? null}
                     activeTrackId={isActiveHere ? player.currentTrack!.id : null}
@@ -155,6 +158,7 @@ export function GroupMusicPage() {
 function PlaylistCard({
   groupId,
   playlist,
+  allPlaylists,
   canEdit,
   currentUserId,
   activeTrackId,
@@ -166,6 +170,7 @@ function PlaylistCard({
 }: {
   groupId: string;
   playlist: MusicPlaylist;
+  allPlaylists: MusicPlaylist[];
   canEdit: boolean;
   currentUserId: string | null;
   activeTrackId: string | null;
@@ -181,13 +186,18 @@ function PlaylistCard({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmingTrackId, setConfirmingTrackId] = useState<string | null>(null);
   const [editingTrackId, setEditingTrackId] = useState<string | null>(null);
+  const [movingTrackId, setMovingTrackId] = useState<string | null>(null);
   const [localQuery, setLocalQuery] = useState("");
   const [dragOrderIds, setDragOrderIds] = useState<string[] | null>(null);
   const deletePlaylist = useDeletePlaylist(groupId);
   const deleteTrack = useDeleteTrack(groupId);
   const setOpenToAll = useSetPlaylistOpenToAll(groupId);
   const reorderTracks = useReorderTracks(groupId);
+  const moveTrack = useMoveTrack(groupId);
   const toast = useToast();
+  const otherPlaylists = allPlaylists
+    .filter((p) => p.id !== playlist.id)
+    .map((p) => ({ id: p.id, name: p.name }));
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   // El orden optimista se descarta en cuanto llega un snapshot nuevo del
@@ -248,6 +258,19 @@ function PlaylistCard({
       onSuccess: () => setConfirmingTrackId(null),
       onError: (err) => toast.error(toErrorMessage(err, "No se pudo borrar el track.")),
     });
+  }
+
+  function handleMoveTrack(trackId: string, targetPlaylistId: string) {
+    moveTrack.mutate(
+      { trackId, input: { playlistId: targetPlaylistId } },
+      {
+        onSuccess: () => {
+          toast.success("Track movido.");
+          setMovingTrackId(null);
+        },
+        onError: (err) => toast.error(toErrorMessage(err, "No se pudo mover el track.")),
+      },
+    );
   }
 
   function handleToggleOpenToAll(openToAll: boolean) {
@@ -365,6 +388,14 @@ function PlaylistCard({
                   onCancelConfirm={() => setConfirmingTrackId(null)}
                   onConfirmDelete={() => handleDeleteTrack(track.id)}
                   isDeleting={deleteTrack.isPending}
+                  otherPlaylists={otherPlaylists}
+                  isMoving={movingTrackId === track.id}
+                  onToggleMove={() =>
+                    setMovingTrackId(movingTrackId === track.id ? null : track.id)
+                  }
+                  onCancelMove={() => setMovingTrackId(null)}
+                  onSelectMove={(targetPlaylistId) => handleMoveTrack(track.id, targetPlaylistId)}
+                  isMoveLoading={moveTrack.isPending}
                   onPlayTrack={() => onPlayTrack(track.id)}
                   onTogglePlayPause={onTogglePlayPause}
                 />
@@ -418,6 +449,12 @@ function TrackRow({
   onCancelConfirm,
   onConfirmDelete,
   isDeleting,
+  otherPlaylists,
+  isMoving,
+  onToggleMove,
+  onCancelMove,
+  onSelectMove,
+  isMoveLoading,
   onPlayTrack,
   onTogglePlayPause,
 }: {
@@ -435,6 +472,12 @@ function TrackRow({
   onCancelConfirm: () => void;
   onConfirmDelete: () => void;
   isDeleting: boolean;
+  otherPlaylists: { id: string; name: string }[];
+  isMoving: boolean;
+  onToggleMove: () => void;
+  onCancelMove: () => void;
+  onSelectMove: (playlistId: string) => void;
+  isMoveLoading: boolean;
   onPlayTrack: () => void;
   onTogglePlayPause: () => void;
 }) {
@@ -504,6 +547,26 @@ function TrackRow({
               >
                 Editar
               </button>
+            )}
+            {canDeleteThis && otherPlaylists.length > 0 && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={onToggleMove}
+                  aria-label={`Mover ${track.title} a otra lista`}
+                  className="text-xs text-ink-muted hover:text-oxblood"
+                >
+                  Mover
+                </button>
+                {isMoving && (
+                  <MoveTrackMenu
+                    playlists={otherPlaylists}
+                    isLoading={isMoveLoading}
+                    onSelect={onSelectMove}
+                    onCancel={onCancelMove}
+                  />
+                )}
+              </div>
             )}
             {canDeleteThis && (
               <div className="relative">

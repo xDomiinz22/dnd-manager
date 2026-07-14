@@ -196,6 +196,39 @@ export async function deleteTrack(
   await prisma.musicTrack.delete({ where: { id: trackId } });
 }
 
+export async function moveTrack(
+  trackId: string,
+  groupId: string,
+  targetPlaylistId: string,
+  userId: string,
+  membership: GroupMember,
+): Promise<MusicTrackDto> {
+  const track = await prisma.musicTrack.findUnique({
+    where: { id: trackId },
+    include: { playlist: true },
+  });
+  if (!track || track.playlist.groupId !== groupId) {
+    throw new AppError(404, "TRACK_NOT_FOUND", "Track no encontrado");
+  }
+  if (!canManageMusic(membership) && track.addedByUserId !== userId) {
+    throw new AppError(403, "NOT_ALLOWED", "No tienes permiso para mover este track");
+  }
+  if (targetPlaylistId === track.playlistId) {
+    throw new AppError(422, "SAME_PLAYLIST", "El track ya está en esa lista");
+  }
+  const targetPlaylist = await prisma.musicPlaylist.findUnique({ where: { id: targetPlaylistId } });
+  if (!targetPlaylist || targetPlaylist.groupId !== groupId) {
+    throw new AppError(404, "PLAYLIST_NOT_FOUND", "Lista de destino no encontrada");
+  }
+  const count = await prisma.musicTrack.count({ where: { playlistId: targetPlaylistId } });
+  const updated = await prisma.musicTrack.update({
+    where: { id: trackId },
+    data: { playlistId: targetPlaylistId, order: count },
+    include: TRACK_INCLUDE,
+  });
+  return toTrackDto(updated);
+}
+
 export async function reorderTracks(
   playlistId: string,
   groupId: string,

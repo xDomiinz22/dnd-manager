@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   AddTrackInput,
   CreatePlaylistInput,
+  MoveTrackInput,
   RenamePlaylistInput,
   ReorderTracksInput,
   SetPlaylistOpenInput,
@@ -75,6 +76,15 @@ export function useDeleteTrack(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (trackId: string) => musicApi.deleteTrack(groupId, trackId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupMusicKey(groupId) }),
+  });
+}
+
+export function useMoveTrack(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ trackId, input }: { trackId: string; input: MoveTrackInput }) =>
+      musicApi.moveTrack(groupId, trackId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupMusicKey(groupId) }),
   });
 }

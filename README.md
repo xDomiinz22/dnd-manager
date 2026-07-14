@@ -504,6 +504,16 @@ Extendido el patrón de `MiniConfirmPopover` (hasta ahora solo en borrar track) 
 
 Verificado en navegador con clicks reales: crear una lista de prueba, pulsar "Borrar" abre el popup de forma fiable (ya con el fix del `setTimeout` aplicado en `MiniConfirmPopover`), "Cancelar" lo cierra sin borrar, "Confirmar borrado" borra la lista y muestra el toast "Lista borrada.". `typecheck`/`test`/`build` limpios.
 
+### ✅ Mover una canción a otra lista
+
+El usuario preguntó por arrastrar tracks entre listas; se simplificó a un botón "Mover" que abre un menú con las demás listas del grupo — mismo resultado (reorganizar canciones entre listas) sin la complejidad de un `DndContext` compartido entre `PlaylistCard`s independientes. Comportamiento confirmado con el usuario: **mover**, no copiar — el track desaparece de la lista actual y pasa a la elegida.
+
+- **Backend**: nuevo `PATCH /groups/:groupId/music/tracks/:trackId/move` (`moveTrack` en `musicService.ts`), mismo criterio de permiso que editar/borrar un track (Master/`canEditMusic`/quien lo añadió). Verifica que la lista destino exista y pertenezca al mismo grupo, rechaza mover un track a la lista en la que ya está (`422 SAME_PLAYLIST`), y lo añade al final de la lista destino (`order = count` de esa lista, igual que al añadir un track nuevo).
+- **Frontend**: nuevo `MoveTrackMenu.tsx` (`components/ui/`) — menú flotante con las demás listas del grupo, mismo lenguaje visual que `MiniConfirmPopover`. Botón "Mover" en cada fila de track (junto a Editar), visible solo si hay más de una lista en el grupo y el usuario tiene permiso sobre ese track.
+- **Refactor**: la lógica de "cerrar al pulsar fuera o con Escape" (con el fix del `setTimeout` del punto anterior) se extrajo de `MiniConfirmPopover` a un hook compartido, `useCloseOnOutsideClick` (`lib/`), para no duplicar ese bug tan sutil en el nuevo menú — ambos componentes lo usan ahora.
+
+**Gotcha de verificación, reafirmado**: el tool de automatización de esta sesión sigue siendo intermitente con clicks reales sobre botones nuevos recién montados (a veces no registra el click en absoluto, no relacionado con el bug del punto anterior). Se verificó el flujo completo disparando manualmente la secuencia `pointerdown/mousedown/pointerup/mouseup/click` con `isPrimary: true` vía `javascript_tool`, confirmando que el menú se abre, lista las otras listas del grupo, y mover un track real (`Move Test Track` de "Taberna" a una lista "Combate" creada para la prueba) dispara el `PATCH .../move`, muestra el toast "Track movido." y el track aparece en la lista destino. `typecheck`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer

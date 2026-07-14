@@ -7,6 +7,7 @@ import {
   deletePlaylistHandler,
   deleteTrackHandler,
   getGroupMusicHandler,
+  moveTrackHandler,
   renamePlaylistHandler,
   reorderTracksHandler,
   setPlaylistOpenToAllHandler,
@@ -64,6 +65,12 @@ musicRouter.delete(
   requireAuth,
   requireGroupMember,
   deleteTrackHandler,
+);
+musicRouter.patch(
+  "/groups/:groupId/music/tracks/:trackId/move",
+  requireAuth,
+  requireGroupMember,
+  moveTrackHandler,
 );
 musicRouter.patch(
   "/groups/:groupId/music/tracks/:trackId/loop",

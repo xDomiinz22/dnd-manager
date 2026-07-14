@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useCloseOnOutsideClick } from "../../lib/useCloseOnOutsideClick";
 
 interface MiniConfirmPopoverProps {
   message: string;
@@ -22,33 +23,7 @@ export function MiniConfirmPopover({
   className = "",
 }: MiniConfirmPopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) onCancel();
-    }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
-    }
-    // Para eventos "de confianza" (click real de ratón/touch), React fuerza
-    // un flush síncrono de los efectos pendientes antes de que el propio
-    // evento termine de burbujear hasta `document` — si el listener se
-    // añadiera aquí sin más, este mismo `useEffect` quedaría registrado a
-    // tiempo de capturar el click que ABRIÓ el popup, cerrándolo al
-    // instante. Un `.click()` sintético (isTrusted: false) no dispara ese
-    // flush síncrono, así que el bug no aparecía probando con JS — solo con
-    // clicks reales. Registrar el listener en un macrotask aparte garantiza
-    // que el evento que abrió el popup ya ha terminado de propagarse.
-    const timeoutId = window.setTimeout(() => {
-      document.addEventListener("click", handleClickOutside);
-    }, 0);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.clearTimeout(timeoutId);
-      document.removeEventListener("click", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onCancel]);
+  useCloseOnOutsideClick(ref, onCancel);
 
   return (
     <div

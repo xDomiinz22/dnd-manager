@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import {
   addTrackSchema,
   createPlaylistSchema,
+  moveTrackSchema,
   renamePlaylistSchema,
   reorderTracksSchema,
   setPlaylistOpenSchema,
@@ -113,6 +114,22 @@ export const deleteTrackHandler: RequestHandler = async (req, res, next) => {
       req.groupMembership!,
     );
     res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const moveTrackHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = moveTrackSchema.parse(req.body);
+    const track = await musicService.moveTrack(
+      req.params.trackId!,
+      req.params.groupId!,
+      input.playlistId,
+      req.userId!,
+      req.groupMembership!,
+    );
+    res.json(track);
   } catch (err) {
     next(err);
   }

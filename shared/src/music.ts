@@ -68,6 +68,11 @@ export const reorderTracksSchema = z.object({
 });
 export type ReorderTracksInput = z.infer<typeof reorderTracksSchema>;
 
+export const moveTrackSchema = z.object({
+  playlistId: z.string(),
+});
+export type MoveTrackInput = z.infer<typeof moveTrackSchema>;
+
 // Regex puro (nada de `URL`/`URLSearchParams`) para que funcione igual en
 // Node y en el navegador sin depender de qué libs ambiente tenga cada lado.
 const YOUTUBE_URL_PATTERNS = [
