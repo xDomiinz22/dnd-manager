@@ -498,6 +498,12 @@ El usuario reportó que la "×" de borrar una canción seguía "sin lanzar nada"
 
 Verificado en navegador con clicks reales repetidos: abrir → Cancelar (cierra sin borrar), abrir → Confirmar borrado (borra el track y refresca la lista), ambos consistentes en múltiples intentos. `typecheck`/`test`/`build` limpios.
 
+### ✅ Mismo mini popup de confirmación al borrar una lista
+
+Extendido el patrón de `MiniConfirmPopover` (hasta ahora solo en borrar track) al botón "Borrar" de cada lista: sustituye el `ConfirmPanel` a todo lo ancho (que quedó como componente huérfano en este archivo, se quitó el import) por un popup flotante anclado al propio botón, igual que en tracks. `ConfirmPanel.tsx` en sí no se tocó — sigue en uso en otras partes de la app (expulsar/salir de grupo, borrar página de journal).
+
+Verificado en navegador con clicks reales: crear una lista de prueba, pulsar "Borrar" abre el popup de forma fiable (ya con el fix del `setTimeout` aplicado en `MiniConfirmPopover`), "Cancelar" lo cierra sin borrar, "Confirmar borrado" borra la lista y muestra el toast "Lista borrada.". `typecheck`/`test`/`build` limpios.
+
 ---
 
 ## Qué queda por hacer

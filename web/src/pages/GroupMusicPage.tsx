@@ -41,7 +41,6 @@ import { Card } from "../components/ui/Card";
 import { TextField } from "../components/ui/TextField";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
-import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { MiniConfirmPopover } from "../components/ui/MiniConfirmPopover";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { PauseIcon, PlayIcon, ShuffleIcon } from "../components/ui/PlayerIcons";
@@ -290,9 +289,19 @@ function PlaylistCard({
                   <Button variant="ghost" onClick={() => setRenaming(true)}>
                     Renombrar
                   </Button>
-                  <Button variant="danger" onClick={() => setConfirmingDelete((v) => !v)}>
-                    Borrar
-                  </Button>
+                  <div className="relative">
+                    <Button variant="danger" onClick={() => setConfirmingDelete((v) => !v)}>
+                      Borrar
+                    </Button>
+                    {confirmingDelete && (
+                      <MiniConfirmPopover
+                        message={`¿Borrar "${playlist.name}" y todos sus tracks?`}
+                        isLoading={deletePlaylist.isPending}
+                        onConfirm={handleDeletePlaylist}
+                        onCancel={() => setConfirmingDelete(false)}
+                      />
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -313,18 +322,6 @@ function PlaylistCard({
       )}
       {!canEdit && playlist.openToAll && (
         <p className="mb-2 text-xs text-ink-muted">Lista abierta: cualquiera puede añadir.</p>
-      )}
-
-      {confirmingDelete && (
-        <ConfirmPanel
-          message={`Esto borra la lista "${playlist.name}" y todos sus tracks. No se puede deshacer.`}
-          confirmLabel="Confirmar borrado"
-          loadingText="Borrando..."
-          isLoading={deletePlaylist.isPending}
-          onConfirm={handleDeletePlaylist}
-          onCancel={() => setConfirmingDelete(false)}
-          className="mb-3"
-        />
       )}
 
       {playlist.tracks.length > 0 && (
