@@ -12,17 +12,17 @@ App web para gestionar grupos de **Dungeons & Dragons 5e** (sistema Foundry `dnd
 
 Monorepo **pnpm** desplegado como **un solo proyecto en Vercel** (frontend estático + backend serverless bajo el mismo dominio).
 
-| Capa            | Tecnología                                                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Frontend        | React 18 + Vite + TypeScript + Tailwind + TanStack Query + React Router                                                     |
-| Backend         | Express (montado como **una** función serverless en `api/index.ts`)                                                         |
-| ORM / DB        | Prisma + **PostgreSQL en Neon** (pooled `DATABASE_URL` + directo `DIRECT_URL`)                                              |
-| Auth            | JWT (access en memoria + refresh en cookie `httpOnly`), passwords con `argon2`, login con Google (Google Identity Services) |
-| Validación      | `zod` (schemas compartidos en `shared/`)                                                                                    |
-| Tests           | Vitest                                                                                                                      |
-| Parsing fichas  | `js-yaml` (bloque `Actor` del `.md` de Foundry)                                                                             |
-| Parsing journal | `jszip` + `js-yaml` (frontmatter) + `marked` + `dompurify` (todo en el navegador)                                           |
-| Imágenes        | `sharp` (conversión automática a webp en la subida), `compression` (gzip/brotli en las respuestas de la API)                |
+| Capa            | Tecnología                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Frontend        | React 19 + Vite 8 + TypeScript 6 + Tailwind CSS 4 + TanStack Query + React Router 7                                                        |
+| Backend         | Express 5 (montado como **una** función serverless en `api/index.ts`), `helmet` (cabeceras de seguridad), rate limiting en `/auth/*`       |
+| ORM / DB        | Prisma 7 (cliente con driver adapter `@prisma/adapter-neon`) + **PostgreSQL en Neon** (pooled `DATABASE_URL` en runtime y CLI/migraciones) |
+| Auth            | JWT (access en memoria + refresh en cookie `httpOnly`), passwords con `argon2`, login con Google (Google Identity Services)                |
+| Validación      | `zod` 4 (schemas compartidos en `shared/`)                                                                                                 |
+| Tests           | Vitest 4                                                                                                                                   |
+| Parsing fichas  | `js-yaml` (bloque `Actor` del `.md` de Foundry)                                                                                            |
+| Parsing journal | `jszip` + `js-yaml` (frontmatter) + `marked` + `dompurify` (todo en el navegador)                                                          |
+| Imágenes        | `sharp` (valida el formato real y convierte a webp en la subida), `compression` (gzip/brotli en las respuestas de la API)                  |
 
 ### Estructura del repo
 
@@ -153,7 +153,7 @@ El deploy costó porque hubo **cuatro** causas encadenadas. Si algo se rompe de 
 
 1. **NO poner `"type": "module"` en el `package.json` raíz.** Hace que `@vercel/node` compile la función con resolución ESM estricta y exija extensiones `.js` en todos los imports → el build de la función falla.
 2. **`shared/` debe compilar a JavaScript.** Compila a `shared/dist/` vía `tsconfig.build.json`, y `main`/`exports` apuntan a `dist`. Exponer TS crudo hace crashear la función en runtime (`Cannot find module .../shared/src/index.ts`). En dev, vite y vitest usan un alias → `shared/src` para no tener que precompilar.
-3. **Prisma**: usar la ubicación de salida **por defecto** (`@prisma/client`, sin `output` custom) + `binaryTargets = ["native", "rhel-openssl-3.0.x"]`. Y ejecutar `prisma generate` dentro del script `build` (el postinstall automático se salta cuando Vercel cachea `node_modules` → error runtime `@prisma/client did not initialize yet`).
+3. **Prisma**: usar la ubicación de salida **por defecto** (`@prisma/client`, sin `output` custom). Y ejecutar `prisma generate` dentro del script `build` (el postinstall automático se salta cuando Vercel cachea `node_modules` → error runtime `@prisma/client did not initialize yet`). _(Desde Prisma 7 — ver más abajo — el cliente usa un driver adapter en vez del engine binario nativo, así que `binaryTargets`/`rhel-openssl-3.0.x` ya no aplica; se deja el generator tal cual por si acaso, es inofensivo aunque no se use.)_
 4. **Enrutado `/api/*`**: el catch-all `api/[...path].ts` solo enrutaba 1 segmento en Vercel (`/api/health` OK, `/api/auth/register` → NOT_FOUND). Solución: función única en `api/index.ts` + rewrite `"/api/(.*)" → "/api"` (Express recibe la URL original y enruta internamente). El SPA fallback usa negative-lookahead: `"/((?!api/).*)" → "/index.html"` para no capturar la API.
 
 Además: en el dashboard de Vercel, **Root Directory** debe estar vacío (raíz del repo) y sin overrides manuales de Output Directory (se usa `vercel.json`).
@@ -163,6 +163,8 @@ Además: en el dashboard de Vercel, **Root Directory** debe estar vacío (raíz 
 **Región de la función vs. región de Neon** (no rompe el deploy, pero lo deja lento en silencio): por defecto Vercel construye/ejecuta en `iad1` (Virginia); si tu Postgres está en otra región (esta Neon está en `eu-central-1`, Fráncfort), cada query paga la ida y vuelta transatlántica. Fijar `regions` en `vercel.json` a la región de Vercel más cercana a tu DB. Descubierto 2026-07-11 mientras se buscaban formas de mejorar los tiempos de respuesta — hasta entonces llevaba así desde el primer deploy sin que nada avisara.
 
 **Cambiar de cuenta en la Vercel CLI local rompe el auto-deploy por push a GitHub** (pasó dos veces en 2026-07-11): tras `vercel logout`/`vercel login` con otra cuenta, los pushes a `main` dejan de disparar deploys automáticos aunque el repo siga bien conectado — hay que lanzar `vercel --prod` a mano (con `vercel whoami` y `.vercel/project.json` ya apuntando a la cuenta/proyecto correctos) hasta que se revise/reconecte la integración de GitHub desde el dashboard de Vercel.
+
+**Prisma 7 quitó `url`/`directUrl` de `schema.prisma` por completo** (2026-07-15): la connection string para los comandos de CLI (`migrate`, `db seed`...) ahora vive en `prisma.config.ts` (raíz del repo), y el cliente en runtime (`lib/prisma.ts`) exige un driver adapter explícito — ya no admite construirse solo con una connection string. Se usa `@prisma/adapter-neon` (driver serverless de Neon por WebSocket, mejor encaje con funciones serverless que el engine binario por TCP de antes). **Detalle importante, comprobado a mano**: tanto `prisma.config.ts` como `lib/prisma.ts` usan `DATABASE_URL` (con pooler) — `DIRECT_URL` da timeout adquiriendo el advisory lock que necesita `migrate deploy` (`pg_advisory_lock`) en este entorno concreto. Si se reintroduce `DIRECT_URL` en algún sitio, probarlo primero contra la DB real antes de asumir que es "más correcto" por evitar el pooler.
 
 ---
 
@@ -560,6 +562,24 @@ Confirmado por el usuario tras probarlo: fix definitivo. Preguntó también si u
 ### ✅ Botón "Volver al grupo" en música y diario
 
 Ninguna de las dos páginas (`GroupMusicPage.tsx`, `GroupJournalPage.tsx`) tenía forma de volver a la página del grupo salvo el navegador — solo existían los links de IDA (`GroupDetailPage.tsx` → "Música ambiente"/"Diario de grupo"), nunca la vuelta. Añadido un link `← Volver al grupo` (`text-ink-muted hover:text-oxblood`, mismo tono que el resto de la app) encima de cada `ChapterHeading`, apuntando a `/groups/:id`. Verificado en navegador en ambas páginas: el link aparece y su `href` apunta al grupo correcto. `typecheck`/`lint`/`test` (24/24)/`build` limpios.
+
+### ✅ Análisis de vulnerabilidades + actualización completa del stack a las últimas versiones mayores (2026-07-15)
+
+A petición del usuario: primero un análisis de seguridad (revisión manual del código + `pnpm audit`), luego arreglar todo lo encontrado, y por último comprobar si había versiones más nuevas de todo el stack y subirlas, una mayor a la vez, verificando entre cada una.
+
+**Vulnerabilidades encontradas y arregladas**:
+
+- **Subida de archivos sin restricción de tipo → XSS almacenado** (crítico): `POST /api/assets` aceptaba y guardaba cualquier `Content-Type` declarado por el cliente sin validar el contenido real, y `GET /api/assets/:id/raw` es público — un atacante logueado podía subir HTML/SVG con `<script>` disfrazado de imagen y compartir la URL con cualquiera. `convertImageToWebp` (`lib/imageConversion.ts`) ahora valida los bytes reales con `sharp` y rechaza cualquier cosa que no sea JPEG/PNG/WEBP/GIF real; SVG queda bloqueado a propósito (es contenido activo). Verificado con un payload real (`<script>` con `Content-Type: image/png` declarado) → `400 INVALID_IMAGE`.
+- **Sin rate limiting en login/registro**: nada frenaba fuerza bruta o credential stuffing. Añadido `express-rate-limit` (20 intentos/15min) en `/auth/login`, `/auth/register`, `/auth/google`. Verificado en real: al intento 20 empieza a responder `429`. Nota honesta: en funciones serverless el contador es por instancia, no una defensa a prueba de un atacante distribuido — para eso haría falta un store compartido (Redis/Upstash), no añadido sin pedir permiso primero por ser infraestructura nueva.
+- **Sin cabeceras de seguridad**: añadido `helmet()` (CSP desactivada a propósito, rompería el iframe de YouTube y el script de Google Sign-In).
+- **`uuid` vulnerable** (vía `google-auth-library`): forzado a `>=11.1.1` con un override de pnpm.
+- El resto de avisos de `pnpm audit` (~26 de 29) eran solo de herramientas de build (`vercel` CLI, `vitest`, `eslint` transitivos) — nunca llegan al runtime de producción.
+
+**Actualización de versiones, una mayor a la vez** (ver tabla de Stack arriba para las versiones finales): TypeScript 5→6 (la 7 es un compilador nativo nuevo sin soporte aún de `typescript-eslint` — se documentó el motivo en el propio `tsconfig.json`/`shared/tsconfig.build.json` en vez de forzarla), ESLint 9→10 + `eslint-plugin-react-hooks` 4→7 (obligó a reescribir el patrón de "ref durante el render" en 8 archivos — las reglas nuevas de cara al Compiler de React lo consideran inseguro), Zod 3→4 + `@hookform/resolvers` 3→5 (un solo formulario con `.default()` necesitó separar el tipo de entrada/salida de `useForm`), **Prisma 5→7** (el cambio más grande: arquitectura nueva de driver adapters, migrado a `@prisma/adapter-neon`; `url`/`directUrl` salieron de `schema.prisma` a `prisma.config.ts`; ver el gotcha de despliegue más arriba sobre `DATABASE_URL` vs `DIRECT_URL`), Express 4→5 (tipado más estricto de `req.params`, fix mecánico en ~14 archivos), google-auth-library/js-yaml/marked/dotenv (js-yaml 5 quitó su export por defecto), herramientas de Vercel, **React 18→19 + React Router 6→7** (`useRef(null)` cambia de tipo, mismo fix que react-hooks 7 en los mismos archivos), Vite 5→8 (ahora usa Rolldown por dentro), **Tailwind CSS 3→4** (migrado vía `@config` manteniendo `tailwind.config.js` como fuente de verdad, en vez de reescribir toda la paleta a `@theme` — la ruta de migración de menor riesgo, con los colores verificados pixel a pixel tras el cambio), Vitest 2→4.
+
+**Gotcha de esta sesión, a recordar**: cada `pnpm update` que cambia el árbol de dependencias deja el cliente de Prisma generado "huérfano" (su ruta en `node_modules/.pnpm` incluye un hash del árbol de resolución) — hay que `prisma generate` + `pnpm run build:shared` de nuevo después de CADA actualización de dependencias, o aparecen errores de tipo fantasma ("Module has no exported member 'X'") que no tienen nada que ver con el cambio real.
+
+**Verificación**: `typecheck`/`lint`/`test` (24/24)/`build` limpios en cada paso individual y en conjunto al final; `vercel build` local inspeccionado a mano (el bundle de la función incluye correctamente el cliente de Prisma) y la función bundleada cargada con Node real sin errores; pruebas en navegador contra servidor real en cada paso (login, música, atajos de teclado, swipe-to-queue, drag & drop, subida de imágenes); y verificación final **contra el despliegue de producción real** tras el push (login, painting de Tailwind, cabeceras de `helmet`, todo confirmado en `https://dnd-manager-web.vercel.app`).
 
 ---
 
