@@ -1,6 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+/* Tailwind v4 config-en-CSS: se mantiene el `tailwind.config.js` existente
+   vía `@config` (ruta de migración más segura, soportada oficialmente) en
+   vez de reescribir toda la paleta/tema a `@theme` — así los colores no
+   cambian de fuente de verdad en esta subida. */
+@config "../tailwind.config.js";
 
 /*
  * "Tomo del Jugador": ver DESIGN.md. Variables espejo de tailwind.config.js
