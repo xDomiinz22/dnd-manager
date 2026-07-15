@@ -1,6 +1,10 @@
 import { Router, raw } from "express";
 import { requireAuth } from "../middlewares/requireAuth";
-import { getAssetRawHandler, listAssetsHandler, uploadAssetHandler } from "../controllers/assetController";
+import {
+  getAssetRawHandler,
+  listAssetsHandler,
+  uploadAssetHandler,
+} from "../controllers/assetController";
 
 export const assetsRouter = Router();
 

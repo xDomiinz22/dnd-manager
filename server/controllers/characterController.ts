@@ -16,7 +16,7 @@ export const importCharacterHandler: RequestHandler = async (req, res, next) => 
   try {
     const input = importCharacterSchema.parse(req.body);
     const character = await characterService.importCharacter(
-      req.params.groupId!,
+      req.params.groupId as string,
       req.userId!,
       input,
     );
@@ -29,7 +29,7 @@ export const importCharacterHandler: RequestHandler = async (req, res, next) => 
 export const importCharacterMdHandler: RequestHandler = async (req, res, next) => {
   try {
     const input = importCharacterMdSchema.parse(req.body);
-    const character = await characterService.importCharacterMd(req.params.id!, input.md);
+    const character = await characterService.importCharacterMd(req.params.id as string, input.md);
     res.json(character);
   } catch (err) {
     next(err);
@@ -39,7 +39,7 @@ export const importCharacterMdHandler: RequestHandler = async (req, res, next) =
 export const reassignOwnerHandler: RequestHandler = async (req, res, next) => {
   try {
     const input = reassignOwnerSchema.parse(req.body);
-    const character = await characterService.reassignOwner(req.params.id!, input.ownerId);
+    const character = await characterService.reassignOwner(req.params.id as string, input.ownerId);
     res.json(character);
   } catch (err) {
     next(err);
@@ -49,7 +49,7 @@ export const reassignOwnerHandler: RequestHandler = async (req, res, next) => {
 export const changePortraitHandler: RequestHandler = async (req, res, next) => {
   try {
     const input = changePortraitSchema.parse(req.body);
-    const character = await characterService.changePortrait(req.params.id!, input.assetId);
+    const character = await characterService.changePortrait(req.params.id as string, input.assetId);
     res.json(character);
   } catch (err) {
     next(err);
@@ -59,7 +59,10 @@ export const changePortraitHandler: RequestHandler = async (req, res, next) => {
 export const updateHpHandler: RequestHandler = async (req, res, next) => {
   try {
     const input = updateHpSchema.parse(req.body);
-    const character = await characterService.updateCurrentHp(req.params.id!, input.currentHp);
+    const character = await characterService.updateCurrentHp(
+      req.params.id as string,
+      input.currentHp,
+    );
     res.json(character);
   } catch (err) {
     next(err);
@@ -70,7 +73,7 @@ export const updateSpellSlotHandler: RequestHandler = async (req, res, next) => 
   try {
     const input = updateSpellSlotSchema.parse(req.body);
     const character = await characterService.updateSpellSlot(
-      req.params.id!,
+      req.params.id as string,
       input.level,
       input.used,
       input.max,
@@ -83,7 +86,7 @@ export const updateSpellSlotHandler: RequestHandler = async (req, res, next) => 
 
 export const deleteCharacterHandler: RequestHandler = async (req, res, next) => {
   try {
-    await characterService.deleteCharacter(req.params.id!);
+    await characterService.deleteCharacter(req.params.id as string);
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -95,16 +98,12 @@ export const uploadCharacterImageHandler: RequestHandler = async (req, res, next
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
       throw new AppError(400, "INVALID_UPLOAD", "Cuerpo de subida vacío");
     }
-    const contentType = req.headers["content-type"];
-    const mime =
-      (Array.isArray(contentType) ? contentType[0] : contentType) ?? "application/octet-stream";
     const originalName = typeof req.query.name === "string" ? req.query.name : null;
 
     const { asset, character } = await characterService.addCharacterImage(
-      req.params.id!,
+      req.params.id as string,
       req.userId!,
       req.body,
-      mime,
       originalName,
     );
     res.status(201).json({ asset: toAssetDto(asset), character });
@@ -115,7 +114,7 @@ export const uploadCharacterImageHandler: RequestHandler = async (req, res, next
 
 export const listCharacterImagesHandler: RequestHandler = async (req, res, next) => {
   try {
-    const images = await characterService.listCharacterImages(req.params.id!);
+    const images = await characterService.listCharacterImages(req.params.id as string);
     res.json(images.map(toAssetDto));
   } catch (err) {
     next(err);
@@ -124,7 +123,10 @@ export const listCharacterImagesHandler: RequestHandler = async (req, res, next)
 
 export const deleteCharacterImageHandler: RequestHandler = async (req, res, next) => {
   try {
-    await characterService.deleteCharacterImage(req.params.id!, req.params.assetId!);
+    await characterService.deleteCharacterImage(
+      req.params.id as string,
+      req.params.assetId as string,
+    );
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -133,7 +135,7 @@ export const deleteCharacterImageHandler: RequestHandler = async (req, res, next
 
 export const getCharacterViewHandler: RequestHandler = async (req, res, next) => {
   try {
-    const view = await characterService.getCharacterView(req.userId!, req.params.id!);
+    const view = await characterService.getCharacterView(req.userId!, req.params.id as string);
     res.json(view);
   } catch (err) {
     next(err);
@@ -154,7 +156,7 @@ export const duplicateCharacterHandler: RequestHandler = async (req, res, next) 
     const input = duplicateCharacterSchema.parse(req.body);
     const character = await characterService.duplicateCharacter(
       req.userId!,
-      req.params.id!,
+      req.params.id as string,
       input.targetGroupId,
     );
     res.status(201).json(character);

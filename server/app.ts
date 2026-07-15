@@ -2,12 +2,23 @@ import express from "express";
 import cors from "cors";
 import compression from "compression";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import { apiRouter } from "./routes";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 
 export function createApp() {
   const app = express();
 
+  app.use(
+    helmet({
+      // CSP y COEP estrictos por defecto romperían el iframe de YouTube (el
+      // reproductor de música) y el script de Google Identity Services — se
+      // dejan desactivados aquí y se confía en el resto de cabeceras de
+      // helmet (nosniff, frameguard, HSTS...) como capa base.
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
   app.use(
     cors({
       origin: process.env.NODE_ENV === "production" ? false : true,

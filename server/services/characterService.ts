@@ -283,11 +283,16 @@ export async function addCharacterImage(
   characterId: string,
   uploaderId: string,
   data: Buffer,
-  mime: string,
   originalName: string | null,
 ): Promise<{ asset: Asset; character: CharacterFull }> {
   const existing = await getCharacterOrThrow(characterId);
-  const converted = await convertImageToWebp(data, mime, originalName);
+  const converted = await convertImageToWebp(data, originalName).catch(() => {
+    throw new AppError(
+      400,
+      "INVALID_IMAGE",
+      "El archivo no es una imagen soportada (JPEG, PNG, WEBP o GIF).",
+    );
+  });
 
   const asset = await prisma.asset.create({
     data: {
@@ -295,7 +300,9 @@ export async function addCharacterImage(
       kind: "IMAGE",
       mime: converted.mime,
       size: converted.data.length,
-      data: converted.data,
+      // Ver mismo comentario en assetController.ts: Prisma 7 exige
+      // `Uint8Array<ArrayBuffer>` estricto para los campos Bytes.
+      data: new Uint8Array(converted.data),
       originalName: converted.originalName,
       characterId,
     },

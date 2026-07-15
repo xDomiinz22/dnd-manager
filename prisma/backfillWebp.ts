@@ -19,7 +19,7 @@ async function main() {
 
   for (const asset of assets) {
     try {
-      const result = await convertImageToWebp(asset.data, asset.mime, asset.originalName);
+      const result = await convertImageToWebp(asset.data, asset.originalName);
       if (result.mime === asset.mime) {
         skipped++;
         continue;
@@ -28,7 +28,7 @@ async function main() {
       await prisma.asset.update({
         where: { id: asset.id },
         data: {
-          data: result.data,
+          data: new Uint8Array(result.data),
           mime: result.mime,
           size: result.data.length,
           originalName: result.originalName,
