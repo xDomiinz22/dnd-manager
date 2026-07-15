@@ -3,11 +3,10 @@
   "compilerOptions": {
     "noEmit": true,
     "rootDir": ".",
-    "baseUrl": ".",
     "types": ["node"],
     "paths": {
-      "@dnd-manager/shared": ["shared/src/index.ts"],
-      "@dnd-manager/shared/*": ["shared/src/*"]
+      "@dnd-manager/shared": ["./shared/src/index.ts"],
+      "@dnd-manager/shared/*": ["./shared/src/*"]
     }
   },
   "include": ["api", "server", "lib", "prisma/seed.ts"],

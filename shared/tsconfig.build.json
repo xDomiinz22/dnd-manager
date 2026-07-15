@@ -3,6 +3,13 @@
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "Node10",
+    // "Node10" está deprecado desde TS 6 (dejará de funcionar del todo en
+    // TS 7). Se mantiene por ahora porque `shared` emite CommonJS real que
+    // consume Node directamente (no un bundler) y migrar a "Node16" exige
+    // revisar extensiones en los imports relativos del código fuente — se
+    // pospone hasta que `typescript-eslint` soporte oficialmente TS 7 (ver
+    // nota en tsconfig.json de la raíz).
+    "ignoreDeprecations": "6.0",
     "declaration": true,
     "outDir": "dist",
     "rootDir": "src",
