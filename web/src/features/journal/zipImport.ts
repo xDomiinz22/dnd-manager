@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import yaml from "js-yaml";
+import * as yaml from "js-yaml";
 import { parseBracketLinkContent, type JournalImportPayload } from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
 
