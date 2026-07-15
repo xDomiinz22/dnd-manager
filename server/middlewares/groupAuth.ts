@@ -4,7 +4,7 @@ import { AppError } from "../errors/AppError";
 
 export const requireGroupMember: RequestHandler = async (req, _res, next) => {
   try {
-    const groupId = req.params.id ?? req.params.groupId!;
+    const groupId = (req.params.id ?? req.params.groupId) as string;
     const membership = await getMembership(groupId, req.userId!);
     if (!membership) {
       throw new AppError(403, "NOT_GROUP_MEMBER", "No perteneces a este grupo");
@@ -18,7 +18,7 @@ export const requireGroupMember: RequestHandler = async (req, _res, next) => {
 
 export const requireGroupMaster: RequestHandler = async (req, _res, next) => {
   try {
-    const groupId = req.params.id ?? req.params.groupId!;
+    const groupId = (req.params.id ?? req.params.groupId) as string;
     const membership = await getMembership(groupId, req.userId!);
     if (!membership) {
       throw new AppError(403, "NOT_GROUP_MEMBER", "No perteneces a este grupo");
@@ -36,7 +36,7 @@ export const requireGroupMaster: RequestHandler = async (req, _res, next) => {
 /** Master siempre puede gestionar la música del grupo; un jugador solo si tiene `canEditMusic`. */
 export const requireGroupMusicEdit: RequestHandler = async (req, _res, next) => {
   try {
-    const groupId = req.params.id ?? req.params.groupId!;
+    const groupId = (req.params.id ?? req.params.groupId) as string;
     const membership = await getMembership(groupId, req.userId!);
     if (!membership) {
       throw new AppError(403, "NOT_GROUP_MEMBER", "No perteneces a este grupo");

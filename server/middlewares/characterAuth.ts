@@ -5,7 +5,9 @@ import { AppError } from "../errors/AppError";
 
 export const requireCharacterMaster: RequestHandler = async (req, _res, next) => {
   try {
-    const character = await getCharacterOrThrow(req.params.id ?? req.params.characterId!);
+    const character = await getCharacterOrThrow(
+      (req.params.id ?? req.params.characterId) as string,
+    );
     const membership = await getMembership(character.groupId, req.userId!);
     if (!membership || membership.role !== "MASTER") {
       throw new AppError(403, "NOT_GROUP_MASTER", "Solo el Master del grupo puede hacer esto");
@@ -19,7 +21,9 @@ export const requireCharacterMaster: RequestHandler = async (req, _res, next) =>
 
 export const requireCharacterMasterOrOwner: RequestHandler = async (req, _res, next) => {
   try {
-    const character = await getCharacterOrThrow(req.params.id ?? req.params.characterId!);
+    const character = await getCharacterOrThrow(
+      (req.params.id ?? req.params.characterId) as string,
+    );
     if (character.ownerId === req.userId) {
       req.character = character;
       next();

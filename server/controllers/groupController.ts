@@ -28,7 +28,7 @@ export const listGroupsHandler: RequestHandler = async (req, res, next) => {
 
 export const getGroupDetailHandler: RequestHandler = async (req, res, next) => {
   try {
-    const group = await groupService.getGroupDetail(req.userId!, req.params.id!);
+    const group = await groupService.getGroupDetail(req.userId!, req.params.id as string);
     res.json(group);
   } catch (err) {
     next(err);
@@ -47,7 +47,7 @@ export const joinGroupHandler: RequestHandler = async (req, res, next) => {
 
 export const regenerateInviteCodeHandler: RequestHandler = async (req, res, next) => {
   try {
-    const inviteCode = await groupService.regenerateInviteCode(req.params.id!);
+    const inviteCode = await groupService.regenerateInviteCode(req.params.id as string);
     res.json({ inviteCode });
   } catch (err) {
     next(err);
@@ -59,8 +59,8 @@ export const removeMemberHandler: RequestHandler = async (req, res, next) => {
     const membership = req.groupMembership;
     if (!membership) throw new AppError(500, "INTERNAL_ERROR", "Missing group membership context");
     await groupService.removeMember(
-      req.params.id!,
-      req.params.userId!,
+      req.params.id as string,
+      req.params.userId as string,
       req.userId!,
       membership.role,
     );
@@ -74,8 +74,8 @@ export const setMemberMusicPermissionHandler: RequestHandler = async (req, res, 
   try {
     const input = updateMemberMusicPermissionSchema.parse(req.body);
     await groupService.setMemberMusicPermission(
-      req.params.id!,
-      req.params.userId!,
+      req.params.id as string,
+      req.params.userId as string,
       input.canEditMusic,
     );
     res.status(204).end();
