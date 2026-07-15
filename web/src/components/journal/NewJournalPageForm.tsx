@@ -1,5 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { createJournalPageSchema, type CreateJournalPageInput } from "@dnd-manager/shared";
 import { Card } from "../ui/Card";
 import { TextField } from "../ui/TextField";
@@ -19,7 +20,13 @@ export function NewJournalPageForm({
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<CreateJournalPageInput>({
+    // `bodyMarkdown` tiene `.default("")` en el schema: el tipo de ENTRADA
+    // del formulario (antes de que zod aplique el default) lo deja
+    // opcional, mientras que el tipo de SALIDA (tras `handleSubmit`, ya
+    // resuelto) lo garantiza como string — de ahí los dos genéricos
+    // distintos en vez de `CreateJournalPageInput` (el de salida) para los
+    // dos casos.
+  } = useForm<z.input<typeof createJournalPageSchema>, unknown, CreateJournalPageInput>({
     resolver: zodResolver(createJournalPageSchema),
     defaultValues: { title: "", bodyMarkdown: "" },
   });
