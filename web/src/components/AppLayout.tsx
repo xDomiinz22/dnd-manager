@@ -7,6 +7,7 @@ import {
 } from "../features/music/AmbientPlayerContext";
 import { MiniPlayerBar } from "./music/MiniPlayerBar";
 import { TempQueueLauncher } from "./music/TempQueueLauncher";
+import { BrandMark } from "./ui/BrandMark";
 import { Button } from "./ui/Button";
 
 export function AppLayout() {
@@ -32,7 +33,11 @@ function AppLayoutContent() {
     <div className="min-h-screen bg-parchment text-ink">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-rule bg-parchment-panel px-6 py-4">
         <nav className="flex flex-wrap items-center gap-5">
-          <Link to="/" className="font-display text-lg tracking-wide text-oxblood">
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-display text-lg tracking-wide text-oxblood"
+          >
+            <BrandMark />
             D&D Manager
           </Link>
           <Link to="/groups" className="text-ink hover:text-oxblood">
