@@ -42,8 +42,17 @@ export function JournalPageView({
 
   useEffect(() => {
     reset({ title: page.title, bodyMarkdown: page.bodyMarkdown });
-    setConfirmingDelete(false);
   }, [page.id, page.title, page.bodyMarkdown, reset]);
+
+  // Resetear `confirmingDelete` al cambiar de página se ajusta durante el
+  // propio render (comparando contra el id del render anterior) en vez de
+  // en un `useEffect` — mismo patrón que en GroupMusicPage, recomendado por
+  // React para "resetear estado cuando cambia una prop".
+  const [prevPageId, setPrevPageId] = useState(page.id);
+  if (page.id !== prevPageId) {
+    setPrevPageId(page.id);
+    setConfirmingDelete(false);
+  }
 
   const html = useMemo(
     () => renderJournalHtml(page.bodyMarkdown, page.assets, titleToId),

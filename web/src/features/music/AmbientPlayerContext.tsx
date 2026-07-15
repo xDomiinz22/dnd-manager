@@ -53,20 +53,27 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   // listener de la YT API creado una sola vez, así que necesita leer siempre
   // el valor actual en vez de cerrar sobre el de cuando se montó el player.
   const playlistRef = useRef(playlist);
-  playlistRef.current = playlist;
   const currentTrackDbIdRef = useRef(currentTrackDbId);
-  currentTrackDbIdRef.current = currentTrackDbId;
   const shuffleRef = useRef(shuffle);
-  shuffleRef.current = shuffle;
   const shuffleHistoryRef = useRef<string[]>([]);
   const tempQueueRef = useRef(tempQueue);
-  tempQueueRef.current = tempQueue;
   const activeTempTrackRef = useRef(activeTempTrack);
-  activeTempTrackRef.current = activeTempTrack;
   // `player.play` todavía no existe cuando se define `handleEnded` más abajo
   // (hace falta pasársela a useAmbientPlayer antes de tener `player`) — este
   // ref rompe esa dependencia circular.
   const playRef = useRef<(youtubeId: string) => void>(() => {});
+
+  // Los refs de arriba se sincronizan aquí (tras el render, nunca durante)
+  // en vez de con `xRef.current = x;` suelto en el cuerpo del componente —
+  // `react-hooks/refs` (ESLint 10 / eslint-plugin-react-hooks 7) lo
+  // considera inseguro de cara al futuro Compiler de React.
+  useEffect(() => {
+    playlistRef.current = playlist;
+    currentTrackDbIdRef.current = currentTrackDbId;
+    shuffleRef.current = shuffle;
+    tempQueueRef.current = tempQueue;
+    activeTempTrackRef.current = activeTempTrack;
+  });
 
   function advance() {
     // La cola temporal siempre tiene prioridad sobre la lista normal —
@@ -121,7 +128,9 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   }
 
   const player = useAmbientPlayer({ onEnded: handleEnded });
-  playRef.current = player.play;
+  useEffect(() => {
+    playRef.current = player.play;
+  });
 
   function playFromPlaylist(nextGroupId: string, nextPlaylist: MusicPlaylist, trackId: string) {
     const track = nextPlaylist.tracks.find((t) => t.id === trackId);
@@ -242,26 +251,29 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
   // del poll de `currentTime` (cada 500ms) — así que todo lo que lee debe
   // venir de un ref, nunca cerrar sobre una variable de un render concreto.
   const playerLatestRef = useRef(player);
-  playerLatestRef.current = player;
   const currentTimeRef = useRef(player.currentTime);
-  currentTimeRef.current = player.currentTime;
   const durationRef = useRef(player.duration);
-  durationRef.current = player.duration;
   const volumeRef = useRef(player.volume);
-  volumeRef.current = player.volume;
   const currentTrackRef = useRef(currentTrack);
-  currentTrackRef.current = currentTrack;
   const lastNonZeroVolumeRef = useRef(player.volume || 70);
-  if (player.volume > 0) lastNonZeroVolumeRef.current = player.volume;
   // `handleKeyDown` (definido más abajo) se reasigna en cada render — pasar
   // por un ref aquí (en vez de referenciar la función directamente) es
   // necesario para que este `useEffect` solo lea un `.current` en vez de
   // una función "inestable": el analizador de dependencias de
-  // `react-hooks/exhaustive-deps` de esta instalación de ESLint 9 crashea
+  // `react-hooks/exhaustive-deps` de esta instalación crashea
   // (`context.getSource is not a function`, gotcha ya conocido de esta
   // sesión) al intentar recorrer el cuerpo de una función de componente
   // referenciada así de directo.
   const handleKeyDownRef = useRef((_e: KeyboardEvent) => {});
+
+  useEffect(() => {
+    playerLatestRef.current = player;
+    currentTimeRef.current = player.currentTime;
+    durationRef.current = player.duration;
+    volumeRef.current = player.volume;
+    currentTrackRef.current = currentTrack;
+    if (player.volume > 0) lastNonZeroVolumeRef.current = player.volume;
+  });
 
   useEffect(() => {
     function listener(e: KeyboardEvent) {
@@ -356,7 +368,9 @@ export function AmbientPlayerProvider({ children }: { children: ReactNode }) {
         return;
     }
   }
-  handleKeyDownRef.current = handleKeyDown;
+  useEffect(() => {
+    handleKeyDownRef.current = handleKeyDown;
+  });
 
   const value: AmbientPlayerContextValue = {
     containerRef: player.containerRef,

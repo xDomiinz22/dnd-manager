@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { loadYoutubeIframeApi, type YTPlayer } from "../../lib/youtubePlayer";
 
 export interface AmbientPlayerControls {
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: RefObject<HTMLDivElement | null>;
   isReady: boolean;
   isPlaying: boolean;
   currentTrackId: string | null;
@@ -40,7 +40,9 @@ export function useAmbientPlayer(options: UseAmbientPlayerOptions = {}): Ambient
   // vez, así que el listener de la YT API cerraría sobre una versión
   // obsoleta de `onEnded` si lo leyera directamente de `options`.
   const onEndedRef = useRef(options.onEnded);
-  onEndedRef.current = options.onEnded;
+  useEffect(() => {
+    onEndedRef.current = options.onEnded;
+  });
 
   const [isReady, setIsReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);

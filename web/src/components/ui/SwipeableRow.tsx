@@ -1,4 +1,11 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import { useCloseOnOutsideClick } from "../../lib/useCloseOnOutsideClick";
 
 const DELETE_WIDTH = 72;
@@ -88,6 +95,18 @@ export function SwipeableRow({
     setTranslateX(0);
   });
 
+  // `endGesture` (definido más abajo) se redefine en cada render (cierra
+  // sobre las props/estado de ese render), pero los listeners de `window`
+  // necesitan una referencia de función ESTABLE para poder añadirse/quitarse
+  // de forma fiable entre renders — si no, `removeEventListener` apunta a
+  // una copia distinta a la que se añadió y el listener se queda pegado
+  // para siempre (la fila quedaba "atascada" a medio deslizar). Declarado
+  // ANTES de `endGesture` (con un no-op de inicio) para que la propia
+  // `endGesture` pueda referenciar `stableEndGesture` sin "usar antes de
+  // declarar".
+  const endGestureRef = useRef<() => void>(() => {});
+  const stableEndGesture = useCallback(() => endGestureRef.current(), []);
+
   function endGesture() {
     window.removeEventListener("pointerup", stableEndGesture);
     window.removeEventListener("pointercancel", stableEndGesture);
@@ -111,17 +130,9 @@ export function SwipeableRow({
     setTranslateX(g.startTranslateX);
   }
 
-  // `endGesture` se redefine en cada render (cierra sobre las props/estado
-  // de ese render), pero los listeners de `window` necesitan una referencia
-  // de función ESTABLE para poder añadirse/quitarse de forma fiable entre
-  // renders — si no, `removeEventListener` apunta a una copia distinta a la
-  // que se añadió y el listener se queda pegado para siempre (la fila
-  // quedaba "atascada" a medio deslizar). `stableEndGesture` (creada una
-  // sola vez vía `useRef`) siempre delega en la versión más reciente.
-  const endGestureRef = useRef(endGesture);
-  endGestureRef.current = endGesture;
-  const stableEndGestureRefObj = useRef(() => endGestureRef.current());
-  const stableEndGesture = stableEndGestureRefObj.current;
+  useEffect(() => {
+    endGestureRef.current = endGesture;
+  });
 
   function handlePointerDown(e: ReactPointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return;

@@ -21,6 +21,12 @@ function AppLayoutContent() {
   const { user } = useAuth();
   const logout = useLogout();
   const player = useAmbientPlayerContext();
+  // Desestructurado a parte: el objeto `player` incluye `containerRef` (un
+  // ref real) en su forma, y el analizador de `react-hooks/refs` (ESLint
+  // 10 / eslint-plugin-react-hooks 7) trata cualquier acceso a una
+  // propiedad de un objeto que contenga un ref como sospechoso, aunque la
+  // propiedad leída (`currentTrack`) no sea un ref en sí.
+  const { currentTrack, containerRef } = player;
 
   return (
     <div className="min-h-screen bg-parchment text-ink">
@@ -59,12 +65,12 @@ function AppLayoutContent() {
         para siempre en el montaje del hook (bug ya visto una vez).
       */}
       <div
-        ref={player.containerRef}
+        ref={containerRef}
         className="pointer-events-none fixed left-0 top-0 h-px w-px overflow-hidden opacity-0"
         aria-hidden="true"
       />
 
-      <div className={player.currentTrack ? "pb-32" : undefined}>
+      <div className={currentTrack ? "pb-32" : undefined}>
         <Outlet />
       </div>
 

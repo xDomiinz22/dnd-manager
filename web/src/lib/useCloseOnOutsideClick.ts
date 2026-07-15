@@ -11,7 +11,7 @@ import { useEffect, type RefObject } from "react";
  * instante. Un `.click()` sintético (`isTrusted: false`) no dispara ese
  * flush síncrono, así que probar con JS no habría revelado este bug.
  */
-export function useCloseOnOutsideClick(ref: RefObject<HTMLElement>, onClose: () => void) {
+export function useCloseOnOutsideClick(ref: RefObject<HTMLElement | null>, onClose: () => void) {
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();

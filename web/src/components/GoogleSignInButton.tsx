@@ -32,7 +32,9 @@ export function GoogleSignInButton({ text = "signin_with" }: GoogleSignInButtonP
   // callback siempre lee la versión más reciente de navigate/toast/mutate a
   // través de este ref para no quedarse con closures obsoletas.
   const latestRef = useRef({ navigate, toast, googleLogin });
-  latestRef.current = { navigate, toast, googleLogin };
+  useEffect(() => {
+    latestRef.current = { navigate, toast, googleLogin };
+  });
 
   useEffect(() => {
     if (!CLIENT_ID || !containerRef.current) return;

@@ -62,7 +62,9 @@ export function GroupMusicPage() {
   // suena ahora mismo es una de las de este grupo (p.ej. si alguien añade un
   // track mientras sigues viendo esta página).
   const syncRef = useRef(player.syncPlaylistIfActive);
-  syncRef.current = player.syncPlaylistIfActive;
+  useEffect(() => {
+    syncRef.current = player.syncPlaylistIfActive;
+  });
   useEffect(() => {
     if (!data || player.groupId !== groupId) return;
     data.playlists.forEach((pl) => syncRef.current(pl));
@@ -212,11 +214,18 @@ function PlaylistCard({
 
   // El orden optimista se descarta en cuanto llega un snapshot nuevo del
   // servidor (tras el refetch de la propia mutación de reordenar, o tras
-  // cualquier otro cambio ajeno a la lista).
+  // cualquier otro cambio ajeno a la lista). Ajustar el estado durante el
+  // propio render (comparando contra el valor del render anterior) en vez
+  // de en un `useEffect` — patrón recomendado por React para "resetear
+  // estado cuando cambia una prop", evita el commit de más que supondría
+  // un efecto (ver "Adjusting state based on a prop change" en la doc de
+  // `useState`).
   const serverOrderKey = playlist.tracks.map((t) => t.id).join(",");
-  useEffect(() => {
+  const [prevServerOrderKey, setPrevServerOrderKey] = useState(serverOrderKey);
+  if (serverOrderKey !== prevServerOrderKey) {
+    setPrevServerOrderKey(serverOrderKey);
     setDragOrderIds(null);
-  }, [serverOrderKey]);
+  }
 
   const orderedTracks = dragOrderIds
     ? (dragOrderIds
