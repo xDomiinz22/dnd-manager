@@ -39,6 +39,7 @@ model Group {
   characters     CharacterSheet[]
   groupJournal   JournalEntry?    @relation("GroupJournal")
   musicPlaylists MusicPlaylist[]
+  map            GroupMap?
 }
 
 enum GroupRole {
@@ -139,6 +140,10 @@ model Asset {
 
   // Embeds ![[...]] resueltos en páginas de journal
   journalPageAssets JournalPageAsset[]
+
+  // Imagen actual del mapa de un grupo (Asset.kind = IMAGE). Cada subida crea
+  // un Asset nuevo (el anterior queda huérfano, igual que al cambiar retrato).
+  groupMap GroupMap?
 }
 
 model CharacterSheet {
@@ -225,6 +230,7 @@ model JournalPage {
   assets   JournalPageAsset[]
   linksOut JournalPageLink[]  @relation("LinkFrom")
   linksIn  JournalPageLink[]  @relation("LinkTo")
+  mapPins  MapPin[]
 }
 
 model JournalPageAsset {
@@ -244,4 +250,49 @@ model JournalPageLink {
 
   fromPage JournalPage @relation("LinkFrom", fields: [fromPageId], references: [id], onDelete: Cascade)
   toPage   JournalPage @relation("LinkTo", fields: [toPageId], references: [id], onDelete: Cascade)
+}
+
+// Mapa de campaña por grupo: una sola imagen "actual" (se va reemplazando a
+// medida que el Master revela más terreno) más pines de posición fija que
+// sobreviven a esos reemplazos. Solo se guarda el estado actual, sin
+// histórico de versiones anteriores (decisión confirmada con el usuario).
+model GroupMap {
+  id      String @id @default(cuid())
+  groupId String @unique
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  assetId String @unique
+  asset   Asset  @relation(fields: [assetId], references: [id])
+  // Dimensiones en px de la imagen actual, capturadas en la subida: toda
+  // imagen de reemplazo debe medir exactamente esto (ver mapService), para
+  // que los MapPin (posición relativa 0-1) no queden descuadrados.
+  width  Int
+  height Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  pins MapPin[]
+}
+
+model MapPin {
+  id         String   @id @default(cuid())
+  groupMapId String
+  groupMap   GroupMap @relation(fields: [groupMapId], references: [id], onDelete: Cascade)
+
+  // Posición relativa (0-1, no píxeles) para que sobreviva a un reemplazo de
+  // la imagen de fondo mientras mantenga las mismas dimensiones.
+  x Float
+  y Float
+
+  title String
+
+  // Enlace opcional a una página del diario DE GRUPO (no de personaje) para
+  // el "leer más" del popup del pin.
+  journalPageId String?
+  journalPage   JournalPage? @relation(fields: [journalPageId], references: [id], onDelete: SetNull)
+
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

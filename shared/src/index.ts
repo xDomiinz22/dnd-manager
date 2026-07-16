@@ -6,3 +6,4 @@ export * from "./characters";
 export * from "./assets";
 export * from "./journal";
 export * from "./music";
+export * from "./map";

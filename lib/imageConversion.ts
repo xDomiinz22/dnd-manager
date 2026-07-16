@@ -23,6 +23,8 @@ export interface ConvertedImage {
   data: Buffer;
   mime: string;
   originalName: string | null;
+  width: number;
+  height: number;
 }
 
 function withExtension(originalName: string | null, ext: string): string | null {
@@ -42,12 +44,18 @@ export async function convertImageToWebp(
   const metadata = await sharp(data)
     .metadata()
     .catch(() => null);
-  if (!metadata?.format || !ALLOWED_FORMATS.has(metadata.format)) {
+  if (
+    !metadata?.format ||
+    !ALLOWED_FORMATS.has(metadata.format) ||
+    !metadata.width ||
+    !metadata.height
+  ) {
     throw new Error("UNSUPPORTED_IMAGE_FORMAT");
   }
+  const { width, height } = metadata;
 
   if (SKIP_CONVERSION_FORMATS.has(metadata.format)) {
-    return { data, mime: FORMAT_TO_MIME[metadata.format]!, originalName };
+    return { data, mime: FORMAT_TO_MIME[metadata.format]!, originalName, width, height };
   }
 
   const converted = await sharp(data).webp({ quality: 82 }).toBuffer();
@@ -55,5 +63,7 @@ export async function convertImageToWebp(
     data: converted,
     mime: "image/webp",
     originalName: withExtension(originalName, "webp"),
+    width,
+    height,
   };
 }
