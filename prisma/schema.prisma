@@ -26,6 +26,7 @@ model User {
   assets      Asset[]
   addedTracks MusicTrack[]     @relation("MusicTrackAddedBy")
   diceRolls   DiceRoll[]
+  chatMessages ChatMessage[]
 }
 
 model Group {
@@ -42,6 +43,7 @@ model Group {
   musicPlaylists MusicPlaylist[]
   map            GroupMap?
   diceRolls      DiceRoll[]
+  activeSession  GroupSession?
 }
 
 enum GroupRole {
@@ -324,5 +326,53 @@ model DiceRoll {
 
   createdAt DateTime @default(now())
 
+  chatMentions ChatMessage[]
+
   @@index([groupId, createdAt])
+}
+
+// Sesión de chat en vivo, acotada por los botones "Iniciar"/"Finalizar
+// sesión" (solo Master): mientras existe esta fila hay una sesión activa
+// para el grupo (a lo sumo una a la vez, gracias a groupId @unique).
+// Finalizar la sesión borra la fila y, en cascada, todos sus ChatMessage —
+// es un chat efímero de verdad, no un historial permanente (a diferencia
+// del log de DiceRoll en "Tiradas", que no se toca).
+model GroupSession {
+  id      String @id @default(cuid())
+  groupId String @unique
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  startedAt     DateTime @default(now())
+  startedByUserId String
+
+  messages ChatMessage[]
+}
+
+enum ChatMessageKind {
+  TEXT
+  ROLL
+}
+
+model ChatMessage {
+  id        String       @id @default(cuid())
+  sessionId String
+  session   GroupSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  kind ChatMessageKind
+
+  // kind = TEXT
+  text String?
+
+  // kind = ROLL: referencia al DiceRoll ya creado por el flujo normal de
+  // tiradas (server/services/diceService.ts) — no se duplica el resultado,
+  // solo se "menciona" en el chat de la sesión activa en ese momento.
+  diceRollId String?
+  diceRoll   DiceRoll? @relation(fields: [diceRollId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([sessionId, createdAt])
 }

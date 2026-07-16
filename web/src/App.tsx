@@ -13,6 +13,7 @@ import { CharacterJournalPage } from "./pages/CharacterJournalPage";
 import { GroupMusicPage } from "./pages/GroupMusicPage";
 import { GroupMapPage } from "./pages/GroupMapPage";
 import { GroupDiceLogPage } from "./pages/GroupDiceLogPage";
+import { GroupChatPage } from "./pages/GroupChatPage";
 import { CharacterProfileModal } from "./components/character/CharacterProfileModal";
 
 export function App() {
@@ -35,6 +36,7 @@ export function App() {
             <Route path="/groups/:id/music" element={<GroupMusicPage />} />
             <Route path="/groups/:id/map" element={<GroupMapPage />} />
             <Route path="/groups/:id/rolls" element={<GroupDiceLogPage />} />
+            <Route path="/groups/:id/chat" element={<GroupChatPage />} />
             <Route path="/characters" element={<MyCharactersPage />} />
             <Route path="/characters/:id" element={<CharacterSheetPage />} />
             <Route path="/characters/:id/journal" element={<CharacterJournalPage />} />

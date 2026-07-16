@@ -9,6 +9,7 @@ import { journalRouter } from "./journal";
 import { musicRouter } from "./music";
 import { mapRouter } from "./map";
 import { diceRouter } from "./dice";
+import { chatRouter } from "./chat";
 
 export const apiRouter = Router();
 
@@ -22,3 +23,4 @@ apiRouter.use(journalRouter);
 apiRouter.use(musicRouter);
 apiRouter.use(mapRouter);
 apiRouter.use(diceRouter);
+apiRouter.use(chatRouter);

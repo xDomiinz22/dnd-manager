@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { rollFormula, InvalidDiceFormulaError } from "../../lib/diceRoll";
 import { getMembership } from "./authorization";
+import { mentionRollInActiveSession } from "./chatService";
 import { AppError } from "../errors/AppError";
 
 const ROLL_INCLUDE = {
@@ -113,6 +114,8 @@ export async function createGroupRoll(
     },
     include: ROLL_INCLUDE,
   });
+
+  await mentionRollInActiveSession(groupId, userId, roll.id);
 
   return toDiceRollDto(roll);
 }
