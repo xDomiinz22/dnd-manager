@@ -7,6 +7,7 @@ import type {
   DuplicateCharacterInput,
   ImportCharacterInput,
   ImportCharacterMdInput,
+  ResetGroupHpResponse,
   UpdateHpInput,
   UpdateSpellSlotInput,
   UploadCharacterImageResponse,
@@ -40,6 +41,12 @@ export const charactersApi = {
     apiFetch<CharacterFull>(`/characters/${id}/hp`, {
       method: "PATCH",
       body: JSON.stringify(input),
+    }),
+  resetHp: (id: string) =>
+    apiFetch<CharacterFull>(`/characters/${id}/hp/reset`, { method: "POST" }),
+  resetGroupHp: (groupId: string) =>
+    apiFetch<ResetGroupHpResponse>(`/groups/${groupId}/characters/hp/reset-all`, {
+      method: "POST",
     }),
   updateSpellSlot: (id: string, input: UpdateSpellSlotInput) =>
     apiFetch<CharacterFull>(`/characters/${id}/spell-slots`, {

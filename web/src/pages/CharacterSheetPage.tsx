@@ -14,7 +14,13 @@ import {
   type SpellSlots,
   type UpdateHpInput,
 } from "@dnd-manager/shared";
-import { useCharacter, useUpdateHp, useUpdateSpellSlot } from "../features/characters/hooks";
+import {
+  useCharacter,
+  useResetHp,
+  useUpdateHp,
+  useUpdateSpellSlot,
+} from "../features/characters/hooks";
+import { Button } from "../components/ui/Button";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { CharacterImageManager } from "../components/character/CharacterImageManager";
 import { ItemDetailModal } from "../components/character/ItemDetailModal";
@@ -215,6 +221,7 @@ function HpStat({
   const [editing, setEditing] = useState(false);
   const toast = useToast();
   const updateHp = useUpdateHp(characterId);
+  const resetHp = useResetHp(characterId);
   const {
     register,
     handleSubmit,
@@ -283,18 +290,39 @@ function HpStat({
     );
   }
 
+  function handleReset() {
+    resetHp.mutate(undefined, {
+      onSuccess: () => toast.success("PG restablecidos al máximo."),
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudieron restablecer los PG.")),
+    });
+  }
+
   return (
-    <button
-      type="button"
-      onClick={startEditing}
-      title="Editar PG actuales"
-      className="w-full rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
-    >
-      <div className="text-xs uppercase tracking-wide text-ink-muted">PG</div>
-      <div className="font-semibold text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
-        {current}/{max}
-      </div>
-    </button>
+    <div className="flex flex-col items-center gap-0.5">
+      <button
+        type="button"
+        onClick={startEditing}
+        title="Editar PG actuales"
+        className="w-full rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+      >
+        <div className="text-xs uppercase tracking-wide text-ink-muted">PG</div>
+        <div className="font-semibold text-ink" style={{ fontVariantNumeric: "tabular-nums" }}>
+          {current}/{max}
+        </div>
+      </button>
+      {current < max && (
+        <Button
+          variant="secondary"
+          onClick={handleReset}
+          isLoading={resetHp.isPending}
+          loadingText="..."
+          title="Restablecer PG al máximo (descanso)"
+          className="!px-2 !py-0.5 !text-[0.65rem] !normal-case !tracking-normal"
+        >
+          Descansar
+        </Button>
+      )}
+    </div>
   );
 }
 

@@ -92,6 +92,22 @@ export function useUpdateHp(id: string) {
   });
 }
 
+export function useResetHp(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => charactersApi.resetHp(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: characterKey(id) }),
+  });
+}
+
+export function useResetGroupHp(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => charactersApi.resetGroupHp(groupId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) }),
+  });
+}
+
 export function useUpdateSpellSlot(id: string) {
   const queryClient = useQueryClient();
   return useMutation({

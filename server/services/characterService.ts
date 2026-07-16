@@ -32,6 +32,11 @@ function resolveCurrentHp(character: CharacterSheet): number {
   const rawValue = rawSystem?.attributes?.hp?.value;
   if (typeof rawValue === "number") return rawValue;
 
+  return resolveMaxHp(character);
+}
+
+/** PG máximos: el override manual si existe, si no el derivado (ver deriveCharacterStats). */
+function resolveMaxHp(character: Pick<CharacterSheet, "derived">): number {
   const derived = character.derived as CharacterFull["derived"] | null;
   return derived?.hitPoints.override ?? derived?.hitPoints.max ?? 0;
 }
@@ -233,6 +238,37 @@ export async function updateCurrentHp(id: string, currentHp: number): Promise<Ch
     include: { portraitAsset: true },
   });
   return toCharacterFull(character);
+}
+
+/** Descanso: pone los PG actuales al máximo (override manual si existe, si no el derivado). */
+export async function resetCurrentHp(id: string): Promise<CharacterFull> {
+  const existing = await getCharacterOrThrow(id);
+
+  const character = await prisma.characterSheet.update({
+    where: { id: existing.id },
+    data: { currentHp: resolveMaxHp(existing) },
+    include: { portraitAsset: true },
+  });
+  return toCharacterFull(character);
+}
+
+/** Descanso de grupo: resetea los PG de todos los personajes del grupo a su máximo. */
+export async function resetGroupHp(groupId: string): Promise<number> {
+  const characters = await prisma.characterSheet.findMany({
+    where: { groupId },
+    select: { id: true, derived: true },
+  });
+
+  await prisma.$transaction(
+    characters.map((c) =>
+      prisma.characterSheet.update({
+        where: { id: c.id },
+        data: { currentHp: resolveMaxHp(c) },
+      }),
+    ),
+  );
+
+  return characters.length;
 }
 
 export async function updateSpellSlot(

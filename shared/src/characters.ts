@@ -74,6 +74,11 @@ export const updateHpSchema = z.object({
 });
 export type UpdateHpInput = z.infer<typeof updateHpSchema>;
 
+export const resetGroupHpResponseSchema = z.object({
+  count: z.number().int(),
+});
+export type ResetGroupHpResponse = z.infer<typeof resetGroupHpResponseSchema>;
+
 export const SPELL_SLOT_LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
 export const spellSlotLevelSchema = z.union([
   z.literal(1),

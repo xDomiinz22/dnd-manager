@@ -69,6 +69,24 @@ export const updateHpHandler: RequestHandler = async (req, res, next) => {
   }
 };
 
+export const resetHpHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const character = await characterService.resetCurrentHp(req.params.id as string);
+    res.json(character);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetGroupHpHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const count = await characterService.resetGroupHp(req.params.groupId as string);
+    res.json({ count });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const updateSpellSlotHandler: RequestHandler = async (req, res, next) => {
   try {
     const input = updateSpellSlotSchema.parse(req.body);

@@ -19,6 +19,7 @@ import {
   useDeleteCharacter,
   useImportCharacter,
   useImportCharacterMd,
+  useResetGroupHp,
 } from "../features/characters/hooks";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { Button } from "../components/ui/Button";
@@ -40,11 +41,13 @@ export function GroupDetailPage() {
   const regenerate = useRegenerateInviteCode(id!);
   const removeMember = useRemoveMember(id!);
   const setMemberMusicPermission = useSetMemberMusicPermission(id!);
+  const resetGroupHp = useResetGroupHp(id!);
   const [copied, setCopied] = useState(false);
   const [importing, setImporting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingMemberId, setConfirmingMemberId] = useState<string | null>(null);
+  const [confirmingGroupRest, setConfirmingGroupRest] = useState(false);
 
   if (isLoading || !group) {
     return (
@@ -95,6 +98,16 @@ export function GroupDetailPage() {
           toast.error(toErrorMessage(err, "No se pudo cambiar el permiso de música.")),
       },
     );
+  }
+
+  function handleResetGroupHp() {
+    resetGroupHp.mutate(undefined, {
+      onSuccess: ({ count }) => {
+        toast.success(`PG restablecidos al máximo (${count} personaje${count === 1 ? "" : "s"}).`);
+        setConfirmingGroupRest(false);
+      },
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudo hacer el descanso de grupo.")),
+    });
   }
 
   return (
@@ -214,11 +227,30 @@ export function GroupDetailPage() {
           Personajes ({group.characters.length})
         </h2>
         {isMaster && (
-          <Button variant="ghost" onClick={() => setImporting((v) => !v)}>
-            {importing ? "Cancelar" : "Importar ficha"}
-          </Button>
+          <div className="flex gap-2">
+            {group.characters.length > 0 && (
+              <Button variant="ghost" onClick={() => setConfirmingGroupRest((v) => !v)}>
+                Descanso de grupo
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => setImporting((v) => !v)}>
+              {importing ? "Cancelar" : "Importar ficha"}
+            </Button>
+          </div>
         )}
       </div>
+
+      {confirmingGroupRest && (
+        <ConfirmPanel
+          message="Vas a restablecer los PG de TODOS los personajes de este grupo a su máximo. No se puede deshacer."
+          confirmLabel="Confirmar descanso de grupo"
+          loadingText="Restableciendo..."
+          isLoading={resetGroupHp.isPending}
+          onConfirm={handleResetGroupHp}
+          onCancel={() => setConfirmingGroupRest(false)}
+          className="mb-4 border-t-0 pt-0"
+        />
+      )}
 
       {importing && (
         <ImportCharacterForm

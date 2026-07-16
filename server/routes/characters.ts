@@ -16,6 +16,8 @@ import {
   listCharacterImagesHandler,
   listMyCharactersHandler,
   reassignOwnerHandler,
+  resetGroupHpHandler,
+  resetHpHandler,
   updateHpHandler,
   updateSpellSlotHandler,
   uploadCharacterImageHandler,
@@ -55,6 +57,18 @@ charactersRouter.patch(
   requireAuth,
   requireCharacterMasterOrOwner,
   updateHpHandler,
+);
+charactersRouter.post(
+  "/characters/:id/hp/reset",
+  requireAuth,
+  requireCharacterMasterOrOwner,
+  resetHpHandler,
+);
+charactersRouter.post(
+  "/groups/:groupId/characters/hp/reset-all",
+  requireAuth,
+  requireGroupMaster,
+  resetGroupHpHandler,
 );
 charactersRouter.patch(
   "/characters/:id/spell-slots",
