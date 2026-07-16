@@ -54,7 +54,11 @@ export const getAssetRawHandler: RequestHandler = async (req, res, next) => {
     // antiguo se coló antes de ese fix.
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    res.send(asset.data);
+    // Prisma 7 devuelve los campos Bytes como Uint8Array puro (no una
+    // instancia real de Buffer de Node). res.send() de Express solo trata
+    // como binario lo que pasa Buffer.isBuffer(); si no, lo serializa como
+    // JSON ({"0":n,"1":n,...}), rompiendo la imagen en el navegador.
+    res.send(Buffer.from(asset.data));
   } catch (err) {
     next(err);
   }
