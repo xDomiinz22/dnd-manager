@@ -61,3 +61,11 @@ export function useSetMemberMusicPermission(groupId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) }),
   });
 }
+
+export function usePromoteMember(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => groupsApi.promoteMember(groupId, userId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) }),
+  });
+}

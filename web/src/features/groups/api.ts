@@ -27,4 +27,6 @@ export const groupsApi = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
+  promoteMember: (groupId: string, userId: string) =>
+    apiFetch<void>(`/groups/${groupId}/members/${userId}/promote`, { method: "PATCH" }),
 };

@@ -6,6 +6,7 @@ import {
   getGroupDetailHandler,
   joinGroupHandler,
   listGroupsHandler,
+  promoteMemberHandler,
   regenerateInviteCodeHandler,
   removeMemberHandler,
   setMemberMusicPermissionHandler,
@@ -34,4 +35,10 @@ groupsRouter.patch(
   requireAuth,
   requireGroupMaster,
   setMemberMusicPermissionHandler,
+);
+groupsRouter.patch(
+  "/groups/:id/members/:userId/promote",
+  requireAuth,
+  requireGroupMaster,
+  promoteMemberHandler,
 );

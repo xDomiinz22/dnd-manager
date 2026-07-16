@@ -1,16 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   importCharacterMdSchema,
   importCharacterSchema,
+  type GroupMemberSummary,
   type ImportCharacterInput,
   type ImportCharacterMdInput,
 } from "@dnd-manager/shared";
 import { useAuth } from "../context/AuthContext";
 import {
   useGroupDetail,
+  usePromoteMember,
   useRegenerateInviteCode,
   useRemoveMember,
   useSetMemberMusicPermission,
@@ -21,6 +23,7 @@ import {
   useImportCharacterMd,
   useResetGroupHp,
 } from "../features/characters/hooks";
+import { useCloseOnOutsideClick } from "../lib/useCloseOnOutsideClick";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -41,12 +44,15 @@ export function GroupDetailPage() {
   const regenerate = useRegenerateInviteCode(id!);
   const removeMember = useRemoveMember(id!);
   const setMemberMusicPermission = useSetMemberMusicPermission(id!);
+  const promoteMember = usePromoteMember(id!);
   const resetGroupHp = useResetGroupHp(id!);
   const [copied, setCopied] = useState(false);
   const [importing, setImporting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingMemberId, setConfirmingMemberId] = useState<string | null>(null);
+  const [confirmingPromoteId, setConfirmingPromoteId] = useState<string | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [confirmingGroupRest, setConfirmingGroupRest] = useState(false);
 
   if (isLoading || !group) {
@@ -100,6 +106,16 @@ export function GroupDetailPage() {
     );
   }
 
+  function handlePromote(userId: string, username: string) {
+    promoteMember.mutate(userId, {
+      onSuccess: () => {
+        toast.success(`${username} ahora tiene todos los permisos de Master.`);
+        setConfirmingPromoteId(null);
+      },
+      onError: (err) => toast.error(toErrorMessage(err, "No se pudieron conceder los permisos.")),
+    });
+  }
+
   function handleResetGroupHp() {
     resetGroupHp.mutate(undefined, {
       onSuccess: ({ count }) => {
@@ -132,6 +148,12 @@ export function GroupDetailPage() {
               className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
             >
               Tiradas
+            </Link>
+            <Link
+              to={`/groups/${group.id}/chat`}
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+            >
+              Chat
             </Link>
             <Link
               to={`/groups/${group.id}/journal`}
@@ -173,6 +195,7 @@ export function GroupDetailPage() {
       <ul className="mb-6 space-y-2">
         {group.members.map((m) => {
           const isSelf = m.userId === user?.id;
+          const hasMenu = m.role !== "MASTER" && (isMaster || isSelf);
           return (
             <li
               key={m.userId}
@@ -186,26 +209,25 @@ export function GroupDetailPage() {
                   >
                     {m.role === "MASTER" ? "Master" : "Jugador"}
                   </span>
-                  {isMaster && m.role !== "MASTER" && (
-                    <label className="flex items-center gap-1 whitespace-nowrap text-sm text-ink-muted">
-                      <input
-                        type="checkbox"
-                        checked={m.canEditMusic}
-                        onChange={(e) => handleToggleMusicPermission(m.userId, e.target.checked)}
-                        className="accent-oxblood"
-                      />
-                      Gestiona música
-                    </label>
-                  )}
-                  {m.role !== "MASTER" && (isMaster || isSelf) && (
-                    <Button
-                      variant="danger"
-                      onClick={() =>
-                        setConfirmingMemberId(confirmingMemberId === m.userId ? null : m.userId)
+                  {hasMenu && (
+                    <MemberMenu
+                      member={m}
+                      isMaster={isMaster}
+                      isSelf={isSelf}
+                      isOpen={openMenuId === m.userId}
+                      onOpenChange={(open) => setOpenMenuId(open ? m.userId : null)}
+                      onToggleMusic={(canEditMusic) =>
+                        handleToggleMusicPermission(m.userId, canEditMusic)
                       }
-                    >
-                      {isSelf ? "Salir" : "Expulsar"}
-                    </Button>
+                      onPromote={() => {
+                        setOpenMenuId(null);
+                        setConfirmingPromoteId(m.userId);
+                      }}
+                      onRemove={() => {
+                        setOpenMenuId(null);
+                        setConfirmingMemberId(m.userId);
+                      }}
+                    />
                   )}
                 </div>
               </div>
@@ -221,6 +243,16 @@ export function GroupDetailPage() {
                   isLoading={removeMember.isPending}
                   onConfirm={() => handleRemoveMember(m.userId, isSelf)}
                   onCancel={() => setConfirmingMemberId(null)}
+                />
+              )}
+              {confirmingPromoteId === m.userId && (
+                <ConfirmPanel
+                  message={`Vas a dar a ${m.username} todos los permisos que tiene el Master (mapa, música, personajes, tiradas, chat...). No hay forma de revocarlo desde aquí.`}
+                  confirmLabel="Confirmar"
+                  loadingText="Concediendo..."
+                  isLoading={promoteMember.isPending}
+                  onConfirm={() => handlePromote(m.userId, m.username)}
+                  onCancel={() => setConfirmingPromoteId(null)}
                 />
               )}
             </li>
@@ -333,6 +365,89 @@ export function GroupDetailPage() {
           })}
         </ul>
       )}
+    </div>
+  );
+}
+
+/**
+ * Menú de "más opciones" por miembro: en escritorio se abre al pasar el
+ * ratón por encima (CSS `group-hover`, sin JS); en móvil/touch (donde no hay
+ * hover persistente) se abre con un tap y se cierra al pulsar fuera o con
+ * Escape (`useCloseOnOutsideClick`). `isOpen` fuerza que se muestre aunque
+ * no haya hover, para que el tap funcione igual en ambos casos.
+ */
+function MemberMenu({
+  member,
+  isMaster,
+  isSelf,
+  isOpen,
+  onOpenChange,
+  onToggleMusic,
+  onPromote,
+  onRemove,
+}: {
+  member: GroupMemberSummary;
+  isMaster: boolean;
+  isSelf: boolean;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onToggleMusic: (canEditMusic: boolean) => void;
+  onPromote: () => void;
+  onRemove: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useCloseOnOutsideClick(ref, () => onOpenChange(false));
+
+  return (
+    <div ref={ref} className="group relative">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!isOpen)}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-label={`Más opciones para ${member.username}`}
+        className="flex h-7 w-7 items-center justify-center rounded-sm text-lg leading-none text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+      >
+        ⋮
+      </button>
+      <div
+        role="menu"
+        className={`absolute right-0 top-full z-40 mt-1 w-56 rounded-sm border border-rule bg-parchment-panel p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)] ${
+          isOpen ? "block" : "hidden group-hover:block"
+        }`}
+      >
+        {isMaster && (
+          <label className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-ink hover:bg-parchment-deep/60">
+            <input
+              type="checkbox"
+              checked={member.canEditMusic}
+              onChange={(e) => onToggleMusic(e.target.checked)}
+              className="accent-oxblood"
+            />
+            Gestiona música
+          </label>
+        )}
+        {isMaster && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onPromote}
+            className="block w-full rounded-sm px-2 py-1.5 text-left text-sm text-ink hover:bg-parchment-deep/60 hover:text-oxblood"
+          >
+            Dar todos los permisos de Master
+          </button>
+        )}
+        {(isMaster || isSelf) && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={onRemove}
+            className="block w-full rounded-sm px-2 py-1.5 text-left text-sm text-oxblood-dark hover:bg-parchment-deep/60"
+          >
+            {isSelf ? "Salir" : "Expulsar"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

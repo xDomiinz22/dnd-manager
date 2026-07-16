@@ -173,7 +173,15 @@ export async function removeMember(
   const target = await getMembership(groupId, targetUserId);
   if (!target) throw new AppError(404, "MEMBER_NOT_FOUND", "Ese usuario no es miembro del grupo");
 
-  if (target.role === "MASTER") {
+  const group = await prisma.group.findUniqueOrThrow({
+    where: { id: groupId },
+    select: { masterId: true },
+  });
+  // Solo el dueño original del grupo (Group.masterId) es irremovible — no
+  // basta con mirar el rol MASTER de la membresía, porque un jugador puede
+  // haber recibido todos los permisos de Master (ver promoteMemberToMaster)
+  // y aun así debe poder salir o ser expulsado con normalidad.
+  if (targetUserId === group.masterId) {
     throw new AppError(
       400,
       "CANNOT_REMOVE_MASTER",
@@ -187,6 +195,25 @@ export async function removeMember(
   }
 
   await prisma.groupMember.delete({ where: { groupId_userId: { groupId, userId: targetUserId } } });
+}
+
+/**
+ * Concede a un miembro todos los permisos que tiene el Master, cambiando su
+ * rol de membresía a MASTER: como casi todos los checks de permisos de la
+ * app comprueban `membership.role === "MASTER"` (no `Group.masterId`), esto
+ * le da acceso completo a mapa, música, tiradas/chat, personajes, etc. sin
+ * tocar nada más. `Group.masterId` (el dueño original) no cambia — sigue
+ * siendo el único que nunca se puede expulsar (ver removeMember).
+ */
+export async function promoteMemberToMaster(groupId: string, targetUserId: string): Promise<void> {
+  const target = await getMembership(groupId, targetUserId);
+  if (!target) throw new AppError(404, "MEMBER_NOT_FOUND", "Ese usuario no es miembro del grupo");
+  if (target.role === "MASTER") return;
+
+  await prisma.groupMember.update({
+    where: { groupId_userId: { groupId, userId: targetUserId } },
+    data: { role: "MASTER" },
+  });
 }
 
 /** Solo el Master concede/revoca permiso de gestionar la música ambiente a otro miembro. */

@@ -83,3 +83,12 @@ export const setMemberMusicPermissionHandler: RequestHandler = async (req, res, 
     next(err);
   }
 };
+
+export const promoteMemberHandler: RequestHandler = async (req, res, next) => {
+  try {
+    await groupService.promoteMemberToMaster(req.params.id as string, req.params.userId as string);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};
