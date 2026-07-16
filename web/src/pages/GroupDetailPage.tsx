@@ -128,6 +128,12 @@ export function GroupDetailPage() {
               Mapa
             </Link>
             <Link
+              to={`/groups/${group.id}/rolls`}
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+            >
+              Tiradas
+            </Link>
+            <Link
               to={`/groups/${group.id}/journal`}
               className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
             >

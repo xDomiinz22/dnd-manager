@@ -25,6 +25,7 @@ model User {
   characters  CharacterSheet[]
   assets      Asset[]
   addedTracks MusicTrack[]     @relation("MusicTrackAddedBy")
+  diceRolls   DiceRoll[]
 }
 
 model Group {
@@ -40,6 +41,7 @@ model Group {
   groupJournal   JournalEntry?    @relation("GroupJournal")
   musicPlaylists MusicPlaylist[]
   map            GroupMap?
+  diceRolls      DiceRoll[]
 }
 
 enum GroupRole {
@@ -182,6 +184,7 @@ model CharacterSheet {
   sourceMdHash String?
 
   personalJournal JournalEntry? @relation("CharacterJournal")
+  diceRolls       DiceRoll[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -295,4 +298,31 @@ model MapPin {
   order     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Log compartido de tiradas de dados por grupo (tiradas de salvación, ataques,
+// daño...). La tirada la calcula el servidor (nunca se confía en un resultado
+// mandado por el cliente); characterId es opcional y nullable-on-delete para
+// que el registro sobreviva si el personaje se borra más tarde.
+model DiceRoll {
+  id      String @id @default(cuid())
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  characterId String?
+  character   CharacterSheet? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+
+  label    String
+  formula  String
+  // Desglose por dado: [{ "die": "1d20", "values": [14] }, ...]
+  rolls    Json
+  modifier Int
+  total    Int
+
+  createdAt DateTime @default(now())
+
+  @@index([groupId, createdAt])
 }

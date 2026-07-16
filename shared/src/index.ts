@@ -7,3 +7,4 @@ export * from "./assets";
 export * from "./journal";
 export * from "./music";
 export * from "./map";
+export * from "./dice";

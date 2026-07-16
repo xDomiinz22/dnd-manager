@@ -20,6 +20,8 @@ import {
   useUpdateHp,
   useUpdateSpellSlot,
 } from "../features/characters/hooks";
+import { useCreateRoll } from "../features/dice/hooks";
+import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
 import { Button } from "../components/ui/Button";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { CharacterImageManager } from "../components/character/CharacterImageManager";
@@ -91,6 +93,23 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const details = system.details ?? {};
   const attributes = system.attributes ?? {};
   const abilities = system.abilities ?? {};
+  const toast = useToast();
+  const createRoll = useCreateRoll(character.groupId);
+
+  const actionsByItem = new Map<string, RollableAction[]>();
+  for (const action of getRollableActions(character.items, character)) {
+    actionsByItem.set(action.itemId, [...(actionsByItem.get(action.itemId) ?? []), action]);
+  }
+
+  function handleRoll(label: string, formula: string) {
+    createRoll.mutate(
+      { characterId: character.id, label, formula },
+      {
+        onSuccess: (roll) => toast.success(`${roll.label}: ${roll.total} (${roll.formula})`),
+        onError: (err) => toast.error(toErrorMessage(err, "No se pudo tirar los dados.")),
+      },
+    );
+  }
 
   const ac = character.derived.armorClass.override ?? character.derived.armorClass.computed;
   const hpMax = character.derived.hitPoints.override ?? character.derived.hitPoints.max;
@@ -180,15 +199,23 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
       </div>
 
       <div role="tabpanel" id={`tabpanel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "Details" && <DetailsTab character={character} system={system} />}
+        {tab === "Details" && (
+          <DetailsTab character={character} system={system} onRoll={handleRoll} />
+        )}
         {tab === "Skills & Tools" && <SkillsTab character={character} />}
-        {tab === "Inventory" && <InventoryTab items={character.items} />}
-        {tab === "Features" && <FeaturesTab items={character.items} />}
+        {tab === "Inventory" && (
+          <InventoryTab items={character.items} actionsByItem={actionsByItem} onRoll={handleRoll} />
+        )}
+        {tab === "Features" && (
+          <FeaturesTab items={character.items} actionsByItem={actionsByItem} onRoll={handleRoll} />
+        )}
         {tab === "Spellbook" && (
           <SpellbookTab
             characterId={character.id}
             spellSlots={character.spellSlots}
             items={character.items}
+            actionsByItem={actionsByItem}
+            onRoll={handleRoll}
           />
         )}
         {tab === "Biography" && <BiographyTab details={details} />}
@@ -329,9 +356,11 @@ function HpStat({
 function DetailsTab({
   character,
   system,
+  onRoll,
 }: {
   character: CharacterFull;
   system: Record<string, any>;
+  onRoll: (label: string, formula: string) => void;
 }) {
   const traits = system.traits ?? {};
   const senses = system.attributes?.senses?.ranges ?? {};
@@ -344,14 +373,33 @@ function DetailsTab({
           Tiradas de salvación
         </h2>
         <ul className="space-y-1 text-sm">
-          {ABILITY_KEYS.map((key) => (
-            <li key={key} className="flex justify-between text-ink">
-              <span>{ABILITY_FULL_LABELS[key]}</span>
-              <span className="text-oxblood" style={{ fontVariantNumeric: "tabular-nums" }}>
-                {formatModifier(character.derived.savingThrows[key])}
-              </span>
-            </li>
-          ))}
+          {ABILITY_KEYS.map((key) => {
+            const mod = character.derived.savingThrows[key];
+            return (
+              <li key={key} className="flex items-center justify-between text-ink">
+                <span>{ABILITY_FULL_LABELS[key]}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-oxblood" style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {formatModifier(mod)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onRoll(
+                        `Salvación de ${ABILITY_FULL_LABELS[key]}`,
+                        `1d20${mod >= 0 ? "+" : ""}${mod}`,
+                      )
+                    }
+                    title={`Tirar salvación de ${ABILITY_FULL_LABELS[key]}`}
+                    aria-label={`Tirar salvación de ${ABILITY_FULL_LABELS[key]}`}
+                    className="rounded-sm border border-rule-strong px-1.5 py-0.5 text-xs text-ink-muted hover:border-oxblood hover:text-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+                  >
+                    🎲
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       </div>
       <div className="rounded-sm border border-rule bg-parchment-panel p-4">
@@ -417,7 +465,12 @@ function SkillsTab({ character }: { character: CharacterFull }) {
   );
 }
 
-function InventoryTab({ items }: { items: unknown }) {
+interface RollTabProps {
+  actionsByItem: Map<string, RollableAction[]>;
+  onRoll: (label: string, formula: string) => void;
+}
+
+function InventoryTab({ items, actionsByItem, onRoll }: { items: unknown } & RollTabProps) {
   const inventory = itemsOfType(items, ["weapon", "equipment", "consumable", "container", "loot"]);
   const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
   if (inventory.length === 0) {
@@ -450,6 +503,7 @@ function InventoryTab({ items }: { items: unknown }) {
                   <span className="text-sm text-ink-muted">x{item.system.quantity}</span>
                 )}
               </div>
+              <RollButtons actions={actionsByItem.get(item._id ?? "")} onRoll={onRoll} />
             </li>
           );
         })}
@@ -465,7 +519,7 @@ function InventoryTab({ items }: { items: unknown }) {
   );
 }
 
-function FeaturesTab({ items }: { items: unknown }) {
+function FeaturesTab({ items, actionsByItem, onRoll }: { items: unknown } & RollTabProps) {
   const features = itemsOfType(items, ["feat", "class", "subclass", "race", "background"]);
   const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
   if (features.length === 0) {
@@ -493,6 +547,7 @@ function FeaturesTab({ items }: { items: unknown }) {
               }`}
             >
               <div className="font-semibold text-ink">{item.name}</div>
+              <RollButtons actions={actionsByItem.get(item._id ?? "")} onRoll={onRoll} />
             </li>
           );
         })}
@@ -508,15 +563,61 @@ function FeaturesTab({ items }: { items: unknown }) {
   );
 }
 
+/** Botones de "Atacar"/"Daño" para las activities tirables de un item (ver rollableActions.ts). */
+function RollButtons({
+  actions,
+  onRoll,
+}: {
+  actions: RollableAction[] | undefined;
+  onRoll: (label: string, formula: string) => void;
+}) {
+  if (!actions || actions.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+      {actions.map((action) => {
+        const label = action.activityName
+          ? `${action.itemName} (${action.activityName})`
+          : action.itemName;
+        return (
+          <div key={action.activityId} className="flex flex-wrap gap-1.5">
+            {action.attackFormula && (
+              <Button
+                variant="ghost"
+                onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
+                title={`Tirar ataque: ${action.attackFormula}`}
+                className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+              >
+                🎲 Atacar ({action.attackFormula})
+              </Button>
+            )}
+            {action.damageFormula && (
+              <Button
+                variant="ghost"
+                onClick={() => onRoll(`Daño: ${label}`, action.damageFormula!)}
+                title={`Tirar daño: ${action.damageFormula}`}
+                className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+              >
+                🎲 Daño ({action.damageFormula})
+              </Button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SpellbookTab({
   characterId,
   spellSlots,
   items,
+  actionsByItem,
+  onRoll,
 }: {
   characterId: string;
   spellSlots: SpellSlots;
   items: unknown;
-}) {
+} & RollTabProps) {
   const spells = itemsOfType(items, ["spell"]);
 
   const byLevel = new Map<number, typeof spells>();
@@ -558,6 +659,7 @@ function SpellbookTab({
                   }`}
                 >
                   <div className="font-semibold text-ink">{spell.name}</div>
+                  <RollButtons actions={actionsByItem.get(spell._id ?? "")} onRoll={onRoll} />
                 </li>
               );
             })}
