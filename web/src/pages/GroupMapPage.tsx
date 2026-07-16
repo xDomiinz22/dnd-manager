@@ -18,6 +18,7 @@ import {
   useUpdateMapPin,
   useUploadGroupMap,
 } from "../features/map/hooks";
+import { resizeImageForUpload } from "../lib/imageResize";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { TextField } from "../components/ui/TextField";
@@ -49,6 +50,7 @@ export function GroupMapPage() {
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
   const [editingPinId, setEditingPinId] = useState<string | null>(null);
   const [deletingPinId, setDeletingPinId] = useState<string | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
 
   if (isLoadingGroup || isLoadingMap || !group) {
     return (
@@ -62,26 +64,64 @@ export function GroupMapPage() {
   const journalPages = flattenJournalPages(journal?.pages ?? []);
   const selectedPin = map?.pins.find((p) => p.id === selectedPinId) ?? null;
 
-  function handleUploadFile(file: File) {
-    uploadMap.mutate(file, {
+  async function handleUploadFile(file: File) {
+    let toUpload = file;
+    try {
+      // Vercel rechaza peticiones a funciones serverless por encima de
+      // ~4.5MB (límite de plataforma, no configurable) antes de que nuestro
+      // código las vea — se reescala/comprime aquí para no toparse con eso.
+      toUpload = await resizeImageForUpload(file);
+    } catch {
+      // Si el redimensionado falla por lo que sea, se intenta con el original.
+    }
+    uploadMap.mutate(toUpload, {
       onSuccess: () => toast.success(map ? "Mapa actualizado." : "Mapa subido."),
       onError: (err) => toast.error(toErrorMessage(err, "No se pudo subir el mapa.")),
     });
   }
 
   function handleMapClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!isMaster || !isAddPinMode) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    setAddingPinAt({ x, y });
-    setSelectedPinId(null);
+    if (!isMaster) return;
+    if (isAddPinMode) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      setAddingPinAt({ x, y });
+      setSelectedPinId(null);
+      return;
+    }
+    // Sin modo "añadir pin": un primer click cierra el popup de un pin
+    // abierto (antes no hacía nada al pulsar fuera); si no hay nada que
+    // cerrar, el click reemplaza al antiguo botón "Reemplazar mapa".
+    if (selectedPinId) {
+      setSelectedPinId(null);
+      return;
+    }
+    fileInputRef.current?.click();
   }
 
   function handleToggleAddPinMode() {
     setIsAddPinMode((v) => !v);
     setAddingPinAt(null);
     setSelectedPinId(null);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    if (!isMaster) return;
+    e.preventDefault();
+    setIsDraggingFile(true);
+  }
+
+  function handleDragLeave() {
+    setIsDraggingFile(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    if (!isMaster) return;
+    e.preventDefault();
+    setIsDraggingFile(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleUploadFile(file);
   }
 
   return (
@@ -100,56 +140,84 @@ export function GroupMapPage() {
       </ChapterHeading>
 
       {isMaster && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleUploadFile(file);
+            e.target.value = "";
+          }}
+        />
+      )}
+
+      {isMaster && map && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleUploadFile(file);
-              e.target.value = "";
-            }}
-          />
           <Button
             variant="secondary"
             isLoading={uploadMap.isPending}
             loadingText="Subiendo..."
             onClick={() => fileInputRef.current?.click()}
           >
-            {map ? "Reemplazar mapa" : "Subir mapa"}
+            Actualizar mapa
           </Button>
-          {map && (
-            <Button variant={isAddPinMode ? "danger" : "ghost"} onClick={handleToggleAddPinMode}>
-              {isAddPinMode ? "Cancelar pin" : "Añadir pin"}
-            </Button>
-          )}
+          <Button variant={isAddPinMode ? "danger" : "ghost"} onClick={handleToggleAddPinMode}>
+            {isAddPinMode ? "Cancelar pin" : "Añadir pin"}
+          </Button>
         </div>
       )}
 
       {!map ? (
-        <EmptyState
-          title="Este grupo todavía no tiene un mapa."
-          description={
-            isMaster
-              ? "Sube la imagen del mapa (se convierte a webp automáticamente)."
-              : "El Master aún no ha subido el mapa del grupo."
-          }
-        />
+        isMaster ? (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+            }}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`cursor-pointer rounded-sm border border-dashed px-6 py-10 text-center transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${
+              isDraggingFile
+                ? "border-oxblood bg-parchment-deep/40"
+                : "border-rule-strong hover:border-oxblood"
+            }`}
+          >
+            <p className="text-ink">Este grupo todavía no tiene un mapa.</p>
+            <p className="mt-1 text-sm text-ink-muted">
+              {uploadMap.isPending
+                ? "Subiendo..."
+                : "Haz click aquí o arrastra una imagen para subirla (se convierte a webp automáticamente)."}
+            </p>
+          </div>
+        ) : (
+          <EmptyState
+            title="Este grupo todavía no tiene un mapa."
+            description="El Master aún no ha subido el mapa del grupo."
+          />
+        )
       ) : (
         <>
-          {isAddPinMode && (
+          {isMaster && (
             <p className="mb-2 text-sm text-ink-muted">
-              Haz click en el mapa para situar el pin, luego rellena los datos.
+              {isAddPinMode
+                ? "Haz click en el mapa para situar el pin, luego rellena los datos."
+                : "Haz click en el mapa o arrastra una imagen para reemplazarlo."}
             </p>
           )}
           <div
             role="presentation"
             onClick={handleMapClick}
-            className={`relative w-full select-none overflow-hidden rounded-sm border border-rule-strong ${
-              isAddPinMode ? "cursor-crosshair" : ""
-            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`relative w-full select-none overflow-hidden rounded-sm border transition-colors ${
+              isDraggingFile ? "border-oxblood" : "border-rule-strong"
+            } ${isAddPinMode ? "cursor-crosshair" : isMaster ? "cursor-pointer" : ""}`}
           >
             <img
               src={map.imageUrl}
@@ -157,6 +225,11 @@ export function GroupMapPage() {
               className="block w-full"
               draggable={false}
             />
+            {(isDraggingFile || uploadMap.isPending) && (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-ink/50 text-center font-display text-lg tracking-wide text-parchment">
+                {uploadMap.isPending ? "Subiendo..." : "Suelta la imagen para reemplazar el mapa"}
+              </div>
+            )}
             {map.pins.map((pin) => (
               <button
                 key={pin.id}
