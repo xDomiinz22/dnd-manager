@@ -64,15 +64,15 @@ export function GroupJournalPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <Link
-        to={`/groups/${groupId}`}
-        className="mb-4 inline-block text-sm text-ink-muted hover:text-oxblood"
-      >
-        ← Volver al grupo
-      </Link>
       <ChapterHeading
         action={
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={`/groups/${groupId}`}
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+            >
+              Volver al grupo
+            </Link>
             <Button variant="ghost" onClick={() => setShowNewPage((v) => !v)}>
               Nueva página
             </Button>

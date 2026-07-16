@@ -89,19 +89,21 @@ export function GroupMusicPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
-      <Link
-        to={`/groups/${groupId}`}
-        className="mb-4 inline-block text-sm text-ink-muted hover:text-oxblood"
-      >
-        ← Volver al grupo
-      </Link>
       <ChapterHeading
         action={
-          data.canEdit && (
-            <Button variant="ghost" onClick={() => setShowNewPlaylist((v) => !v)}>
-              {showNewPlaylist ? "Cancelar" : "Nueva lista"}
-            </Button>
-          )
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={`/groups/${groupId}`}
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+            >
+              Volver al grupo
+            </Link>
+            {data.canEdit && (
+              <Button variant="ghost" onClick={() => setShowNewPlaylist((v) => !v)}>
+                {showNewPlaylist ? "Cancelar" : "Nueva lista"}
+              </Button>
+            )}
+          </div>
         }
       >
         Música ambiente
