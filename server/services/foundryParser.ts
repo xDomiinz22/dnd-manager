@@ -3,6 +3,8 @@ import * as yaml from "js-yaml";
 import type { ClassLevel } from "@dnd-manager/shared";
 import {
   deriveCharacterStats,
+  abilityModifier,
+  avgDieValue,
   ABILITY_KEYS,
   type AbilityKey,
   type DeriveInput,
@@ -79,6 +81,43 @@ function totalLevelFromItems(items: FoundryItem[]): number {
   return items
     .filter((item) => item.type === "class")
     .reduce((sum, item) => sum + (Number(item.system?.levels) || 0), 0);
+}
+
+/**
+ * Suma de dado de golpe (sin el mod CON) a partir del advancement
+ * `type: "HitPoints"` que Foundry guarda por CADA nivel de CADA clase
+ * (`value: { "1": "max" | "avg" | <número tirado>, "2": ... }`). Es el
+ * desglose real de cómo se ganó cada nivel, más fiable que asumir un solo
+ * dado para todo el personaje en multiclase. Devuelve `null` si a alguna
+ * clase le falta este dato (no se puede calcular con fiabilidad).
+ */
+function hpDieTotalFromAdvancement(items: FoundryItem[]): number | null {
+  let total = 0;
+  for (const item of items) {
+    if (item.type !== "class") continue;
+    const dieSize = Number(String(item.system?.hd?.denomination ?? "").replace(/\D/g, ""));
+    if (!dieSize) return null;
+
+    const advancements = Object.values(
+      (item.system?.advancement ?? {}) as Record<string, FoundryItem>,
+    );
+    const hpAdvancement = advancements.find((entry) => entry?.type === "HitPoints");
+    const perLevel = hpAdvancement?.value;
+    if (!perLevel || typeof perLevel !== "object") return null;
+
+    for (const raw of Object.values(perLevel as Record<string, unknown>)) {
+      if (raw === "max") {
+        total += dieSize;
+      } else if (raw === "avg") {
+        total += avgDieValue(dieSize);
+      } else {
+        const rolled = Number(raw);
+        if (!Number.isFinite(rolled)) return null;
+        total += rolled;
+      }
+    }
+  }
+  return total;
 }
 
 /**
@@ -167,13 +206,21 @@ export function parseFoundryMd(md: string): ParsedCharacter {
   const derived = deriveCharacterStats(deriveInput);
   // maxHitPoints() asume que TODOS los niveles usan el dado de golpe de una
   // sola clase (la "original"), lo cual es incorrecto para multiclase (cada
-  // nivel debería promediar el dado de SU propia clase). Foundry sí calcula
-  // esto bien internamente, así que cuando system.attributes.hp.max viene
-  // relleno (no siempre lo trae el .md) se usa ese valor real en vez de la
-  // estimación por fórmula.
+  // nivel debería promediar/usar el dado de SU propia clase). Prioridad:
+  // 1) system.attributes.hp.max real de Foundry, cuando viene relleno (no
+  //    siempre lo trae el .md); 2) el desglose por nivel/clase del
+  // advancement "HitPoints" (si Foundry no calculó hp.max pero sí guardó
+  // cómo se ganó cada nivel — caso real: hp.max: null con advancement
+  // completo); 3) como último recurso, la fórmula de un solo dado.
   const rawHpMax = Number(system.attributes?.hp?.max);
   if (Number.isFinite(rawHpMax) && rawHpMax > 0) {
     derived.hitPoints.max = rawHpMax;
+  } else {
+    const hpDieTotal = hpDieTotalFromAdvancement(items);
+    if (hpDieTotal !== null) {
+      const conMod = abilityModifier(abilityScores.con);
+      derived.hitPoints.max = hpDieTotal + conMod * level;
+    }
   }
 
   return {

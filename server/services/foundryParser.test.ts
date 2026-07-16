@@ -80,7 +80,27 @@ describe("parseFoundryMd (fixture real XxAlbertoPro01xX.md)", () => {
 // sobreestima el máximo real si se usa el dado de la clase "original" (d12)
 // para los 5 niveles. Reproduce el bug reportado por el usuario (Foundry
 // calculaba 42, la fórmula de un solo dado daba 50).
-function buildMulticlassMd(hpMax: string): string {
+function buildMulticlassMd(hpMax: string, includeAdvancement: boolean): string {
+  const barbAdvancement = includeAdvancement
+    ? `
+      advancement:
+        barbHp:
+          type: HitPoints
+          value:
+            "1": avg
+            "2": avg`
+    : "";
+  const rogueAdvancement = includeAdvancement
+    ? `
+      advancement:
+        rogueHp:
+          type: HitPoints
+          value:
+            "1": max
+            "2": avg
+            "3": avg`
+    : "";
+
   return `\`\`\`Actor
 name: Test Multiclase
 system:
@@ -108,27 +128,34 @@ items:
     system:
       levels: 2
       hd:
-        denomination: d12
+        denomination: d12${barbAdvancement}
   - _id: rogueId
     type: class
     name: Pícaro
     system:
       levels: 3
       hd:
-        denomination: d8
+        denomination: d8${rogueAdvancement}
 \`\`\`
 `;
 }
 
 describe("parseFoundryMd (multiclase sintético): PG máximos", () => {
   it("usa el hp.max real de Foundry cuando está presente, en vez de la fórmula de un solo dado", () => {
-    const parsed = parseFoundryMd(buildMulticlassMd("42"));
+    const parsed = parseFoundryMd(buildMulticlassMd("42", true));
     expect(parsed.level).toBe(5);
     expect(parsed.derived.hitPoints.max).toBe(42);
   });
 
-  it("cae a la fórmula (dado de la clase original) cuando Foundry no trae hp.max", () => {
-    const parsed = parseFoundryMd(buildMulticlassMd("null"));
+  it("sin hp.max pero con el desglose HitPoints por clase/nivel, suma el real (42) en vez de la fórmula de un solo dado (50)", () => {
+    // Caso real reportado: hp.max viene null pero cada clase trae su propio
+    // advancement HitPoints con el detalle exacto de cada nivel.
+    const parsed = parseFoundryMd(buildMulticlassMd("null", true));
+    expect(parsed.derived.hitPoints.max).toBe(42);
+  });
+
+  it("cae a la fórmula (dado de la clase original) cuando Foundry no trae ni hp.max ni el advancement HitPoints", () => {
+    const parsed = parseFoundryMd(buildMulticlassMd("null", false));
     const conMod = 2; // con 15 -> floor((15-10)/2)
     expect(parsed.derived.hitPoints.max).toBe(maxHitPoints(12, conMod, 5));
   });
