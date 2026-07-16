@@ -3,6 +3,7 @@ import {
   createGroupSchema,
   joinGroupSchema,
   updateMemberMusicPermissionSchema,
+  updateMemberRoleSchema,
 } from "@dnd-manager/shared";
 import * as groupService from "../services/groupService";
 import { AppError } from "../errors/AppError";
@@ -84,9 +85,14 @@ export const setMemberMusicPermissionHandler: RequestHandler = async (req, res, 
   }
 };
 
-export const promoteMemberHandler: RequestHandler = async (req, res, next) => {
+export const setMemberRoleHandler: RequestHandler = async (req, res, next) => {
   try {
-    await groupService.promoteMemberToMaster(req.params.id as string, req.params.userId as string);
+    const input = updateMemberRoleSchema.parse(req.body);
+    await groupService.setMemberRole(
+      req.params.id as string,
+      req.params.userId as string,
+      input.role,
+    );
     res.status(204).end();
   } catch (err) {
     next(err);

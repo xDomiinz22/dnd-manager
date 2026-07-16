@@ -3,6 +3,7 @@ import type {
   CreateGroupInput,
   JoinGroupInput,
   UpdateMemberMusicPermissionInput,
+  UpdateMemberRoleInput,
 } from "@dnd-manager/shared";
 import { groupsApi } from "./api";
 
@@ -62,10 +63,11 @@ export function useSetMemberMusicPermission(groupId: string) {
   });
 }
 
-export function usePromoteMember(groupId: string) {
+export function useSetMemberRole(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (userId: string) => groupsApi.promoteMember(groupId, userId),
+    mutationFn: ({ userId, input }: { userId: string; input: UpdateMemberRoleInput }) =>
+      groupsApi.setMemberRole(groupId, userId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) }),
   });
 }

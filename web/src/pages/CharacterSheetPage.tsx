@@ -299,21 +299,24 @@ function HpStat({
         {errors.currentHp && (
           <p className="text-xs text-oxblood-dark">{errors.currentHp.message}</p>
         )}
-        <div className="flex gap-2 text-xs">
-          <button
+        <div className="flex gap-1.5">
+          <Button
             type="submit"
-            disabled={updateHp.isPending}
-            className="font-semibold text-oxblood hover:underline disabled:opacity-50"
+            variant="secondary"
+            isLoading={updateHp.isPending}
+            loadingText="..."
+            className="!px-2 !py-0.5 !text-[0.65rem] !normal-case !tracking-normal"
           >
-            {updateHp.isPending ? "..." : "Guardar"}
-          </button>
-          <button
+            Guardar
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setEditing(false)}
-            className="text-ink-muted hover:text-ink"
+            className="!px-2 !py-0.5 !text-[0.65rem] !normal-case !tracking-normal"
           >
             Cancelar
-          </button>
+          </Button>
         </div>
       </form>
     );

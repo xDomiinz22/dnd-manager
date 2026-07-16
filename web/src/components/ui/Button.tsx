@@ -8,13 +8,18 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loadingText?: string;
 }
 
+// danger/ghost llevan borde visible a propósito (igual que primary/secondary):
+// una acción sin borde se lee como un link de texto y pasa desapercibida
+// como funcionalidad — ver el resto de variantes, que ya eran botones de verdad.
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
     "rounded-sm border border-gold/60 bg-oxblood px-3 py-2 text-sm font-semibold uppercase tracking-wide text-parchment hover:bg-oxblood-dark disabled:opacity-50",
   secondary:
     "rounded-sm border border-oxblood px-3 py-2 text-sm font-semibold uppercase tracking-wide text-oxblood hover:bg-oxblood hover:text-parchment disabled:opacity-50",
-  danger: "text-sm font-semibold text-oxblood-dark hover:underline disabled:opacity-50",
-  ghost: "text-sm font-semibold text-ink hover:text-oxblood disabled:opacity-50",
+  danger:
+    "rounded-sm border border-oxblood-dark px-3 py-2 text-sm font-semibold text-oxblood-dark hover:bg-oxblood-dark hover:text-parchment disabled:opacity-50",
+  ghost:
+    "rounded-sm border border-rule px-3 py-2 text-sm font-semibold text-ink hover:border-oxblood hover:text-oxblood disabled:opacity-50",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(

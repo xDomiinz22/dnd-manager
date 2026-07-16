@@ -6,10 +6,10 @@ import {
   getGroupDetailHandler,
   joinGroupHandler,
   listGroupsHandler,
-  promoteMemberHandler,
   regenerateInviteCodeHandler,
   removeMemberHandler,
   setMemberMusicPermissionHandler,
+  setMemberRoleHandler,
 } from "../controllers/groupController";
 
 export const groupsRouter = Router();
@@ -37,8 +37,8 @@ groupsRouter.patch(
   setMemberMusicPermissionHandler,
 );
 groupsRouter.patch(
-  "/groups/:id/members/:userId/promote",
+  "/groups/:id/members/:userId/role",
   requireAuth,
   requireGroupMaster,
-  promoteMemberHandler,
+  setMemberRoleHandler,
 );

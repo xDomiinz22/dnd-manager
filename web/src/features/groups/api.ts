@@ -4,6 +4,7 @@ import type {
   GroupSummary,
   JoinGroupInput,
   UpdateMemberMusicPermissionInput,
+  UpdateMemberRoleInput,
 } from "@dnd-manager/shared";
 import { apiFetch } from "../../lib/api";
 
@@ -27,6 +28,9 @@ export const groupsApi = {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
-  promoteMember: (groupId: string, userId: string) =>
-    apiFetch<void>(`/groups/${groupId}/members/${userId}/promote`, { method: "PATCH" }),
+  setMemberRole: (groupId: string, userId: string, input: UpdateMemberRoleInput) =>
+    apiFetch<void>(`/groups/${groupId}/members/${userId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
 };

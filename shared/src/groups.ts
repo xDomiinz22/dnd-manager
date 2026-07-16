@@ -4,6 +4,11 @@ import { classLevelSchema } from "./characters";
 export const groupRoleSchema = z.enum(["MASTER", "PLAYER"]);
 export type GroupRoleValue = z.infer<typeof groupRoleSchema>;
 
+export const updateMemberRoleSchema = z.object({
+  role: groupRoleSchema,
+});
+export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
+
 export const createGroupSchema = z.object({
   name: z.string().trim().min(1, "El nombre no puede estar vacío").max(100),
 });
