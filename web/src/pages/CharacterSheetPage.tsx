@@ -21,6 +21,7 @@ import {
   useUpdateSpellSlot,
 } from "../features/characters/hooks";
 import { useCreateRoll } from "../features/dice/hooks";
+import { useDiceRollFeedback } from "../features/dice/DiceRollFeedback";
 import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
 import { Button } from "../components/ui/Button";
 import { PortraitCircle } from "../components/character/PortraitCircle";
@@ -94,6 +95,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const attributes = system.attributes ?? {};
   const abilities = system.abilities ?? {};
   const toast = useToast();
+  const diceFeedback = useDiceRollFeedback();
   const createRoll = useCreateRoll(character.groupId);
 
   const actionsByItem = new Map<string, RollableAction[]>();
@@ -105,7 +107,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
     createRoll.mutate(
       { characterId: character.id, label, formula },
       {
-        onSuccess: (roll) => toast.success(`${roll.label}: ${roll.total} (${roll.formula})`),
+        onSuccess: (roll) => diceFeedback.show(roll),
         onError: (err) => toast.error(toErrorMessage(err, "No se pudo tirar los dados.")),
       },
     );

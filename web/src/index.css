@@ -123,3 +123,26 @@ body {
     animation: none;
   }
 }
+
+/* Tirador de dados (AnimatedRollValue): "pop" al asentarse el resultado tras el parpadeo. */
+@keyframes dice-settle {
+  0% {
+    transform: scale(1.4);
+  }
+  60% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.dice-settle {
+  animation: dice-settle 260ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-settle {
+    animation: none;
+  }
+}

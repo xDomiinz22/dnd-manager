@@ -1,7 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { DiceRollDto } from "@dnd-manager/shared";
 import { useGroupDetail } from "../features/groups/hooks";
 import { useGroupRolls } from "../features/dice/hooks";
+import { AnimatedRollValue } from "../features/dice/AnimatedRollValue";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { SkeletonPage } from "../components/ui/Skeleton";
@@ -14,6 +16,25 @@ export function GroupDiceLogPage() {
   const { id: groupId } = useParams<{ id: string }>();
   const { data: group, isLoading: isLoadingGroup } = useGroupDetail(groupId!);
   const { data: rolls, isLoading: isLoadingRolls } = useGroupRolls(groupId!, { poll: true });
+
+  // Solo animamos las tiradas que aparecen DESPUÉS de la carga inicial (nuevas
+  // vía polling) — las que ya existían al abrir la página se muestran directas,
+  // sin parpadeo.
+  const seenIds = useRef<Set<string> | null>(null);
+  const [newIds, setNewIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!rolls) return;
+    if (seenIds.current === null) {
+      seenIds.current = new Set(rolls.map((r) => r.id));
+      return;
+    }
+    const fresh = rolls.filter((r) => !seenIds.current!.has(r.id));
+    if (fresh.length > 0) {
+      setNewIds((prev) => new Set([...prev, ...fresh.map((r) => r.id)]));
+      fresh.forEach((r) => seenIds.current!.add(r.id));
+    }
+  }, [rolls]);
 
   if (isLoadingGroup || isLoadingRolls || !group) {
     return (
@@ -46,7 +67,7 @@ export function GroupDiceLogPage() {
       ) : (
         <ul className="space-y-2">
           {rolls.map((roll) => (
-            <RollRow key={roll.id} roll={roll} />
+            <RollRow key={roll.id} roll={roll} animate={newIds.has(roll.id)} />
           ))}
         </ul>
       )}
@@ -54,7 +75,7 @@ export function GroupDiceLogPage() {
   );
 }
 
-function RollRow({ roll }: { roll: DiceRollDto }) {
+function RollRow({ roll, animate }: { roll: DiceRollDto; animate: boolean }) {
   const breakdown = roll.rolls
     .map((group) => `${group.die} [${group.values.join(", ")}]`)
     .join(" ");
@@ -75,12 +96,11 @@ function RollRow({ roll }: { roll: DiceRollDto }) {
           {roll.formula}
           {breakdown && ` · ${breakdown}`}
         </span>
-        <span
+        <AnimatedRollValue
+          value={roll.total}
+          animate={animate}
           className="font-display text-lg font-semibold text-oxblood"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        >
-          {roll.total}
-        </span>
+        />
       </div>
     </li>
   );
