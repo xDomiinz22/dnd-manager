@@ -66,25 +66,30 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<"rolling" | "result" | null>(null);
   const diceBoxRef = useRef<import("@3d-dice/dice-box").default | null>(null);
   const diceBoxLoading = useRef<Promise<import("@3d-dice/dice-box").default> | null>(null);
-  // Cierra el paso mientras se reproduce una tirada, para que el efecto de
-  // abajo (que reacciona a `queue`) no arranque una segunda en paralelo.
-  const isPlayingRef = useRef(false);
+  // Ids ya encolados o en curso, para deduplicar. Un Set en un ref (no un
+  // useState) porque la comprobación tiene que ser síncrona e inmune al
+  // batching: en desarrollo, React puede invocar dos veces tanto el efecto
+  // de ChatDockPanel que llama a showRoll() como la función que se le pasa a
+  // setQueue — deduplicar solo dentro del updater de setQueue no basta,
+  // porque esas dos invocaciones pueden partir ambas del mismo `prev` antes
+  // de que ninguna se confirme, y la tirada se reproduce dos veces.
+  const seenIdsRef = useRef<Set<string>>(new Set());
 
-  // Deduplicado por id de tirada: el detector de mensajes nuevos en
-  // ChatDockPanel puede llamar a showRoll() dos veces para la misma tirada
-  // (p.ej. StrictMode re-ejecutando su efecto en desarrollo) — sin este
-  // filtro, la misma tirada se reproduce dos veces en paralelo y las dos
-  // pelean por el mismo estado de cola.
   const showRoll = useCallback((roll: DiceOverlayRoll) => {
-    setQueue((prev) => (prev.some((r) => r.id === roll.id) ? prev : [...prev, roll]));
+    if (seenIdsRef.current.has(roll.id)) return;
+    seenIdsRef.current.add(roll.id);
+    setQueue((prev) => [...prev, roll]);
   }, []);
   const contextValue = useMemo(() => ({ showRoll }), [showRoll]);
 
   const current = queue[0] ?? null;
+  // Mismo motivo que seenIdsRef: evita que el efecto de abajo reproduzca la
+  // misma `current` dos veces si React lo invoca por duplicado.
+  const playingIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isPlayingRef.current || !current) return;
-    isPlayingRef.current = true;
+    if (!current || playingIdRef.current === current.id) return;
+    playingIdRef.current = current.id;
     let cancelled = false;
 
     async function play(roll: DiceOverlayRoll) {
@@ -128,7 +133,6 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
       diceBoxRef.current?.clear();
       setPhase(null);
       setQueue((prev) => prev.slice(1));
-      isPlayingRef.current = false;
     }
 
     play(current);
