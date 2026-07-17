@@ -39,7 +39,7 @@ export function MyCharactersPage() {
               <div className="min-w-0 flex-1">
                 <Link
                   to={`/characters/${c.id}`}
-                  className="block truncate font-semibold text-ink hover:text-oxblood"
+                  className="block truncate font-semibold text-ink hover:underline"
                 >
                   {c.name}
                 </Link>

@@ -110,7 +110,7 @@ function CharacterImageModal({
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+          className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
         >
           ×
         </button>
@@ -131,7 +131,9 @@ function CharacterImageModal({
                       onClick={() => !isActive && handleSetMain(img.id)}
                       title={isActive ? "Imagen principal" : "Marcar como principal"}
                       className={`aspect-square w-full overflow-hidden rounded-sm border-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${
-                        isActive ? "border-oxblood" : "border-rule-strong hover:border-oxblood"
+                        isActive
+                          ? "border-oxblood"
+                          : "border-rule-strong hover:bg-parchment-deep/40"
                       }`}
                     >
                       <img

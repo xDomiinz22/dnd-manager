@@ -48,7 +48,7 @@ function TempQueueRow({ track, canReorder }: { track: MusicTrack; canReorder: bo
             type="button"
             data-no-swipe
             aria-label={`Reordenar ${track.title}`}
-            className="shrink-0 cursor-grab touch-none text-ink-muted hover:text-oxblood active:cursor-grabbing"
+            className="shrink-0 cursor-grab touch-none text-ink-muted hover:text-ink active:cursor-grabbing"
             {...attributes}
             {...listeners}
           >
@@ -61,7 +61,7 @@ function TempQueueRow({ track, canReorder }: { track: MusicTrack; canReorder: bo
           data-no-swipe
           onClick={() => player.removeFromTempQueue(track.id)}
           aria-label={`Quitar ${track.title} de la cola`}
-          className="shrink-0 text-ink-muted hover:text-oxblood"
+          className="shrink-0 text-ink-muted hover:text-ink"
         >
           ×
         </button>

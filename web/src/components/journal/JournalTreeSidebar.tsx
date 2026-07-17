@@ -61,7 +61,7 @@ export function JournalTreeSidebar({
               type="button"
               onClick={() => setQuery("")}
               aria-label="Limpiar búsqueda"
-              className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood"
+              className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-ink"
             >
               ×
             </button>
@@ -117,7 +117,7 @@ function TreeNode({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="text-ink-muted hover:text-oxblood"
+            className="text-ink-muted hover:text-ink"
             aria-label={open ? "Colapsar" : "Expandir"}
           >
             {open ? "▾" : "▸"}

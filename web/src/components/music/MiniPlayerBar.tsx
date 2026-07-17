@@ -65,7 +65,7 @@ export function MiniPlayerBar() {
           />
           <Link
             to={`/groups/${player.groupId}/music`}
-            className="shrink-0 rounded-sm border border-rule px-3 py-1.5 text-xs text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+            className="shrink-0 rounded-sm border border-rule px-3 py-1.5 text-xs text-ink transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
           >
             Música ambiente
           </Link>

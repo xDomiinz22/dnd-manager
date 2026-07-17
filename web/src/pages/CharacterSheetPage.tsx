@@ -197,9 +197,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
             aria-controls={`tabpanel-${t}`}
             onClick={() => setTab(t)}
             className={`px-3 py-2 font-display text-sm tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${
-              tab === t
-                ? "border-b-2 border-oxblood text-oxblood"
-                : "text-ink-muted hover:text-oxblood"
+              tab === t ? "border-b-2 border-oxblood text-oxblood" : "text-ink-muted hover:text-ink"
             }`}
           >
             {t}
@@ -422,7 +420,7 @@ function DetailsTab({
                         : "Inicia una sesión de chat para poder tirar"
                     }
                     aria-label={`Tirar salvación de ${ABILITY_FULL_LABELS[key]}`}
-                    className="rounded-sm border border-rule-strong px-1.5 py-0.5 text-xs text-ink-muted hover:border-oxblood hover:text-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-rule-strong disabled:hover:text-ink-muted"
+                    className="rounded-sm border border-rule-strong px-1.5 py-0.5 text-xs text-ink-muted hover:border-rule-strong hover:bg-parchment-deep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-rule-strong disabled:hover:text-ink-muted"
                   >
                     🎲
                   </button>
@@ -819,7 +817,7 @@ function SpellSlotStepper({
           onClick={onDecrement}
           disabled={value <= 0}
           aria-label={`Restar ${ariaLabel}`}
-          className="flex h-5 w-5 items-center justify-center rounded-sm border border-rule-strong text-ink-muted hover:border-oxblood hover:text-oxblood disabled:opacity-30"
+          className="flex h-5 w-5 items-center justify-center rounded-sm border border-rule-strong text-ink-muted hover:border-rule-strong hover:bg-parchment-deep hover:text-ink disabled:opacity-30"
         >
           −
         </button>
@@ -833,7 +831,7 @@ function SpellSlotStepper({
           type="button"
           onClick={onIncrement}
           aria-label={`Sumar ${ariaLabel}`}
-          className="flex h-5 w-5 items-center justify-center rounded-sm border border-rule-strong text-ink-muted hover:border-oxblood hover:text-oxblood"
+          className="flex h-5 w-5 items-center justify-center rounded-sm border border-rule-strong text-ink-muted hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
         >
           +
         </button>

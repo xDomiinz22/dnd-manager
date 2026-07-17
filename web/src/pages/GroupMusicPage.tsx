@@ -94,7 +94,7 @@ export function GroupMusicPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               to={`/groups/${groupId}`}
-              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
             >
               Volver al grupo
             </Link>
@@ -328,7 +328,7 @@ function PlaylistCard({
                   onClick={onPlayShuffled}
                   aria-label={`Reproducir "${playlist.name}" en orden aleatorio`}
                   title="Reproducir en orden aleatorio"
-                  className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-muted transition-shadow hover:bg-parchment-deep/60 hover:text-oxblood"
+                  className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-muted transition-shadow hover:bg-parchment-deep/60 hover:text-ink"
                 >
                   <ShuffleIcon className="h-4 w-4" />
                 </button>
@@ -547,7 +547,7 @@ function TrackRow({
               type="button"
               data-no-swipe
               aria-label={`Reordenar ${track.title}`}
-              className="shrink-0 cursor-grab touch-none text-ink-muted hover:text-oxblood active:cursor-grabbing"
+              className="shrink-0 cursor-grab touch-none text-ink-muted hover:text-ink active:cursor-grabbing"
               {...attributes}
               {...listeners}
             >
@@ -584,7 +584,7 @@ function TrackRow({
                 data-no-swipe
                 onClick={onStartEdit}
                 aria-label={`Editar ${track.title}`}
-                className="text-xs text-ink-muted hover:text-oxblood"
+                className="text-xs text-ink-muted hover:text-ink"
               >
                 Editar
               </button>
@@ -595,7 +595,7 @@ function TrackRow({
                   type="button"
                   onClick={onToggleMove}
                   aria-label={`Mover ${track.title} a otra lista`}
-                  className="text-xs text-ink-muted hover:text-oxblood"
+                  className="text-xs text-ink-muted hover:text-ink"
                 >
                   Mover
                 </button>
@@ -615,7 +615,7 @@ function TrackRow({
                   type="button"
                   onClick={onToggleConfirm}
                   aria-label={`Borrar ${track.title}`}
-                  className="flex h-6 w-6 items-center justify-center rounded-sm text-base leading-none text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood"
+                  className="flex h-6 w-6 items-center justify-center rounded-sm text-base leading-none text-oxblood-dark hover:bg-parchment-deep/60"
                 >
                   ×
                 </button>

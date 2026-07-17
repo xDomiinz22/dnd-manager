@@ -28,7 +28,7 @@ const ICON_BUTTON =
 
 const TOGGLE_ACTIVE =
   "bg-oxblood text-parchment shadow-[0_0_0_1px_rgba(201,162,39,0.6)] hover:bg-oxblood-dark";
-const TOGGLE_INACTIVE = "text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood";
+const TOGGLE_INACTIVE = "text-ink-muted hover:bg-parchment-deep/60 hover:text-ink";
 
 /**
  * Fila de controles de transporte compartida entre la barra "reproduciendo
@@ -66,7 +66,7 @@ export function PlayerControls({
           e.currentTarget.blur();
         }}
         aria-label="Track anterior"
-        className={`${ICON_BUTTON} text-ink hover:bg-parchment-deep/60 hover:text-oxblood`}
+        className={`${ICON_BUTTON} text-ink hover:bg-parchment-deep/60 hover:text-ink`}
       >
         <SkipPrevIcon />
       </button>
@@ -89,7 +89,7 @@ export function PlayerControls({
           e.currentTarget.blur();
         }}
         aria-label="Siguiente track"
-        className={`${ICON_BUTTON} text-ink hover:bg-parchment-deep/60 hover:text-oxblood`}
+        className={`${ICON_BUTTON} text-ink hover:bg-parchment-deep/60 hover:text-ink`}
       >
         <SkipNextIcon />
       </button>

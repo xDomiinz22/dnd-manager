@@ -132,19 +132,19 @@ export function GroupDetailPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               to={`/groups/${group.id}/music`}
-              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
             >
               Música ambiente
             </Link>
             <Link
               to={`/groups/${group.id}/map`}
-              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
             >
               Mapa
             </Link>
             <Link
               to={`/groups/${group.id}/journal`}
-              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
             >
               Diario de grupo
             </Link>
@@ -293,7 +293,7 @@ export function GroupDetailPage() {
                     <Link
                       to={`/characters/${c.id}`}
                       state={isLimited ? { backgroundLocation: location } : undefined}
-                      className="block truncate font-semibold text-ink hover:text-oxblood"
+                      className="block truncate font-semibold text-ink hover:underline"
                     >
                       {c.name}
                     </Link>
@@ -415,7 +415,7 @@ function MemberMenu({
         aria-haspopup="menu"
         aria-expanded={visible}
         aria-label={`Más opciones para ${member.username}`}
-        className="flex h-7 w-7 items-center justify-center rounded-sm text-lg leading-none text-ink-muted hover:bg-parchment-deep/60 hover:text-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+        className="flex h-7 w-7 items-center justify-center rounded-sm text-lg leading-none text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
       >
         ⋮
       </button>

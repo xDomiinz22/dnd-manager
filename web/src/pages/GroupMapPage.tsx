@@ -130,7 +130,7 @@ export function GroupMapPage() {
         action={
           <Link
             to={`/groups/${groupId}`}
-            className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+            className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
           >
             Volver al grupo
           </Link>
@@ -184,7 +184,7 @@ export function GroupMapPage() {
             className={`cursor-pointer rounded-sm border border-dashed px-6 py-10 text-center transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${
               isDraggingFile
                 ? "border-oxblood bg-parchment-deep/40"
-                : "border-rule-strong hover:border-oxblood"
+                : "border-rule-strong hover:bg-parchment-deep/40"
             }`}
           >
             <p className="text-ink">Este grupo todavía no tiene un mapa.</p>
@@ -352,7 +352,7 @@ function PinPopup({
           type="button"
           onClick={onClose}
           aria-label="Cerrar"
-          className="shrink-0 text-ink-muted hover:text-oxblood"
+          className="shrink-0 text-ink-muted hover:text-ink"
         >
           ×
         </button>

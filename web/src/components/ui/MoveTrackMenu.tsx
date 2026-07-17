@@ -41,7 +41,7 @@ export function MoveTrackMenu({
               type="button"
               disabled={isLoading}
               onClick={() => onSelect(playlist.id)}
-              className="block w-full truncate rounded-sm px-2 py-1.5 text-left text-sm text-ink hover:bg-parchment-deep/60 hover:text-oxblood disabled:opacity-50"
+              className="block w-full truncate rounded-sm px-2 py-1.5 text-left text-sm text-ink hover:bg-parchment-deep/60 hover:text-ink disabled:opacity-50"
             >
               {playlist.name}
             </button>

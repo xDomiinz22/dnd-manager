@@ -65,11 +65,7 @@ export function CharacterRollMenu({
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="mb-2 flex items-center justify-between">
           <h3 className="font-display text-xs tracking-wide text-oxblood">Elige personaje</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-xs text-ink-muted hover:text-oxblood"
-          >
+          <button type="button" onClick={onClose} className="text-xs text-ink-muted hover:text-ink">
             Volver al chat
           </button>
         </div>
@@ -79,7 +75,7 @@ export function CharacterRollMenu({
               <button
                 type="button"
                 onClick={() => setManualSelectedId(c.id)}
-                className="flex w-full items-center gap-2 rounded-sm border border-rule bg-parchment-panel px-2.5 py-2 text-left hover:border-oxblood"
+                className="flex w-full items-center gap-2 rounded-sm border border-rule bg-parchment-panel px-2.5 py-2 text-left hover:border-rule-strong hover:bg-parchment-deep"
               >
                 <PortraitCircle url={c.portraitUrl} name={c.name} size={28} />
                 <span className="min-w-0 flex-1 truncate text-sm text-ink">{c.name}</span>
@@ -153,10 +149,10 @@ function CharacterRollPicker({
           <span className="truncate text-sm font-semibold text-ink">{character.name}</span>
         </div>
         <div className="flex shrink-0 gap-2 text-xs">
-          <button type="button" onClick={onBack} className="text-ink-muted hover:text-oxblood">
+          <button type="button" onClick={onBack} className="text-ink-muted hover:text-ink">
             Cambiar
           </button>
-          <button type="button" onClick={onClose} className="text-ink-muted hover:text-oxblood">
+          <button type="button" onClick={onClose} className="text-ink-muted hover:text-ink">
             Cerrar
           </button>
         </div>
@@ -171,7 +167,7 @@ function CharacterRollPicker({
             aria-selected={category === cat}
             onClick={() => setCategory(cat)}
             className={`rounded-sm px-2 py-1 font-display text-xs tracking-wide ${
-              category === cat ? "bg-oxblood text-parchment" : "text-ink-muted hover:text-oxblood"
+              category === cat ? "bg-oxblood text-parchment" : "text-ink-muted hover:text-ink"
             }`}
           >
             {CATEGORY_LABELS[cat]}
@@ -275,7 +271,7 @@ function MoveButton({ text, onClick }: { text: string; onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-sm border border-rule-strong px-2 py-1.5 text-left text-xs text-ink hover:border-oxblood hover:bg-parchment-deep/40 hover:text-oxblood"
+      className="w-full rounded-sm border border-rule-strong px-2 py-1.5 text-left text-xs text-ink hover:border-rule-strong hover:bg-parchment-deep/40 hover:text-ink"
     >
       🎲 {text}
     </button>

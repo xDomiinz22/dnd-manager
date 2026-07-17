@@ -57,7 +57,7 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
           onClick={() => setDesktopOpen((v) => !v)}
           aria-label="Reproducir después"
           aria-expanded={desktopOpen}
-          className="fixed right-0 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-sm border border-r-0 border-rule bg-parchment-panel px-2 py-3 text-ink-muted shadow-[0_2px_10px_-2px_rgba(0,0,0,0.2)] hover:text-oxblood"
+          className="fixed right-0 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-sm border border-r-0 border-rule bg-parchment-panel px-2 py-3 text-ink-muted shadow-[0_2px_10px_-2px_rgba(0,0,0,0.2)] hover:bg-parchment-deep hover:text-ink"
         >
           <QueueIcon />
           {count > 0 && (
@@ -83,7 +83,7 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
                 type="button"
                 onClick={() => setDesktopOpen(false)}
                 aria-label="Cerrar"
-                className="text-ink-muted hover:text-oxblood"
+                className="text-ink-muted hover:text-ink"
               >
                 ×
               </button>
@@ -130,7 +130,7 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
                   type="button"
                   onClick={() => onMobileOpenChange(false)}
                   aria-label="Cerrar"
-                  className="text-ink-muted hover:text-oxblood"
+                  className="text-ink-muted hover:text-ink"
                 >
                   ×
                 </button>

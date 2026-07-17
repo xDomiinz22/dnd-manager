@@ -227,7 +227,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
             type="button"
             onClick={() => setCollapsed(false)}
             aria-label="Abrir chat"
-            className="fixed right-0 top-[35%] z-20 flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-sm border border-r-0 border-rule bg-parchment-panel px-2 py-3 text-ink-muted shadow-[0_2px_10px_-2px_rgba(0,0,0,0.2)] hover:text-oxblood"
+            className="fixed right-0 top-[35%] z-20 flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-sm border border-r-0 border-rule bg-parchment-panel px-2 py-3 text-ink-muted shadow-[0_2px_10px_-2px_rgba(0,0,0,0.2)] hover:bg-parchment-deep hover:text-ink"
           >
             <ChatIcon />
             {session && (
@@ -244,7 +244,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
                 type="button"
                 onClick={() => setCollapsed(true)}
                 aria-label="Plegar chat"
-                className="text-ink-muted hover:text-oxblood"
+                className="text-ink-muted hover:text-ink"
               >
                 ×
               </button>
@@ -297,7 +297,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
                   type="button"
                   onClick={() => onMobileOpenChange(false)}
                   aria-label="Cerrar"
-                  className="text-ink-muted hover:text-oxblood"
+                  className="text-ink-muted hover:text-ink"
                 >
                   ×
                 </button>

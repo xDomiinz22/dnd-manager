@@ -48,10 +48,10 @@ function AppLayoutContent() {
             <BrandMark />
             D&D Manager
           </Link>
-          <Link to="/groups" className="text-ink hover:text-oxblood">
+          <Link to="/groups" className="text-ink hover:underline">
             Grupos
           </Link>
-          <Link to="/characters" className="text-ink hover:text-oxblood">
+          <Link to="/characters" className="text-ink hover:underline">
             Mis personajes
           </Link>
         </nav>

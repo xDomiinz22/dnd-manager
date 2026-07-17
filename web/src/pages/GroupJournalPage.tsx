@@ -69,7 +69,7 @@ export function GroupJournalPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               to={`/groups/${groupId}`}
-              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-oxblood hover:bg-oxblood hover:text-parchment"
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
             >
               Volver al grupo
             </Link>

@@ -40,7 +40,7 @@ export const FileDropTextArea = forwardRef<HTMLTextAreaElement, FileDropTextArea
         }`}
       >
         <TextAreaField ref={ref} {...textAreaProps} />
-        <label className="-mt-2 mb-3 block cursor-pointer text-xs text-ink-muted hover:text-oxblood">
+        <label className="-mt-2 mb-3 block cursor-pointer text-xs text-ink-muted hover:text-ink">
           Arrastra un archivo{acceptExtension ? ` ${acceptExtension}` : ""} aquí, o{" "}
           <span className="underline">selecciona uno</span>
           <input
