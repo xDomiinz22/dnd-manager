@@ -8,12 +8,15 @@ import { defineConfig, env } from "prisma/config";
 // directamente, sin pasar por aquí.
 export default defineConfig({
   schema: "prisma/schema.prisma",
-  // DATABASE_URL (con pooler), no DIRECT_URL: probado a mano — DIRECT_URL
-  // da timeout al intentar el advisory lock que usa `migrate deploy`
-  // (`pg_advisory_lock`, ver https://pris.ly/d/migrate-advisory-locking) en
-  // este entorno, mientras que la URL con pooler funciona sin problema.
+  // DIRECT_URL (sin pooler), no DATABASE_URL: `migrate deploy` usa
+  // `pg_advisory_lock`, que es a nivel de sesión — con la URL pooled
+  // (PgBouncer en modo transacción) el lock se puede quedar "colgado" en un
+  // backend que luego se recicla para otra query cualquiera de la app, sin
+  // liberarlo nunca, bloqueando todos los despliegues siguientes con un
+  // timeout P1002 (nos pasó: tuvimos que matar a mano el backend colgado).
+  // Ver https://pris.ly/d/migrate-advisory-locking.
   datasource: {
-    url: env("DATABASE_URL"),
+    url: env("DIRECT_URL"),
   },
   migrations: {
     seed: "tsx prisma/seed.ts",
