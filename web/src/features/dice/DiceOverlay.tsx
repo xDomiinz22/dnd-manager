@@ -39,7 +39,9 @@ function prefersReducedMotion(): boolean {
 }
 
 function rollsToNotation(rolls: DieGroupResult[]): string[] {
-  return rolls.map((g) => `${g.values.length}${g.die}`);
+  // g.die ya viene como "NdM" (p.ej. "1d20", "-1d4") desde el servidor — el
+  // signo solo importa para el total, no para qué dado animar.
+  return rolls.map((g) => g.die.replace(/^-/, ""));
 }
 
 function formatBreakdown(roll: DiceOverlayRoll): string {
