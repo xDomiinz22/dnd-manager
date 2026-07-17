@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAmbientPlayerContext } from "../../features/music/AmbientPlayerContext";
+import { useCurrentGroupId } from "../../features/chat/useCurrentGroupId";
 import { TempQueuePanel } from "./TempQueuePanel";
 
 function QueueIcon({ className = "h-4 w-4" }: { className?: string }) {
@@ -17,21 +18,35 @@ function QueueIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+interface TempQueueLauncherProps {
+  /** Estado de la hoja móvil, controlado desde AppLayout: abrir esta cierra la del chat. */
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
+}
+
 /**
  * Punto de entrada a la cola "Reproducir después": en escritorio, una
- * pestaña fija al borde derecho que despliega un panel lateral; en móvil,
- * un botón flotante (FAB) que abre una hoja desde abajo. Solo se muestra en
- * el sitio (fuera de la página de música) cuando la cola tiene algo, para no
+ * pestaña fija al borde derecho que despliega un panel lateral (estado
+ * propio, sin conflicto con el chat); en móvil, un botón flotante (FAB) que
+ * abre una hoja desde abajo — ese estado sí es compartido (ver AppLayout)
+ * para que nunca coincida abierta con la del chat. Solo se muestra en el
+ * sitio (fuera de la página de música) cuando la cola tiene algo, para no
  * añadir ruido visual en el resto de la app.
  */
-export function TempQueueLauncher() {
+export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueLauncherProps) {
   const player = useAmbientPlayerContext();
-  const [open, setOpen] = useState(false);
+  const groupId = useCurrentGroupId();
+  const [desktopOpen, setDesktopOpen] = useState(false);
 
-  if (player.tempQueue.length === 0 && !open) return null;
+  if (player.tempQueue.length === 0 && !desktopOpen && !mobileOpen) return null;
 
-  const hasMiniPlayer = !!player.currentTrack;
   const count = player.tempQueue.length;
+  // El FAB del chat (ver ChatDockPanel) ocupa la esquina inferior derecha en
+  // cualquier página de grupo: si va a estar ahí, este se apila encima en
+  // vez de superponerse.
+  const mobileBottom = groupId
+    ? "calc(var(--player-bar-height, 0px) + 4.5rem)"
+    : "calc(var(--player-bar-height, 0px) + 1rem)";
 
   return (
     <>
@@ -39,9 +54,9 @@ export function TempQueueLauncher() {
       <div className="hidden sm:block">
         <button
           type="button"
-          onClick={() => setOpen((v) => !v)}
+          onClick={() => setDesktopOpen((v) => !v)}
           aria-label="Reproducir después"
-          aria-expanded={open}
+          aria-expanded={desktopOpen}
           className="fixed right-0 top-1/2 z-30 flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-sm border border-r-0 border-rule bg-parchment-panel px-2 py-3 text-ink-muted shadow-[0_2px_10px_-2px_rgba(0,0,0,0.2)] hover:text-oxblood"
         >
           <QueueIcon />
@@ -53,11 +68,12 @@ export function TempQueueLauncher() {
         </button>
         <div
           className={`fixed right-0 top-0 z-40 h-full w-80 max-w-[85vw] border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
-            open ? "translate-x-0" : "translate-x-full"
+            desktopOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
           <div
-            className={`flex h-full flex-col overflow-y-auto p-4 ${hasMiniPlayer ? "pb-28" : ""}`}
+            className="flex h-full flex-col overflow-y-auto p-4"
+            style={{ paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
           >
             <div className="mb-3 flex items-center justify-between">
               <h2 className="font-display text-sm tracking-wide text-oxblood">
@@ -65,7 +81,7 @@ export function TempQueueLauncher() {
               </h2>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={() => setDesktopOpen(false)}
                 aria-label="Cerrar"
                 className="text-ink-muted hover:text-oxblood"
               >
@@ -81,11 +97,10 @@ export function TempQueueLauncher() {
       <div className="sm:hidden">
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => onMobileOpenChange(true)}
           aria-label="Reproducir después"
-          className={`fixed right-4 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-parchment shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)] ${
-            hasMiniPlayer ? "bottom-24" : "bottom-4"
-          }`}
+          style={{ bottom: mobileBottom }}
+          className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-parchment shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
         >
           <QueueIcon className="h-5 w-5" />
           {count > 0 && (
@@ -94,10 +109,10 @@ export function TempQueueLauncher() {
             </span>
           )}
         </button>
-        {open && (
+        {mobileOpen && (
           <div
             role="presentation"
-            onClick={() => setOpen(false)}
+            onClick={() => onMobileOpenChange(false)}
             className="fixed inset-0 z-40 bg-ink/40"
           >
             <div
@@ -113,7 +128,7 @@ export function TempQueueLauncher() {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  onClick={() => onMobileOpenChange(false)}
                   aria-label="Cerrar"
                   className="text-ink-muted hover:text-oxblood"
                 >

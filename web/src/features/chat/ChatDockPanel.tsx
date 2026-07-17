@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessageDto } from "@dnd-manager/shared";
 import { useAuth } from "../../context/AuthContext";
-import { useAmbientPlayerContext } from "../music/AmbientPlayerContext";
 import { useGroupDetail } from "../groups/hooks";
 import {
   useChatMessages,
@@ -113,16 +112,23 @@ type PanelView = "chat" | "roll";
  * habiendo con el mismo polling de 3s de useChatSession, dondequiera que
  * estén dentro del grupo.
  *
- * Los z-index (20/25) se mantienen por debajo de los del lanzador de cola de
- * reproducción (30/40, ver TempQueueLauncher) para que ese control siga
- * siendo alcanzable por encima del panel de chat cuando ambos coinciden.
+ * En escritorio, los z-index (20/25) se mantienen por debajo de los del
+ * lanzador de cola de reproducción (30/40, ver TempQueueLauncher) para que
+ * ese control siga siendo alcanzable por encima del panel de chat cuando
+ * ambos coinciden. En móvil, el FAB de chat ocupa la esquina inferior
+ * derecha "base"; el de la cola (si aparece) se apila encima del suyo, y
+ * abrir una de las dos hojas cierra la otra (estado controlado desde
+ * AppLayout) para que nunca queden ambas "abiertas" tapándose entre sí.
  */
-export function ChatDockPanel() {
+interface ChatDockPanelProps {
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
+}
+
+export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelProps) {
   const groupId = useCurrentGroupId();
   const gid = groupId ?? "";
   const { user } = useAuth();
-  const player = useAmbientPlayerContext();
-  const hasMiniPlayer = !!player.currentTrack;
 
   const { data: group } = useGroupDetail(gid);
   const { data: session } = useChatSession(gid);
@@ -136,7 +142,6 @@ export function ChatDockPanel() {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === "1";
   });
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [text, setText] = useState("");
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [view, setView] = useState<PanelView>("chat");
@@ -245,7 +250,8 @@ export function ChatDockPanel() {
               </button>
             </div>
             <div
-              className={`flex min-h-0 flex-1 flex-col px-4 py-3 ${hasMiniPlayer ? "pb-28" : ""}`}
+              className="flex min-h-0 flex-1 flex-col px-4 py-3"
+              style={{ paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
             >
               {content}
             </div>
@@ -253,15 +259,14 @@ export function ChatDockPanel() {
         )}
       </div>
 
-      {/* Móvil: FAB a la izquierda (el de música/cola vive a la derecha) + hoja inferior */}
+      {/* Móvil: FAB a la derecha (esquina "base"; la cola se apila encima si aparece) + hoja inferior */}
       <div className="sm:hidden">
         <button
           type="button"
-          onClick={() => setMobileOpen(true)}
+          onClick={() => onMobileOpenChange(true)}
           aria-label="Abrir chat"
-          className={`fixed left-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-parchment shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)] ${
-            hasMiniPlayer ? "bottom-24" : "bottom-4"
-          }`}
+          style={{ bottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
+          className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-parchment shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
         >
           <ChatIcon className="h-5 w-5" />
           {session && (
@@ -274,8 +279,8 @@ export function ChatDockPanel() {
         {mobileOpen && (
           <div
             role="presentation"
-            onClick={() => setMobileOpen(false)}
-            className="fixed inset-0 z-[25] bg-ink/40"
+            onClick={() => onMobileOpenChange(false)}
+            className="fixed inset-0 z-40 bg-ink/40"
           >
             <div
               role="dialog"
@@ -290,7 +295,7 @@ export function ChatDockPanel() {
                 </h2>
                 <button
                   type="button"
-                  onClick={() => setMobileOpen(false)}
+                  onClick={() => onMobileOpenChange(false)}
                   aria-label="Cerrar"
                   className="text-ink-muted hover:text-oxblood"
                 >

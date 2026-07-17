@@ -1,7 +1,10 @@
+import { useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAmbientPlayerContext } from "../../features/music/AmbientPlayerContext";
 import { MarqueeText } from "../ui/MarqueeText";
 import { PlayerControls } from "./PlayerControls";
+
+const PLAYER_BAR_HEIGHT_VAR = "--player-bar-height";
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -18,11 +21,42 @@ function formatTime(seconds: number): string {
  */
 export function MiniPlayerBar() {
   const player = useAmbientPlayerContext();
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const visible = !!player.currentTrack && !!player.groupId;
+
+  // Publica la altura real de la barra en una variable CSS: otros elementos
+  // fijos al fondo (FAB de chat, de cola de reproducción) la usan para no
+  // taparse con la barra en vez de asumir una altura fija que no encajaba
+  // con el alto real (variable según se envuelvan o no los controles).
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) {
+      document.documentElement.style.setProperty(PLAYER_BAR_HEIGHT_VAR, "0px");
+      return;
+    }
+    const setHeight = (height: number) =>
+      document.documentElement.style.setProperty(PLAYER_BAR_HEIGHT_VAR, `${height}px`);
+    // Medimos ya mismo (no solo desde el observer): su primer callback llega
+    // de forma asíncrona en el siguiente frame, y para entonces ya se habrá
+    // pintado la barra con la altura equivocada durante un instante.
+    setHeight(el.offsetHeight);
+    const observer = new ResizeObserver(([entry]) =>
+      setHeight(entry?.contentRect.height ?? el.offsetHeight),
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.setProperty(PLAYER_BAR_HEIGHT_VAR, "0px");
+    };
+  }, [visible]);
 
   if (!player.currentTrack || !player.groupId) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-parchment-panel shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.15)]">
+    <div
+      ref={barRef}
+      className="fixed inset-x-0 bottom-0 z-30 border-t border-rule bg-parchment-panel shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.15)]"
+    >
       <div className="mx-auto max-w-2xl px-4 py-2 sm:py-3">
         <div className="mb-1.5 flex items-center gap-2">
           <MarqueeText

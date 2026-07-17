@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLogout } from "../features/auth/hooks";
@@ -10,6 +11,8 @@ import { MiniPlayerBar } from "./music/MiniPlayerBar";
 import { TempQueueLauncher } from "./music/TempQueueLauncher";
 import { BrandMark } from "./ui/BrandMark";
 import { Button } from "./ui/Button";
+
+type MobileSheet = "chat" | "queue" | null;
 
 export function AppLayout() {
   return (
@@ -26,9 +29,13 @@ function AppLayoutContent() {
   // Desestructurado a parte: el objeto `player` incluye `containerRef` (un
   // ref real) en su forma, y el analizador de `react-hooks/refs` (ESLint
   // 10 / eslint-plugin-react-hooks 7) trata cualquier acceso a una
-  // propiedad de un objeto que contenga un ref como sospechoso, aunque la
-  // propiedad leída (`currentTrack`) no sea un ref en sí.
-  const { currentTrack, containerRef } = player;
+  // propiedad de un objeto que contenga un ref como sospechoso.
+  const { containerRef } = player;
+  // En móvil, el chat y la cola de reproducción son hojas a pantalla
+  // completa: abrir una cierra la otra sola, para que nunca queden las dos
+  // "abiertas" a la vez tapándose entre sí sin más salida que adivinar cuál
+  // backdrop hay que tocar.
+  const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheet>(null);
 
   return (
     <div className="min-h-screen bg-parchment text-ink">
@@ -76,13 +83,21 @@ function AppLayoutContent() {
         aria-hidden="true"
       />
 
-      <div className={currentTrack ? "pb-32" : undefined}>
+      {/* padding-bottom = altura real de la mini-barra (0 si no suena nada,
+          ver --player-bar-height en MiniPlayerBar) + un margen fijo. */}
+      <div style={{ paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}>
         <Outlet />
       </div>
 
       <MiniPlayerBar />
-      <TempQueueLauncher />
-      <ChatDockPanel />
+      <TempQueueLauncher
+        mobileOpen={activeMobileSheet === "queue"}
+        onMobileOpenChange={(open) => setActiveMobileSheet(open ? "queue" : null)}
+      />
+      <ChatDockPanel
+        mobileOpen={activeMobileSheet === "chat"}
+        onMobileOpenChange={(open) => setActiveMobileSheet(open ? "chat" : null)}
+      />
     </div>
   );
 }
