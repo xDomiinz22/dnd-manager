@@ -1,4 +1,4 @@
-import type { ChatMessageDto, ChatSession } from "@dnd-manager/shared";
+import type { ChatMessageDto, ChatSession, DieGroupResult } from "@dnd-manager/shared";
 import { prisma } from "../../lib/prisma";
 import { AppError } from "../errors/AppError";
 
@@ -12,6 +12,8 @@ type MessageWithRelations = {
     id: string;
     label: string;
     formula: string;
+    rolls: unknown;
+    modifier: number;
     total: number;
     character: { name: string } | null;
   } | null;
@@ -25,6 +27,8 @@ const MESSAGE_INCLUDE = {
       id: true,
       label: true,
       formula: true,
+      rolls: true,
+      modifier: true,
       total: true,
       character: { select: { name: true } },
     },
@@ -44,6 +48,8 @@ function toMessageDto(message: MessageWithRelations): ChatMessageDto {
           characterName: message.diceRoll.character?.name ?? null,
           label: message.diceRoll.label,
           formula: message.diceRoll.formula,
+          rolls: message.diceRoll.rolls as DieGroupResult[],
+          modifier: message.diceRoll.modifier,
           total: message.diceRoll.total,
         }
       : null,

@@ -124,25 +124,15 @@ body {
   }
 }
 
-/* Tirador de dados (AnimatedRollValue): "pop" al asentarse el resultado tras el parpadeo. */
-@keyframes dice-settle {
-  0% {
-    transform: scale(1.4);
-  }
-  60% {
-    transform: scale(0.92);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.dice-settle {
-  animation: dice-settle 260ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dice-settle {
-    animation: none;
-  }
+/*
+ * @3d-dice/dice-box crea su propio <canvas class="dice-box-canvas"> dentro
+ * del contenedor que le pasamos (ver DiceOverlay.tsx) pero no trae CSS
+ * propio importado — sin esto el canvas se queda a tamaño intrínseco 0x0 (su
+ * lógica de resize lee el tamaño ya renderizado del canvas, no del
+ * contenedor) y la simulación física nunca "ve" nada que animar.
+ */
+.dice-box-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }

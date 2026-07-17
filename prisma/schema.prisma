@@ -30,12 +30,14 @@ model User {
 }
 
 model Group {
-  id         String   @id @default(cuid())
-  name       String
-  inviteCode String   @unique
-  masterId   String
-  master     User     @relation("GroupMaster", fields: [masterId], references: [id])
-  createdAt  DateTime @default(now())
+  id              String   @id @default(cuid())
+  name            String
+  inviteCode      String   @unique
+  masterId        String
+  master          User     @relation("GroupMaster", fields: [masterId], references: [id])
+  // Color de los dados 3D (hex, p.ej. "#6B1620"); null = color por defecto de la librería.
+  diceThemeColor  String?
+  createdAt       DateTime @default(now())
 
   members        GroupMember[]
   characters     CharacterSheet[]

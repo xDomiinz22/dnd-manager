@@ -119,6 +119,7 @@ export async function getGroupDetail(userId: string, groupId: string): Promise<G
         classes: fullAccess ? classBreakdown(c.items) : null,
       };
     }),
+    diceThemeColor: group.diceThemeColor,
     createdAt: group.createdAt.toISOString(),
   };
 }
@@ -231,6 +232,11 @@ export async function setMemberRole(
     where: { groupId_userId: { groupId, userId: targetUserId } },
     data: { role },
   });
+}
+
+/** Solo el Master elige el color de los dados 3D — se aplica a las tiradas de todo el grupo. */
+export async function setDiceThemeColor(groupId: string, diceThemeColor: string): Promise<void> {
+  await prisma.group.update({ where: { id: groupId }, data: { diceThemeColor } });
 }
 
 /** Solo el Master concede/revoca permiso de gestionar la música ambiente a otro miembro. */

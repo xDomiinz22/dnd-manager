@@ -11,7 +11,7 @@ import {
 } from "./hooks";
 import { useCurrentGroupId } from "./useCurrentGroupId";
 import { CharacterRollMenu } from "./CharacterRollMenu";
-import { AnimatedRollValue } from "../dice/AnimatedRollValue";
+import { useDiceOverlay } from "../dice/DiceOverlay";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { ConfirmPanel } from "../../components/ui/ConfirmPanel";
@@ -145,10 +145,41 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
   const [text, setText] = useState("");
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [view, setView] = useState<PanelView>("chat");
+  const { showRoll } = useDiceOverlay();
+  const seenRollIds = useRef<{ sessionId: string; ids: Set<string> } | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem(COLLAPSED_STORAGE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
+
+  // Dispara los dados 3D para las tiradas nuevas del chat — a propósito
+  // independiente de `view`/`collapsed`/`mobileOpen`: si dependiera de que
+  // la lista de mensajes estuviera montada en pantalla, alguien mirando el
+  // menú "🎲 Tirar" (o con el panel plegado) no vería su propia tirada.
+  useEffect(() => {
+    if (!session || !messages) return;
+    if (!seenRollIds.current || seenRollIds.current.sessionId !== session.id) {
+      seenRollIds.current = { sessionId: session.id, ids: new Set(messages.map((m) => m.id)) };
+      return;
+    }
+    const seen = seenRollIds.current.ids;
+    const fresh = messages.filter((m) => !seen.has(m.id));
+    if (fresh.length === 0) return;
+    fresh.forEach((m) => {
+      seen.add(m.id);
+      if (m.kind === "ROLL" && m.roll) {
+        showRoll({
+          id: m.roll.id,
+          label: m.roll.label,
+          characterName: m.roll.characterName,
+          rolls: m.roll.rolls,
+          modifier: m.roll.modifier,
+          total: m.roll.total,
+          themeColor: group?.diceThemeColor ?? null,
+        });
+      }
+    });
+  }, [session, messages, showRoll, group?.diceThemeColor]);
 
   if (!groupId || !group) return null;
 
@@ -411,9 +442,7 @@ function ChatPanelContent({
         />
       )}
 
-      {/* key={session.id}: al cambiar de sesión, remonta desde cero en vez
-          de arrastrar qué mensajes ya se habían "visto" en la anterior. */}
-      <ChatMessages key={session.id} messages={messages} />
+      <ChatMessages messages={messages} />
 
       <form onSubmit={onSend} className="flex items-end gap-2">
         <TextField
@@ -433,23 +462,7 @@ function ChatPanelContent({
   );
 }
 
-/** Anima solo los mensajes que llegan DESPUÉS del montaje (nuevos por polling). */
 function ChatMessages({ messages }: { messages: ChatMessageDto[] | undefined }) {
-  const seenIds = useRef<Set<string> | null>(null);
-  const [newIds, setNewIds] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!messages) return;
-    if (seenIds.current === null) {
-      seenIds.current = new Set(messages.map((m) => m.id));
-      return;
-    }
-    const fresh = messages.filter((m) => !seenIds.current!.has(m.id));
-    if (fresh.length === 0) return;
-    fresh.forEach((m) => seenIds.current!.add(m.id));
-    setNewIds((prev) => new Set([...prev, ...fresh.map((m) => m.id)]));
-  }, [messages]);
-
   return (
     <ul className="mb-3 flex-1 space-y-2 overflow-y-auto">
       {(!messages || messages.length === 0) && (
@@ -458,13 +471,13 @@ function ChatMessages({ messages }: { messages: ChatMessageDto[] | undefined }) 
         </li>
       )}
       {messages?.map((message) => (
-        <MessageRow key={message.id} message={message} animate={newIds.has(message.id)} />
+        <MessageRow key={message.id} message={message} />
       ))}
     </ul>
   );
 }
 
-function MessageRow({ message, animate }: { message: ChatMessageDto; animate: boolean }) {
+function MessageRow({ message }: { message: ChatMessageDto }) {
   if (message.kind === "ROLL" && message.roll) {
     const roll = message.roll;
     return (
@@ -483,11 +496,7 @@ function MessageRow({ message, animate }: { message: ChatMessageDto; animate: bo
         </div>
         <div className="mt-1 flex items-baseline justify-between gap-3">
           <span className="text-[0.65rem] text-ink-muted">{roll.formula}</span>
-          <AnimatedRollValue
-            value={roll.total}
-            animate={animate}
-            className="font-display text-base font-semibold text-oxblood"
-          />
+          <span className="font-display text-base font-semibold text-oxblood">{roll.total}</span>
         </div>
       </li>
     );

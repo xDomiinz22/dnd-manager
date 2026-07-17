@@ -8,6 +8,7 @@ import {
   listGroupsHandler,
   regenerateInviteCodeHandler,
   removeMemberHandler,
+  setDiceThemeHandler,
   setMemberMusicPermissionHandler,
   setMemberRoleHandler,
 } from "../controllers/groupController";
@@ -42,3 +43,4 @@ groupsRouter.patch(
   requireGroupMaster,
   setMemberRoleHandler,
 );
+groupsRouter.patch("/groups/:id/dice-theme", requireAuth, requireGroupMaster, setDiceThemeHandler);

@@ -9,6 +9,13 @@ export const updateMemberRoleSchema = z.object({
 });
 export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;
 
+export const updateGroupDiceThemeSchema = z.object({
+  diceThemeColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "El color debe ser hexadecimal, p.ej. #6B1620"),
+});
+export type UpdateGroupDiceThemeInput = z.infer<typeof updateGroupDiceThemeSchema>;
+
 export const createGroupSchema = z.object({
   name: z.string().trim().min(1, "El nombre no puede estar vacío").max(100),
 });
@@ -59,6 +66,7 @@ export const groupDetailSchema = z.object({
   master: z.object({ id: z.string(), username: z.string() }),
   members: z.array(groupMemberSummarySchema),
   characters: z.array(characterRosterEntrySchema),
+  diceThemeColor: z.string().nullable(),
   createdAt: z.string(),
 });
 export type GroupDetail = z.infer<typeof groupDetailSchema>;

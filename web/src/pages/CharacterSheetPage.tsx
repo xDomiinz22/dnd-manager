@@ -22,7 +22,6 @@ import {
 } from "../features/characters/hooks";
 import { useCreateRoll } from "../features/dice/hooks";
 import { useChatSession } from "../features/chat/hooks";
-import { useDiceRollFeedback } from "../features/dice/DiceRollFeedback";
 import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
 import { Button } from "../components/ui/Button";
 import { PortraitCircle } from "../components/character/PortraitCircle";
@@ -96,7 +95,6 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const attributes = system.attributes ?? {};
   const abilities = system.abilities ?? {};
   const toast = useToast();
-  const diceFeedback = useDiceRollFeedback();
   const createRoll = useCreateRoll(character.groupId);
   const { data: session } = useChatSession(character.groupId);
   const canRoll = !!session;
@@ -114,7 +112,9 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
     createRoll.mutate(
       { characterId: character.id, label, formula },
       {
-        onSuccess: (roll) => diceFeedback.show(roll),
+        // El resultado se ve como dados 3D a pantalla completa en cuanto la
+        // tirada llega al chat del grupo (ver DiceOverlay/ChatDockPanel) —
+        // no hace falta feedback aparte aquí, solo el error si falla.
         onError: (err) => toast.error(toErrorMessage(err, "No se pudo tirar los dados.")),
       },
     );

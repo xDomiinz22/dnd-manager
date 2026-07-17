@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { dieGroupResultSchema } from "./dice";
 
 export const chatSessionSchema = z
   .object({
@@ -18,6 +19,8 @@ export const chatRollMentionSchema = z.object({
   characterName: z.string().nullable(),
   label: z.string(),
   formula: z.string(),
+  rolls: z.array(dieGroupResultSchema),
+  modifier: z.number(),
   total: z.number(),
 });
 export type ChatRollMention = z.infer<typeof chatRollMentionSchema>;

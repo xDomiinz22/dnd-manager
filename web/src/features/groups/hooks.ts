@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateGroupInput,
   JoinGroupInput,
+  UpdateGroupDiceThemeInput,
   UpdateMemberMusicPermissionInput,
   UpdateMemberRoleInput,
 } from "@dnd-manager/shared";
@@ -68,6 +69,14 @@ export function useSetMemberRole(groupId: string) {
   return useMutation({
     mutationFn: ({ userId, input }: { userId: string; input: UpdateMemberRoleInput }) =>
       groupsApi.setMemberRole(groupId, userId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) }),
+  });
+}
+
+export function useSetDiceTheme(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateGroupDiceThemeInput) => groupsApi.setDiceTheme(groupId, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupDetailKey(groupId) }),
   });
 }

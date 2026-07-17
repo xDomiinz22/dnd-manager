@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import {
   createGroupSchema,
   joinGroupSchema,
+  updateGroupDiceThemeSchema,
   updateMemberMusicPermissionSchema,
   updateMemberRoleSchema,
 } from "@dnd-manager/shared";
@@ -93,6 +94,16 @@ export const setMemberRoleHandler: RequestHandler = async (req, res, next) => {
       req.params.userId as string,
       input.role,
     );
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const setDiceThemeHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = updateGroupDiceThemeSchema.parse(req.body);
+    await groupService.setDiceThemeColor(req.params.id as string, input.diceThemeColor);
     res.status(204).end();
   } catch (err) {
     next(err);

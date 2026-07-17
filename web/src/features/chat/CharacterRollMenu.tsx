@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { AbilityKey, CharacterRosterEntry } from "@dnd-manager/shared";
 import { useCharacter } from "../characters/hooks";
 import { useCreateRoll } from "../dice/hooks";
-import { useDiceRollFeedback } from "../dice/DiceRollFeedback";
 import { getRollableActions, type RollableAction } from "../characters/rollableActions";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
@@ -107,7 +106,6 @@ function CharacterRollPicker({
 }) {
   const { data, isLoading } = useCharacter(characterId);
   const toast = useToast();
-  const diceFeedback = useDiceRollFeedback();
   const createRoll = useCreateRoll(data?.access === "FULL" ? data.character.groupId : "");
   const [category, setCategory] = useState<Category>("attacks");
 
@@ -123,7 +121,8 @@ function CharacterRollPicker({
     createRoll.mutate(
       { characterId: character.id, label, formula },
       {
-        onSuccess: (roll) => diceFeedback.show(roll),
+        // El resultado se ve como dados 3D a pantalla completa en cuanto la
+        // tirada llega al chat del grupo (ver DiceOverlay/ChatDockPanel).
         onError: (err) => toast.error(toErrorMessage(err, "No se pudo tirar los dados.")),
       },
     );

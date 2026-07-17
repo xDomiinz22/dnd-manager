@@ -22,6 +22,7 @@ export const dieGroupResultSchema = z.object({
   die: z.string(),
   values: z.array(z.number()),
 });
+export type DieGroupResult = z.infer<typeof dieGroupResultSchema>;
 
 export const diceRollSchema = z.object({
   id: z.string(),

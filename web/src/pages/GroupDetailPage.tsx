@@ -14,6 +14,7 @@ import {
   useGroupDetail,
   useRegenerateInviteCode,
   useRemoveMember,
+  useSetDiceTheme,
   useSetMemberMusicPermission,
   useSetMemberRole,
 } from "../features/groups/hooks";
@@ -35,6 +36,9 @@ import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
 
+// Igual que en DiceOverlay.tsx: color de partida si el Master no ha elegido otro.
+const DEFAULT_DICE_COLOR = "#6B1620";
+
 export function GroupDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
@@ -45,8 +49,10 @@ export function GroupDetailPage() {
   const removeMember = useRemoveMember(id!);
   const setMemberMusicPermission = useSetMemberMusicPermission(id!);
   const setMemberRole = useSetMemberRole(id!);
+  const setDiceTheme = useSetDiceTheme(id!);
   const resetGroupHp = useResetGroupHp(id!);
   const [copied, setCopied] = useState(false);
+  const [diceColor, setDiceColor] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -63,6 +69,7 @@ export function GroupDetailPage() {
   }
 
   const isMaster = group.role === "MASTER";
+  const effectiveDiceColor = diceColor ?? group.diceThemeColor ?? DEFAULT_DICE_COLOR;
 
   function handleCopy() {
     if (!group) return;
@@ -125,6 +132,16 @@ export function GroupDetailPage() {
     });
   }
 
+  function handleSaveDiceColor() {
+    setDiceTheme.mutate(
+      { diceThemeColor: effectiveDiceColor },
+      {
+        onSuccess: () => toast.success("Color de los dados actualizado."),
+        onError: (err) => toast.error(toErrorMessage(err, "No se pudo guardar el color.")),
+      },
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
       <ChapterHeading
@@ -175,6 +192,28 @@ export function GroupDetailPage() {
           </Button>
         )}
       </Card>
+
+      {isMaster && (
+        <Card className="mb-6 flex flex-wrap items-center gap-3">
+          <span className="text-sm text-ink-muted">Color de los dados 3D</span>
+          <input
+            type="color"
+            value={effectiveDiceColor}
+            onChange={(e) => setDiceColor(e.target.value)}
+            aria-label="Color de los dados 3D"
+            className="h-9 w-14 cursor-pointer rounded-sm border border-rule-strong bg-parchment p-1"
+          />
+          <Button
+            variant="ghost"
+            onClick={handleSaveDiceColor}
+            isLoading={setDiceTheme.isPending}
+            loadingText="Guardando..."
+            disabled={effectiveDiceColor === (group.diceThemeColor ?? DEFAULT_DICE_COLOR)}
+          >
+            Guardar
+          </Button>
+        </Card>
+      )}
 
       <h2 className="mb-3 font-display text-lg tracking-wide text-oxblood">
         Miembros ({group.members.length})

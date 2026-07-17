@@ -3,6 +3,7 @@ import type {
   GroupDetail,
   GroupSummary,
   JoinGroupInput,
+  UpdateGroupDiceThemeInput,
   UpdateMemberMusicPermissionInput,
   UpdateMemberRoleInput,
 } from "@dnd-manager/shared";
@@ -30,6 +31,11 @@ export const groupsApi = {
     }),
   setMemberRole: (groupId: string, userId: string, input: UpdateMemberRoleInput) =>
     apiFetch<void>(`/groups/${groupId}/members/${userId}/role`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  setDiceTheme: (groupId: string, input: UpdateGroupDiceThemeInput) =>
+    apiFetch<void>(`/groups/${groupId}/dice-theme`, {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
