@@ -64,6 +64,10 @@ function formatBreakdown(roll: DiceOverlayRoll): string {
 export function DiceOverlayProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<DiceOverlayRoll[]>([]);
   const [phase, setPhase] = useState<"rolling" | "result" | null>(null);
+  // TEMPORAL: diagnóstico de un fallo solo reproducible en Android Chrome real
+  // (el panel de resultado sale bien pero los dados 3D no se ven, sin
+  // reduced-motion activo) — se quita en cuanto tengamos el mensaje de error.
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
   const diceBoxRef = useRef<import("@3d-dice/dice-box").default | null>(null);
   const diceBoxLoading = useRef<Promise<import("@3d-dice/dice-box").default> | null>(null);
   // Ids ya encolados o en curso, para deduplicar. Un Set en un ref (no un
@@ -95,9 +99,15 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
     async function play(roll: DiceOverlayRoll) {
       const themeColor = roll.themeColor ?? DEFAULT_DICE_COLOR;
 
-      if (!prefersReducedMotion()) {
+      if (prefersReducedMotion()) {
+        setDebugInfo("DEBUG: reduced-motion activo, se salta la animación");
+      } else {
         try {
           setPhase("rolling");
+          const canvasEl = document.getElementById(CANVAS_ID);
+          setDebugInfo(
+            `DEBUG: iniciando. contenedor=${canvasEl?.clientWidth}x${canvasEl?.clientHeight} webgl2=${!!document.createElement("canvas").getContext("webgl2")} webgl=${!!document.createElement("canvas").getContext("webgl")}`,
+          );
           if (!diceBoxRef.current) {
             if (!diceBoxLoading.current) {
               diceBoxLoading.current = import("@3d-dice/dice-box").then(({ default: DiceBox }) => {
@@ -120,9 +130,14 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
             diceBoxRef.current = await diceBoxLoading.current;
           }
           if (cancelled) return;
+          setDebugInfo("DEBUG: dice-box inicializado, lanzando roll()");
           await diceBoxRef.current.roll(rollsToNotation(roll.rolls), { themeColor });
+          setDebugInfo("DEBUG: roll() completado sin error");
         } catch (err) {
           console.error("No se pudo animar los dados 3D, se muestra solo el resultado.", err);
+          setDebugInfo(
+            `DEBUG ERROR: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`,
+          );
         }
       }
 
@@ -145,6 +160,11 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
     <DiceOverlayContext.Provider value={contextValue}>
       {children}
       <div className="pointer-events-none fixed inset-0 z-[60]">
+        {debugInfo && (
+          <div className="absolute inset-x-0 top-0 z-[61] break-words bg-black/80 p-2 text-[10px] text-lime-300">
+            {debugInfo}
+          </div>
+        )}
         <div id={CANVAS_ID} className="absolute inset-0" />
         {current && phase === "result" && (
           <div className="absolute inset-x-0 bottom-[12%] flex justify-center px-4">
