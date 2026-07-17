@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { KeepScale, TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
 import {
   createMapPinSchema,
   type CreateMapPinInput,
@@ -80,6 +81,10 @@ export function GroupMapPage() {
     });
   }
 
+  // El mapa ahora se puede arrastrar/ampliar (ver TransformWrapper más abajo),
+  // así que un click ya no reemplaza la imagen — para eso está el botón
+  // "Actualizar mapa" (o soltar un archivo encima). Solo sirve para situar
+  // un pin nuevo, o para cerrar el popup de un pin abierto.
   function handleMapClick(e: React.MouseEvent<HTMLDivElement>) {
     if (!isMaster) return;
     if (isAddPinMode) {
@@ -90,14 +95,9 @@ export function GroupMapPage() {
       setSelectedPinId(null);
       return;
     }
-    // Sin modo "añadir pin": un primer click cierra el popup de un pin
-    // abierto (antes no hacía nada al pulsar fuera); si no hay nada que
-    // cerrar, el click reemplaza al antiguo botón "Reemplazar mapa".
     if (selectedPinId) {
       setSelectedPinId(null);
-      return;
     }
-    fileInputRef.current?.click();
   }
 
   function handleToggleAddPinMode() {
@@ -206,72 +206,91 @@ export function GroupMapPage() {
             <p className="mb-2 text-sm text-ink-muted">
               {isAddPinMode
                 ? "Haz click en el mapa para situar el pin, luego rellena los datos."
-                : "Haz click en el mapa o arrastra una imagen para reemplazarlo."}
+                : "Arrastra para mover el mapa, usa la rueda o pellizca para ampliar. Suelta una imagen encima para reemplazarlo."}
             </p>
           )}
           <div
-            role="presentation"
-            onClick={handleMapClick}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`relative w-full select-none overflow-hidden rounded-sm border transition-colors ${
+            className={`relative h-[60vh] w-full select-none overflow-hidden rounded-sm border transition-colors sm:h-[70vh] ${
               isDraggingFile ? "border-oxblood" : "border-rule-strong"
-            } ${isAddPinMode ? "cursor-crosshair" : isMaster ? "cursor-pointer" : ""}`}
+            }`}
           >
-            <img
-              src={map.imageUrl}
-              alt="Mapa del grupo"
-              className="block w-full"
-              draggable={false}
-            />
-            {(isDraggingFile || uploadMap.isPending) && (
-              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-ink/50 text-center font-display text-lg tracking-wide text-parchment">
-                {uploadMap.isPending ? "Subiendo..." : "Suelta la imagen para reemplazar el mapa"}
-              </div>
-            )}
-            {map.pins.map((pin) => (
-              <button
-                key={pin.id}
-                type="button"
-                aria-label={pin.title}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsAddPinMode(false);
-                  setAddingPinAt(null);
-                  setSelectedPinId(selectedPinId === pin.id ? null : pin.id);
-                }}
-                style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
-                className="absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-parchment bg-oxblood shadow-md transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
-              />
-            ))}
-            {addingPinAt && !selectedPin && (
-              <div
-                style={{ left: `${addingPinAt.x * 100}%`, top: `${addingPinAt.y * 100}%` }}
-                className="pointer-events-none absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-oxblood bg-parchment"
-              />
-            )}
-            {selectedPin && editingPinId !== selectedPin.id && (
-              <div
-                role="presentation"
-                onClick={(e) => e.stopPropagation()}
-                style={{ left: `${selectedPin.x * 100}%`, top: `${selectedPin.y * 100}%` }}
-                className="absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+14px)]"
+            <TransformWrapper
+              initialScale={1}
+              minScale={0.5}
+              maxScale={6}
+              centerOnInit
+              limitToBounds
+              doubleClick={{ mode: "toggle" }}
+              disabled={isAddPinMode}
+            >
+              <MapZoomControls />
+              <TransformComponent
+                wrapperClass="!w-full !h-full"
+                contentClass={isAddPinMode ? "!cursor-crosshair" : ""}
               >
-                <PinPopup
-                  pin={selectedPin}
-                  groupId={groupId!}
-                  isMaster={isMaster}
-                  onClose={() => setSelectedPinId(null)}
-                  onEdit={() => setEditingPinId(selectedPin.id)}
-                  onDelete={() => setDeletingPinId(selectedPin.id)}
-                  deleteConfirming={deletingPinId === selectedPin.id}
-                  onCancelDelete={() => setDeletingPinId(null)}
-                  onDeleted={() => {
-                    setDeletingPinId(null);
-                    setSelectedPinId(null);
-                  }}
-                />
+                <div role="presentation" onClick={handleMapClick} className="relative inline-block">
+                  <img
+                    src={map.imageUrl}
+                    alt="Mapa del grupo"
+                    className="block max-h-[56vh] max-w-full sm:max-h-[66vh]"
+                    draggable={false}
+                  />
+                  {map.pins.map((pin) => (
+                    <button
+                      key={pin.id}
+                      type="button"
+                      aria-label={pin.title}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsAddPinMode(false);
+                        setAddingPinAt(null);
+                        setSelectedPinId(selectedPinId === pin.id ? null : pin.id);
+                      }}
+                      style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
+                      className="absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-parchment bg-oxblood shadow-md transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+                    />
+                  ))}
+                  {addingPinAt && !selectedPin && (
+                    <div
+                      style={{ left: `${addingPinAt.x * 100}%`, top: `${addingPinAt.y * 100}%` }}
+                      className="pointer-events-none absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-oxblood bg-parchment"
+                    />
+                  )}
+                  {selectedPin && editingPinId !== selectedPin.id && (
+                    <div
+                      style={{ left: `${selectedPin.x * 100}%`, top: `${selectedPin.y * 100}%` }}
+                      className="absolute z-20"
+                    >
+                      <KeepScale
+                        className="block -translate-x-1/2 -translate-y-[calc(100%+14px)]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <PinPopup
+                          pin={selectedPin}
+                          groupId={groupId!}
+                          isMaster={isMaster}
+                          onClose={() => setSelectedPinId(null)}
+                          onEdit={() => setEditingPinId(selectedPin.id)}
+                          onDelete={() => setDeletingPinId(selectedPin.id)}
+                          deleteConfirming={deletingPinId === selectedPin.id}
+                          onCancelDelete={() => setDeletingPinId(null)}
+                          onDeleted={() => {
+                            setDeletingPinId(null);
+                            setSelectedPinId(null);
+                          }}
+                        />
+                      </KeepScale>
+                    </div>
+                  )}
+                </div>
+              </TransformComponent>
+            </TransformWrapper>
+            {(isDraggingFile || uploadMap.isPending) && (
+              <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-ink/50 text-center font-display text-lg tracking-wide text-parchment">
+                {uploadMap.isPending ? "Subiendo..." : "Suelta la imagen para reemplazar el mapa"}
               </div>
             )}
           </div>
@@ -306,6 +325,50 @@ export function GroupMapPage() {
           )}
         </>
       )}
+    </div>
+  );
+}
+
+const ZOOM_BUTTON_CLASSES =
+  "flex h-8 w-8 items-center justify-center rounded-sm border border-rule-strong bg-parchment-panel leading-none text-ink shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] hover:bg-parchment-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood";
+
+/**
+ * Controles de zoom (+/−/restablecer) superpuestos al mapa. Van en su propio
+ * componente porque necesitan `useControls()`, que lee del contexto de
+ * TransformWrapper — usado así (hook en un hijo) en vez de la función
+ * render-prop de `children`, cuyos zoomIn/zoomOut/resetTransform resultaron
+ * no estar realmente conectados a la instancia activa en esta versión de la
+ * librería (verificado: la rueda del ratón sí funciona, esos closures no).
+ */
+function MapZoomControls() {
+  const { zoomIn, zoomOut, resetTransform } = useControls();
+  return (
+    <div className="absolute right-2 top-2 z-30 flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={() => zoomIn()}
+        aria-label="Ampliar"
+        className={`${ZOOM_BUTTON_CLASSES} text-lg`}
+      >
+        +
+      </button>
+      <button
+        type="button"
+        onClick={() => zoomOut()}
+        aria-label="Reducir"
+        className={`${ZOOM_BUTTON_CLASSES} text-lg`}
+      >
+        −
+      </button>
+      <button
+        type="button"
+        onClick={() => resetTransform()}
+        aria-label="Restablecer vista"
+        title="Restablecer vista"
+        className={`${ZOOM_BUTTON_CLASSES} text-xs`}
+      >
+        ⤾
+      </button>
     </div>
   );
 }
