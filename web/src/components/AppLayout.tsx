@@ -5,6 +5,7 @@ import {
   AmbientPlayerProvider,
   useAmbientPlayerContext,
 } from "../features/music/AmbientPlayerContext";
+import { ChatDockPanel } from "../features/chat/ChatDockPanel";
 import { MiniPlayerBar } from "./music/MiniPlayerBar";
 import { TempQueueLauncher } from "./music/TempQueueLauncher";
 import { BrandMark } from "./ui/BrandMark";
@@ -81,6 +82,7 @@ function AppLayoutContent() {
 
       <MiniPlayerBar />
       <TempQueueLauncher />
+      <ChatDockPanel />
     </div>
   );
 }

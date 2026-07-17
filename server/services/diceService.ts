@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { rollFormula, InvalidDiceFormulaError } from "../../lib/diceRoll";
 import { getMembership } from "./authorization";
-import { mentionRollInActiveSession } from "./chatService";
+import { getActiveSession, mentionRollInActiveSession } from "./chatService";
 import { AppError } from "../errors/AppError";
 
 const ROLL_INCLUDE = {
@@ -41,32 +41,30 @@ function toDiceRollDto(roll: RollWithRelations): DiceRollDto {
   };
 }
 
-const DEFAULT_LIMIT = 50;
-
-export async function listGroupRolls(
-  groupId: string,
-  limit = DEFAULT_LIMIT,
-): Promise<DiceRollDto[]> {
-  const rolls = await prisma.diceRoll.findMany({
-    where: { groupId },
-    include: ROLL_INCLUDE,
-    orderBy: { createdAt: "desc" },
-    take: Math.min(limit, 200),
-  });
-  return rolls.map(toDiceRollDto);
-}
-
 /**
  * El resultado se calcula aquí, nunca se acepta un total mandado por el
  * cliente. Si la tirada va ligada a un personaje, solo puede lanzarla el
  * Master del grupo o el dueño de ese personaje (igual que editar sus PG) —
  * evita que un jugador tire "en nombre" de la ficha de otro.
+ *
+ * Las tiradas ahora solo se registran en el chat (ya no hay una página
+ * "Tiradas" con historial aparte), así que solo tienen sentido con una
+ * sesión de chat activa: sin sesión, no hay dónde verlas.
  */
 export async function createGroupRoll(
   groupId: string,
   userId: string,
   input: CreateRollInput,
 ): Promise<DiceRollDto> {
+  const session = await getActiveSession(groupId);
+  if (!session) {
+    throw new AppError(
+      409,
+      "NO_ACTIVE_SESSION",
+      "Solo se puede tirar con una sesión de chat activa",
+    );
+  }
+
   if (input.characterId) {
     const character = await prisma.characterSheet.findUnique({
       where: { id: input.characterId },

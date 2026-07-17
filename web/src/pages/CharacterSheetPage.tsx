@@ -21,6 +21,7 @@ import {
   useUpdateSpellSlot,
 } from "../features/characters/hooks";
 import { useCreateRoll } from "../features/dice/hooks";
+import { useChatSession } from "../features/chat/hooks";
 import { useDiceRollFeedback } from "../features/dice/DiceRollFeedback";
 import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
 import { Button } from "../components/ui/Button";
@@ -97,6 +98,8 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const toast = useToast();
   const diceFeedback = useDiceRollFeedback();
   const createRoll = useCreateRoll(character.groupId);
+  const { data: session } = useChatSession(character.groupId);
+  const canRoll = !!session;
 
   const actionsByItem = new Map<string, RollableAction[]>();
   for (const action of getRollableActions(character.items, character)) {
@@ -104,6 +107,10 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   }
 
   function handleRoll(label: string, formula: string) {
+    if (!canRoll) {
+      toast.error("Inicia una sesión de chat para poder tirar dados.");
+      return;
+    }
     createRoll.mutate(
       { characterId: character.id, label, formula },
       {
@@ -202,14 +209,24 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
 
       <div role="tabpanel" id={`tabpanel-${tab}`} aria-labelledby={`tab-${tab}`}>
         {tab === "Details" && (
-          <DetailsTab character={character} system={system} onRoll={handleRoll} />
+          <DetailsTab character={character} system={system} onRoll={handleRoll} canRoll={canRoll} />
         )}
         {tab === "Skills & Tools" && <SkillsTab character={character} />}
         {tab === "Inventory" && (
-          <InventoryTab items={character.items} actionsByItem={actionsByItem} onRoll={handleRoll} />
+          <InventoryTab
+            items={character.items}
+            actionsByItem={actionsByItem}
+            onRoll={handleRoll}
+            canRoll={canRoll}
+          />
         )}
         {tab === "Features" && (
-          <FeaturesTab items={character.items} actionsByItem={actionsByItem} onRoll={handleRoll} />
+          <FeaturesTab
+            items={character.items}
+            actionsByItem={actionsByItem}
+            onRoll={handleRoll}
+            canRoll={canRoll}
+          />
         )}
         {tab === "Spellbook" && (
           <SpellbookTab
@@ -218,6 +235,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
             items={character.items}
             actionsByItem={actionsByItem}
             onRoll={handleRoll}
+            canRoll={canRoll}
           />
         )}
         {tab === "Biography" && <BiographyTab details={details} />}
@@ -362,10 +380,12 @@ function DetailsTab({
   character,
   system,
   onRoll,
+  canRoll,
 }: {
   character: CharacterFull;
   system: Record<string, any>;
   onRoll: (label: string, formula: string) => void;
+  canRoll: boolean;
 }) {
   const traits = system.traits ?? {};
   const senses = system.attributes?.senses?.ranges ?? {};
@@ -395,9 +415,14 @@ function DetailsTab({
                         `1d20${mod >= 0 ? "+" : ""}${mod}`,
                       )
                     }
-                    title={`Tirar salvación de ${ABILITY_FULL_LABELS[key]}`}
+                    disabled={!canRoll}
+                    title={
+                      canRoll
+                        ? `Tirar salvación de ${ABILITY_FULL_LABELS[key]}`
+                        : "Inicia una sesión de chat para poder tirar"
+                    }
                     aria-label={`Tirar salvación de ${ABILITY_FULL_LABELS[key]}`}
-                    className="rounded-sm border border-rule-strong px-1.5 py-0.5 text-xs text-ink-muted hover:border-oxblood hover:text-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+                    className="rounded-sm border border-rule-strong px-1.5 py-0.5 text-xs text-ink-muted hover:border-oxblood hover:text-oxblood focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-rule-strong disabled:hover:text-ink-muted"
                   >
                     🎲
                   </button>
@@ -473,9 +498,15 @@ function SkillsTab({ character }: { character: CharacterFull }) {
 interface RollTabProps {
   actionsByItem: Map<string, RollableAction[]>;
   onRoll: (label: string, formula: string) => void;
+  canRoll: boolean;
 }
 
-function InventoryTab({ items, actionsByItem, onRoll }: { items: unknown } & RollTabProps) {
+function InventoryTab({
+  items,
+  actionsByItem,
+  onRoll,
+  canRoll,
+}: { items: unknown } & RollTabProps) {
   const inventory = itemsOfType(items, ["weapon", "equipment", "consumable", "container", "loot"]);
   const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
   if (inventory.length === 0) {
@@ -508,7 +539,11 @@ function InventoryTab({ items, actionsByItem, onRoll }: { items: unknown } & Rol
                   <span className="text-sm text-ink-muted">x{item.system.quantity}</span>
                 )}
               </div>
-              <RollButtons actions={actionsByItem.get(item._id ?? "")} onRoll={onRoll} />
+              <RollButtons
+                actions={actionsByItem.get(item._id ?? "")}
+                onRoll={onRoll}
+                canRoll={canRoll}
+              />
             </li>
           );
         })}
@@ -524,7 +559,7 @@ function InventoryTab({ items, actionsByItem, onRoll }: { items: unknown } & Rol
   );
 }
 
-function FeaturesTab({ items, actionsByItem, onRoll }: { items: unknown } & RollTabProps) {
+function FeaturesTab({ items, actionsByItem, onRoll, canRoll }: { items: unknown } & RollTabProps) {
   const features = itemsOfType(items, ["feat", "class", "subclass", "race", "background"]);
   const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
   if (features.length === 0) {
@@ -552,7 +587,11 @@ function FeaturesTab({ items, actionsByItem, onRoll }: { items: unknown } & Roll
               }`}
             >
               <div className="font-semibold text-ink">{item.name}</div>
-              <RollButtons actions={actionsByItem.get(item._id ?? "")} onRoll={onRoll} />
+              <RollButtons
+                actions={actionsByItem.get(item._id ?? "")}
+                onRoll={onRoll}
+                canRoll={canRoll}
+              />
             </li>
           );
         })}
@@ -572,11 +611,14 @@ function FeaturesTab({ items, actionsByItem, onRoll }: { items: unknown } & Roll
 function RollButtons({
   actions,
   onRoll,
+  canRoll,
 }: {
   actions: RollableAction[] | undefined;
   onRoll: (label: string, formula: string) => void;
+  canRoll: boolean;
 }) {
   if (!actions || actions.length === 0) return null;
+  const rollTitleSuffix = canRoll ? "" : " (inicia una sesión de chat para poder tirar)";
   return (
     <div className="mt-2 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
       {actions.map((action) => {
@@ -589,7 +631,8 @@ function RollButtons({
               <Button
                 variant="ghost"
                 onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
-                title={`Tirar ataque: ${action.attackFormula}`}
+                disabled={!canRoll}
+                title={`Tirar ataque: ${action.attackFormula}${rollTitleSuffix}`}
                 className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
               >
                 🎲 Atacar ({action.attackFormula})
@@ -599,7 +642,8 @@ function RollButtons({
               <Button
                 variant="ghost"
                 onClick={() => onRoll(`Daño: ${label}`, action.damageFormula!)}
-                title={`Tirar daño: ${action.damageFormula}`}
+                disabled={!canRoll}
+                title={`Tirar daño: ${action.damageFormula}${rollTitleSuffix}`}
                 className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
               >
                 🎲 Daño ({action.damageFormula})
@@ -618,6 +662,7 @@ function SpellbookTab({
   items,
   actionsByItem,
   onRoll,
+  canRoll,
 }: {
   characterId: string;
   spellSlots: SpellSlots;
@@ -664,7 +709,11 @@ function SpellbookTab({
                   }`}
                 >
                   <div className="font-semibold text-ink">{spell.name}</div>
-                  <RollButtons actions={actionsByItem.get(spell._id ?? "")} onRoll={onRoll} />
+                  <RollButtons
+                    actions={actionsByItem.get(spell._id ?? "")}
+                    onRoll={onRoll}
+                    canRoll={canRoll}
+                  />
                 </li>
               );
             })}
