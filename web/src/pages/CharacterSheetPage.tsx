@@ -820,7 +820,7 @@ function SpellSlotStepper({
   ariaLabel: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-1">
+    <div className="flex flex-col items-center gap-0.5">
       <span className="text-[10px] uppercase tracking-wide text-ink-muted">{label}</span>
       <div className="flex items-center gap-1">
         <button
