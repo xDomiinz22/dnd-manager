@@ -281,9 +281,9 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
             )}
           </button>
         ) : (
-          <div className="fixed right-0 top-0 z-[25] flex h-full w-80 max-w-[85vw] flex-col border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)]">
-            <div className="flex items-center justify-between border-b border-rule px-4 py-3">
-              <h2 className="truncate font-display text-sm tracking-wide text-oxblood">
+          <div className="fixed right-0 top-0 z-[25] flex h-full w-[380px] max-w-[85vw] flex-col border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)]">
+            <div className="flex items-center justify-between border-b border-rule px-5 py-4">
+              <h2 className="truncate font-display text-base tracking-wide text-oxblood">
                 Chat — {group.name}
               </h2>
               <button
@@ -429,13 +429,13 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
 /** Menú fijo estilo Pokémon (Ataques/Objetos/Salvación/Habilidad) — reemplaza al botón único "🎲 Tirar" en móvil. */
 function BattleMenu({ onSelect }: { onSelect: (category: Category) => void }) {
   return (
-    <div className="mb-2 grid grid-cols-2 gap-1.5">
+    <div className="mb-2 grid grid-cols-2 gap-1.5 sm:gap-2.5">
       {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
         <button
           key={cat}
           type="button"
           onClick={() => onSelect(cat)}
-          className="rounded-sm bg-oxblood px-2.5 py-2 text-left font-display text-xs tracking-wide text-parchment hover:bg-oxblood-light"
+          className="rounded-sm bg-oxblood px-2.5 py-2 text-left font-display text-xs tracking-wide text-parchment hover:bg-oxblood-light sm:px-4 sm:py-4 sm:text-sm"
         >
           {CATEGORY_LABELS[cat]}
         </button>
@@ -503,16 +503,16 @@ function ChatPanelContent({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <p className="text-xs text-ink-muted">
+      <div className="mb-2 flex items-start justify-between gap-2 sm:mb-3 sm:gap-3">
+        <p className="text-xs text-ink-muted sm:text-sm">
           Sesión iniciada a las {formatTime(session.startedAt)}. Los mensajes se borrarán al
           finalizar.
         </p>
-        <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+        <div className="flex shrink-0 flex-wrap justify-end gap-1.5 sm:gap-2">
           <Button
             variant="ghost"
             onClick={onDownload}
-            className="!px-2 !py-1 !text-xs !normal-case !tracking-normal"
+            className="!px-2 !py-1 !text-xs !normal-case !tracking-normal sm:!px-4 sm:!py-2.5 sm:!text-sm"
           >
             Descargar
           </Button>
@@ -520,7 +520,7 @@ function ChatPanelContent({
             <Button
               variant="danger"
               onClick={onToggleConfirmEnd}
-              className="!px-2 !py-1 !text-xs !normal-case !tracking-normal"
+              className="!px-2 !py-1 !text-xs !normal-case !tracking-normal sm:!px-4 sm:!py-2.5 sm:!text-sm"
             >
               Finalizar
             </Button>
@@ -597,26 +597,30 @@ function MessageRow({
     return (
       <li className="flex overflow-hidden rounded-sm border border-oxblood/45">
         <div className="w-1 shrink-0 bg-oxblood" aria-hidden="true" />
-        <div className="flex flex-1 items-center gap-2 bg-oxblood/[0.06] p-2">
+        <div className="flex flex-1 items-center gap-2 bg-oxblood/[0.06] p-2 sm:gap-3 sm:p-3">
           <div className="shrink-0">
-            <PortraitCircle url={character?.portraitUrl ?? null} name={portraitName} size={26} />
+            <PortraitCircle
+              url={character?.portraitUrl ?? null}
+              name={portraitName}
+              sizeClassName="h-[26px] w-[26px] sm:h-9 sm:w-9"
+            />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-xs text-ink">
+              <span className="truncate text-xs text-ink sm:text-sm">
                 <span className="font-semibold text-oxblood">
                   {roll.characterName ?? message.username}
                 </span>
                 {" — "}
                 {roll.label}
               </span>
-              <span className="whitespace-nowrap text-[0.65rem] text-ink-muted">
+              <span className="whitespace-nowrap text-[0.65rem] text-ink-muted sm:text-xs">
                 {formatTime(message.createdAt)}
               </span>
             </div>
-            <div className="truncate text-[0.65rem] text-ink-muted">{roll.formula}</div>
+            <div className="truncate text-[0.65rem] text-ink-muted sm:text-xs">{roll.formula}</div>
           </div>
-          <span className="shrink-0 font-display text-lg font-semibold text-oxblood">
+          <span className="shrink-0 font-display text-lg font-semibold text-oxblood sm:text-2xl">
             {roll.total}
           </span>
         </div>
@@ -625,10 +629,10 @@ function MessageRow({
   }
 
   return (
-    <li className="rounded-sm border border-rule bg-parchment-panel p-2.5">
+    <li className="rounded-sm border border-rule bg-parchment-panel p-2.5 sm:p-3">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs font-semibold text-ink">{message.username}</span>
-        <span className="whitespace-nowrap text-[0.65rem] text-ink-muted">
+        <span className="text-xs font-semibold text-ink sm:text-sm">{message.username}</span>
+        <span className="whitespace-nowrap text-[0.65rem] text-ink-muted sm:text-xs">
           {formatTime(message.createdAt)}
         </span>
       </div>
