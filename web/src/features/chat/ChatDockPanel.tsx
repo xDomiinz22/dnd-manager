@@ -570,7 +570,7 @@ function ChatMessages({
   characters: CharacterRosterEntry[];
 }) {
   return (
-    <ul className="themed-scroll mb-3 flex-1 space-y-2 overflow-y-auto">
+    <ul className="mb-3 flex-1 space-y-2 overflow-y-auto">
       {(!messages || messages.length === 0) && (
         <li className="rounded-sm border border-dashed border-rule-strong px-4 py-6 text-center text-sm text-ink-muted">
           Todavía no hay mensajes en esta sesión.

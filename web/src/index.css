@@ -17,6 +17,14 @@
   --color-parchment: #f0e4c8;
 }
 
+html {
+  /* Reserva el hueco de la scrollbar siempre — sin esto, abrir el
+     formulario de editar pin (u otro contenido que alargue la página lo
+     justo para activar el scroll vertical) desplazaba todo el contenido
+     de golpe hacia la izquierda al aparecer la barra. */
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   background-color: var(--color-parchment);
@@ -126,27 +134,28 @@ body {
 
 /*
  * Scrollbar a juego con el tema (pergamino/granate) en vez de la barra gris
- * genérica del sistema — se aplica a mano en los contenedores con scroll
- * propio (lista de mensajes del chat, selector de tiradas...), no de forma
- * global, para no tocar zonas de scroll de la web que no se han revisado.
+ * genérica del sistema — aplicada globalmente (antes solo vía `.themed-scroll`
+ * en el chat) para que cualquier zona con scroll propio de la web use el
+ * mismo estilo.
  */
-.themed-scroll {
+* {
   scrollbar-width: thin;
   scrollbar-color: var(--color-oxblood) transparent;
 }
-.themed-scroll::-webkit-scrollbar {
+*::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
-.themed-scroll::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
-.themed-scroll::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background-color: var(--color-oxblood);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
-.themed-scroll::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-gold);
 }
 
