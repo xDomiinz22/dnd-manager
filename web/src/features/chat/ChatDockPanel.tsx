@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ChatMessageDto } from "@dnd-manager/shared";
 import { useAuth } from "../../context/AuthContext";
 import { useGroupDetail } from "../groups/hooks";
@@ -11,7 +11,6 @@ import {
 } from "./hooks";
 import { useCurrentGroupId } from "./useCurrentGroupId";
 import { CharacterRollMenu } from "./CharacterRollMenu";
-import { useDiceOverlay } from "../dice/DiceOverlay";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { ConfirmPanel } from "../../components/ui/ConfirmPanel";
@@ -145,41 +144,10 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
   const [text, setText] = useState("");
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [view, setView] = useState<PanelView>("chat");
-  const { showRoll } = useDiceOverlay();
-  const seenRollIds = useRef<{ sessionId: string; ids: Set<string> } | null>(null);
 
   useEffect(() => {
     window.localStorage.setItem(COLLAPSED_STORAGE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
-
-  // Dispara los dados 3D para las tiradas nuevas del chat — a propósito
-  // independiente de `view`/`collapsed`/`mobileOpen`: si dependiera de que
-  // la lista de mensajes estuviera montada en pantalla, alguien mirando el
-  // menú "🎲 Tirar" (o con el panel plegado) no vería su propia tirada.
-  useEffect(() => {
-    if (!session || !messages) return;
-    if (!seenRollIds.current || seenRollIds.current.sessionId !== session.id) {
-      seenRollIds.current = { sessionId: session.id, ids: new Set(messages.map((m) => m.id)) };
-      return;
-    }
-    const seen = seenRollIds.current.ids;
-    const fresh = messages.filter((m) => !seen.has(m.id));
-    if (fresh.length === 0) return;
-    fresh.forEach((m) => {
-      seen.add(m.id);
-      if (m.kind === "ROLL" && m.roll) {
-        showRoll({
-          id: m.roll.id,
-          label: m.roll.label,
-          characterName: m.roll.characterName,
-          rolls: m.roll.rolls,
-          modifier: m.roll.modifier,
-          total: m.roll.total,
-          themeColor: group?.diceThemeColor ?? null,
-        });
-      }
-    });
-  }, [session, messages, showRoll, group?.diceThemeColor]);
 
   if (!groupId || !group) return null;
 
@@ -226,6 +194,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
         characters={group.characters}
         currentUserId={user?.id ?? ""}
         isMaster={isMaster}
+        diceThemeColor={group.diceThemeColor}
         onClose={() => setView("chat")}
       />
     ) : (

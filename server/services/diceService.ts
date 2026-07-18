@@ -1,7 +1,11 @@
 import type { CreateRollInput, DiceRollDto } from "@dnd-manager/shared";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
-import { rollFormula, InvalidDiceFormulaError } from "../../lib/diceRoll";
+import {
+  rollFormula,
+  buildRollFromClientValues,
+  InvalidDiceFormulaError,
+} from "../../lib/diceRoll";
 import { getMembership } from "./authorization";
 import { getActiveSession, mentionRollInActiveSession } from "./chatService";
 import { AppError } from "../errors/AppError";
@@ -91,7 +95,9 @@ export async function createGroupRoll(
 
   let result;
   try {
-    result = rollFormula(input.formula);
+    result = input.rolls
+      ? buildRollFromClientValues(input.formula, input.rolls)
+      : rollFormula(input.formula);
   } catch (err) {
     if (err instanceof InvalidDiceFormulaError) {
       throw new AppError(400, "INVALID_DICE_FORMULA", err.message);

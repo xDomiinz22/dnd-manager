@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { AbilityKey, CharacterRosterEntry } from "@dnd-manager/shared";
 import { useCharacter } from "../characters/hooks";
 import { useCreateRoll } from "../dice/hooks";
+import { useDiceOverlay } from "../dice/DiceOverlay";
 import { getRollableActions, type RollableAction } from "../characters/rollableActions";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
@@ -27,6 +28,7 @@ interface CharacterRollMenuProps {
   characters: CharacterRosterEntry[];
   currentUserId: string;
   isMaster: boolean;
+  diceThemeColor: string | null;
   onClose: () => void;
 }
 
@@ -42,6 +44,7 @@ export function CharacterRollMenu({
   characters,
   currentUserId,
   isMaster,
+  diceThemeColor,
   onClose,
 }: CharacterRollMenuProps) {
   const eligible = isMaster ? characters : characters.filter((c) => c.ownerId === currentUserId);
@@ -89,6 +92,7 @@ export function CharacterRollMenu({
   return (
     <CharacterRollPicker
       characterId={selectedId}
+      diceThemeColor={diceThemeColor}
       onBack={() => (eligible.length === 1 ? onClose() : setManualSelectedId(null))}
       onClose={onClose}
     />
@@ -97,16 +101,19 @@ export function CharacterRollMenu({
 
 function CharacterRollPicker({
   characterId,
+  diceThemeColor,
   onBack,
   onClose,
 }: {
   characterId: string;
+  diceThemeColor: string | null;
   onBack: () => void;
   onClose: () => void;
 }) {
   const { data, isLoading } = useCharacter(characterId);
   const toast = useToast();
   const createRoll = useCreateRoll(data?.access === "FULL" ? data.character.groupId : "");
+  const { rollPhysics } = useDiceOverlay();
   const [category, setCategory] = useState<Category>("attacks");
 
   if (isLoading || !data) {
@@ -117,12 +124,20 @@ function CharacterRollPicker({
   }
   const character = data.character;
 
-  function handleRoll(label: string, formula: string) {
+  async function handleRoll(label: string, formula: string) {
+    // La física de los dados 3D decide el resultado real en este mismo
+    // dispositivo (ver DiceOverlay.rollPhysics) — si no se pudo animar
+    // (reduced-motion, sin WebGL...), se manda sin `rolls` y tira el
+    // servidor como fallback.
+    const physics = await rollPhysics({
+      formula,
+      label,
+      characterName: character.name,
+      themeColor: diceThemeColor,
+    });
     createRoll.mutate(
-      { characterId: character.id, label, formula },
+      { characterId: character.id, label, formula, rolls: physics?.rolls },
       {
-        // El resultado se ve como dados 3D a pantalla completa en cuanto la
-        // tirada llega al chat del grupo (ver DiceOverlay/ChatDockPanel).
         onError: (err) => toast.error(toErrorMessage(err, "No se pudo tirar los dados.")),
       },
     );

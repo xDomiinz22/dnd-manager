@@ -2,32 +2,55 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
-import type { DieGroupResult } from "@dnd-manager/shared";
+import { parseDiceFormula, diceFormulaGroupLabel, type DieGroupResult } from "@dnd-manager/shared";
 import { formatModifier } from "../characters/foundryDisplay";
 
 const CANVAS_ID = "dnd-dice-box-canvas";
 const DEFAULT_DICE_COLOR = "#6B1620";
 // Cuánto se queda visible el resultado ya asentado antes de desaparecer solo.
 const RESULT_HOLD_MS = 2500;
+// Salvaguarda: en algunos móviles roll() no llega a rechazar nunca (contexto
+// WebGL perdido a media física, p.ej.) — sin este timeout, una tirada
+// colgada dejaría el visor bloqueado para siempre.
+const ROLL_TIMEOUT_MS = 8000;
 
-export interface DiceOverlayRoll {
-  id: string;
+export interface RollPhysicsParams {
+  formula: string;
   label: string;
   characterName: string | null;
-  rolls: DieGroupResult[];
-  modifier: number;
-  total: number;
   themeColor: string | null;
 }
 
+export interface RollPhysicsResult {
+  rolls: DieGroupResult[];
+  modifier: number;
+  total: number;
+}
+
+interface LocalResult extends RollPhysicsResult {
+  label: string;
+  characterName: string | null;
+}
+
 interface DiceOverlayContextValue {
-  showRoll: (roll: DiceOverlayRoll) => void;
+  /**
+   * Tira la física real de los dados 3D EN ESTE dispositivo para la fórmula
+   * dada, la anima a pantalla completa y devuelve los valores exactos que
+   * salieron — son el resultado real de la tirada (ver
+   * lib/diceRoll.ts:buildRollFromClientValues), no uno decorativo aparte.
+   * Solo se ve en el dispositivo de quien tira; el resto del grupo se
+   * entera por el log de texto en el chat, sin animación.
+   *
+   * Devuelve null si no se pudo animar (reduced-motion, sin WebGL, fallo de
+   * dice-box, tirada ya en curso...) — en ese caso el caller debe mandar la
+   * tirada sin `rolls` para que el servidor tire él mismo como fallback.
+   */
+  rollPhysics: (params: RollPhysicsParams) => Promise<RollPhysicsResult | null>;
 }
 
 const DiceOverlayContext = createContext<DiceOverlayContextValue | null>(null);
@@ -38,170 +61,129 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-function rollsToNotation(rolls: DieGroupResult[]): string[] {
-  // g.die ya viene como "NdM" (p.ej. "1d20", "-1d4") desde el servidor — el
-  // signo solo importa para el total, no para qué dado animar.
-  return rolls.map((g) => g.die.replace(/^-/, ""));
-}
-
-function formatBreakdown(roll: DiceOverlayRoll): string {
-  const dice = roll.rolls.map((g) => `${g.die} [${g.values.join(", ")}]`).join(" + ");
-  const modifier = roll.modifier !== 0 ? ` ${formatModifier(roll.modifier)}` : "";
+function formatBreakdown(result: LocalResult): string {
+  const dice = result.rolls.map((g) => `${g.die} [${g.values.join(", ")}]`).join(" + ");
+  const modifier = result.modifier !== 0 ? ` ${formatModifier(result.modifier)}` : "";
   return `${dice}${modifier}`;
 }
 
 /**
  * Dados 3D con físicas reales (@3d-dice/dice-box, BabylonJS+Ammo.js) a
- * pantalla completa. La librería no permite forzar en qué cara cae cada
- * dado — el bote es puramente decorativo, "de ambiente"; el resultado real
- * (ya calculado por el servidor, nunca por el cliente) se muestra aparte en
- * cuanto los dados se paran, y ambos desaparecen solos pasados unos segundos.
- *
- * Se dispara solo desde ChatDockPanel al detectar mensajes de tirada nuevos
- * en el chat — así lo ve todo el grupo (incluido quien tira), no hace falta
- * disparo aparte desde donde se crea la tirada.
+ * pantalla completa. La física decide el resultado real de la tirada — no
+ * hay un número "de verdad" aparte calculado por el servidor, así que la
+ * cara en la que cae el dado y el total mostrado siempre coinciden. El
+ * servidor solo valida que los valores recibidos encajen con la fórmula
+ * (mismo número de dados, mismo tipo, dentro de rango), no los genera él.
  */
 export function DiceOverlayProvider({ children }: { children: ReactNode }) {
-  const [queue, setQueue] = useState<DiceOverlayRoll[]>([]);
   const [phase, setPhase] = useState<"rolling" | "result" | null>(null);
-  // TEMPORAL: diagnóstico de un fallo solo reproducible en Android Chrome real
-  // (el panel de resultado sale bien pero los dados 3D no se ven, sin
-  // reduced-motion activo) — se quita en cuanto tengamos el mensaje de error.
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [result, setResult] = useState<LocalResult | null>(null);
   const diceBoxRef = useRef<import("@3d-dice/dice-box").default | null>(null);
   const diceBoxLoading = useRef<Promise<import("@3d-dice/dice-box").default> | null>(null);
-  // Ids ya encolados o en curso, para deduplicar. Un Set en un ref (no un
-  // useState) porque la comprobación tiene que ser síncrona e inmune al
-  // batching: en desarrollo, React puede invocar dos veces tanto el efecto
-  // de ChatDockPanel que llama a showRoll() como la función que se le pasa a
-  // setQueue — deduplicar solo dentro del updater de setQueue no basta,
-  // porque esas dos invocaciones pueden partir ambas del mismo `prev` antes
-  // de que ninguna se confirme, y la tirada se reproduce dos veces.
-  const seenIdsRef = useRef<Set<string>>(new Set());
+  // Evita que dos tiradas se pisen si se pulsa el botón varias veces seguidas.
+  const busyRef = useRef(false);
 
-  const showRoll = useCallback((roll: DiceOverlayRoll) => {
-    if (seenIdsRef.current.has(roll.id)) return;
-    seenIdsRef.current.add(roll.id);
-    setQueue((prev) => [...prev, roll]);
-  }, []);
-  const contextValue = useMemo(() => ({ showRoll }), [showRoll]);
+  const rollPhysics = useCallback(async (params: RollPhysicsParams) => {
+    if (busyRef.current || prefersReducedMotion()) return null;
+    busyRef.current = true;
 
-  const current = queue[0] ?? null;
-  // Mismo motivo que seenIdsRef: evita que el efecto de abajo reproduzca la
-  // misma `current` dos veces si React lo invoca por duplicado.
-  const playingIdRef = useRef<string | null>(null);
+    try {
+      const { groups, modifier } = parseDiceFormula(params.formula);
+      const notation = groups.map((g) => `${g.count}d${g.faces}`);
+      const themeColor = params.themeColor ?? DEFAULT_DICE_COLOR;
 
-  useEffect(() => {
-    if (!current || playingIdRef.current === current.id) return;
-    playingIdRef.current = current.id;
-    let cancelled = false;
+      setPhase("rolling");
 
-    async function play(roll: DiceOverlayRoll) {
-      const themeColor = roll.themeColor ?? DEFAULT_DICE_COLOR;
-
-      if (prefersReducedMotion()) {
-        setDebugInfo("DEBUG: reduced-motion activo, se salta la animación");
-      } else {
-        try {
-          setPhase("rolling");
-          const canvasEl = document.getElementById(CANVAS_ID);
-          setDebugInfo(
-            `DEBUG: iniciando. contenedor=${canvasEl?.clientWidth}x${canvasEl?.clientHeight} webgl2=${!!document.createElement("canvas").getContext("webgl2")} webgl=${!!document.createElement("canvas").getContext("webgl")}`,
-          );
-          if (!diceBoxRef.current) {
-            if (!diceBoxLoading.current) {
-              diceBoxLoading.current = import("@3d-dice/dice-box").then(({ default: DiceBox }) => {
-                const box = new DiceBox({
-                  container: `#${CANVAS_ID}`,
-                  assetPath: "/assets/dice-box/",
-                  theme: "default",
-                  themeColor,
-                  // La física en un Web Worker (opción por defecto) da mejor
-                  // rendimiento en teoría, pero verificar de forma fiable si
-                  // se cuelga en según qué navegador/pestaña es imposible
-                  // desde fuera del worker. Para 1-4s de físicas de unos
-                  // pocos dados, el coste de hacerlo en el hilo principal es
-                  // imperceptible — se prioriza la fiabilidad confirmada.
-                  offscreen: false,
-                });
-                return box.init();
-              });
-            }
-            diceBoxRef.current = await diceBoxLoading.current;
-          }
-          if (cancelled) return;
-          setDebugInfo("DEBUG: dice-box inicializado, lanzando roll()");
-          // Salvaguarda: en algunos móviles roll() no llega a rechazar nunca
-          // (contexto WebGL perdido a media física, p.ej.) — sin este
-          // timeout, una tirada colgada bloquearía la cola para siempre y
-          // ninguna tirada posterior volvería a reproducirse.
-          await Promise.race([
-            diceBoxRef.current.roll(rollsToNotation(roll.rolls), { themeColor }),
-            new Promise((_resolve, reject) =>
-              setTimeout(() => reject(new Error("roll() no respondió en 8s")), 8000),
-            ),
-          ]);
-          setDebugInfo("DEBUG: roll() completado sin error");
-        } catch (err) {
-          console.error("No se pudo animar los dados 3D, se muestra solo el resultado.", err);
-          setDebugInfo(
-            `DEBUG ERROR: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`,
-          );
-          // El visor puede haber quedado en mal estado (contexto WebGL
-          // perdido, físicas a medias...) — se descarta para forzar una
-          // reinicialización limpia en la siguiente tirada en vez de
-          // arrastrar el fallo para siempre.
-          diceBoxRef.current = null;
-          diceBoxLoading.current = null;
+      if (!diceBoxRef.current) {
+        if (!diceBoxLoading.current) {
+          diceBoxLoading.current = import("@3d-dice/dice-box").then(({ default: DiceBox }) => {
+            const box = new DiceBox({
+              container: `#${CANVAS_ID}`,
+              assetPath: "/assets/dice-box/",
+              theme: "default",
+              themeColor,
+              // La física en un Web Worker (opción por defecto) da mejor
+              // rendimiento en teoría, pero verificar de forma fiable si se
+              // cuelga en según qué navegador/pestaña es imposible desde
+              // fuera del worker. Para 1-4s de físicas de unos pocos dados,
+              // el coste de hacerlo en el hilo principal es imperceptible —
+              // se prioriza la fiabilidad confirmada.
+              offscreen: false,
+            });
+            return box.init();
+          });
         }
+        diceBoxRef.current = await diceBoxLoading.current;
       }
 
-      if (cancelled) return;
+      const diceResults = (await Promise.race([
+        diceBoxRef.current.roll(notation, { themeColor }),
+        new Promise((_resolve, reject) =>
+          setTimeout(() => reject(new Error("roll() no respondió a tiempo")), ROLL_TIMEOUT_MS),
+        ),
+      ])) as { groupId: number; value: number }[];
+
+      let total = modifier;
+      const rolls: DieGroupResult[] = groups.map((group, groupId) => {
+        const values = diceResults.filter((r) => r.groupId === groupId).map((r) => r.value);
+        total += group.sign * values.reduce((a, b) => a + b, 0);
+        return { die: diceFormulaGroupLabel(group), values };
+      });
+
+      setResult({
+        rolls,
+        modifier,
+        total,
+        label: params.label,
+        characterName: params.characterName,
+      });
       setPhase("result");
-      await new Promise((resolve) => setTimeout(resolve, RESULT_HOLD_MS));
-      if (cancelled) return;
-      try {
-        diceBoxRef.current?.clear();
-      } catch (err) {
-        console.error("No se pudo limpiar el visor de dados 3D.", err);
-        diceBoxRef.current = null;
-        diceBoxLoading.current = null;
-      }
-      // Pase lo que pase arriba, la cola SIEMPRE tiene que avanzar — si no,
-      // una tirada que falla deja bloqueadas todas las que vengan después.
-      setPhase(null);
-      setQueue((prev) => prev.slice(1));
-    }
 
-    play(current);
-    return () => {
-      cancelled = true;
-    };
-  }, [current]);
+      // No bloquea la promesa que se devuelve: el caller ya puede mandar la
+      // tirada al servidor en cuanto la física termina, sin esperar a que
+      // el panel de resultado desaparezca solo.
+      setTimeout(() => {
+        diceBoxRef.current?.clear();
+        setPhase(null);
+        setResult(null);
+        busyRef.current = false;
+      }, RESULT_HOLD_MS);
+
+      return { rolls, modifier, total };
+    } catch (err) {
+      console.error("No se pudo animar los dados 3D, tira el servidor en su lugar.", err);
+      // El visor puede haber quedado en mal estado (contexto WebGL
+      // perdido, físicas a medias...) — se descarta para forzar una
+      // reinicialización limpia en la siguiente tirada.
+      diceBoxRef.current = null;
+      diceBoxLoading.current = null;
+      setPhase(null);
+      setResult(null);
+      busyRef.current = false;
+      return null;
+    }
+  }, []);
+
+  const contextValue = useMemo(() => ({ rollPhysics }), [rollPhysics]);
 
   return (
     <DiceOverlayContext.Provider value={contextValue}>
       {children}
       <div className="pointer-events-none fixed inset-0 z-[60]">
-        {debugInfo && (
-          <div className="absolute inset-x-0 top-0 z-[61] break-words bg-black/80 p-2 text-[10px] text-lime-300">
-            {debugInfo}
-          </div>
-        )}
         <div id={CANVAS_ID} className="absolute inset-0" />
-        {current && phase === "result" && (
+        {result && phase === "result" && (
           <div className="absolute inset-x-0 bottom-[12%] flex justify-center px-4">
             <div className="max-w-sm rounded-sm border-2 border-gold bg-parchment-panel/95 px-6 py-4 text-center shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm">
               <p className="text-sm text-ink">
                 <span className="font-semibold text-oxblood">
-                  {current.characterName ?? "Tirada"}
+                  {result.characterName ?? "Tirada"}
                 </span>
                 {" — "}
-                {current.label}
+                {result.label}
               </p>
-              <p className="mt-1 text-xs text-ink-muted">{formatBreakdown(current)}</p>
+              <p className="mt-1 text-xs text-ink-muted">{formatBreakdown(result)}</p>
               <p className="mt-1 font-display text-4xl font-semibold text-oxblood">
-                {current.total}
+                {result.total}
               </p>
             </div>
           </div>

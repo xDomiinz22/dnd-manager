@@ -21,7 +21,9 @@ import {
   useUpdateSpellSlot,
 } from "../features/characters/hooks";
 import { useCreateRoll } from "../features/dice/hooks";
+import { useDiceOverlay } from "../features/dice/DiceOverlay";
 import { useChatSession } from "../features/chat/hooks";
+import { useGroupDetail } from "../features/groups/hooks";
 import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
 import { Button } from "../components/ui/Button";
 import { PortraitCircle } from "../components/character/PortraitCircle";
@@ -96,7 +98,9 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const abilities = system.abilities ?? {};
   const toast = useToast();
   const createRoll = useCreateRoll(character.groupId);
+  const { rollPhysics } = useDiceOverlay();
   const { data: session } = useChatSession(character.groupId);
+  const { data: groupDetail } = useGroupDetail(character.groupId);
   const canRoll = !!session;
 
   const actionsByItem = new Map<string, RollableAction[]>();
@@ -104,17 +108,24 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
     actionsByItem.set(action.itemId, [...(actionsByItem.get(action.itemId) ?? []), action]);
   }
 
-  function handleRoll(label: string, formula: string) {
+  async function handleRoll(label: string, formula: string) {
     if (!canRoll) {
       toast.error("Inicia una sesión de chat para poder tirar dados.");
       return;
     }
+    // La física de los dados 3D decide el resultado real en este mismo
+    // dispositivo (ver DiceOverlay.rollPhysics) — si no se pudo animar
+    // (reduced-motion, sin WebGL...), se manda sin `rolls` y tira el
+    // servidor como fallback.
+    const physics = await rollPhysics({
+      formula,
+      label,
+      characterName: character.name,
+      themeColor: groupDetail?.diceThemeColor ?? null,
+    });
     createRoll.mutate(
-      { characterId: character.id, label, formula },
+      { characterId: character.id, label, formula, rolls: physics?.rolls },
       {
-        // El resultado se ve como dados 3D a pantalla completa en cuanto la
-        // tirada llega al chat del grupo (ver DiceOverlay/ChatDockPanel) —
-        // no hace falta feedback aparte aquí, solo el error si falla.
         onError: (err) => toast.error(toErrorMessage(err, "No se pudo tirar los dados.")),
       },
     );

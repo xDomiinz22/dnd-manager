@@ -1,22 +1,18 @@
-export class InvalidDiceFormulaError extends Error {}
+import {
+  parseDiceFormula,
+  diceFormulaGroupLabel,
+  InvalidDiceFormulaError,
+  type DieGroupResult,
+} from "@dnd-manager/shared";
 
-export interface DieGroupResult {
-  die: string;
-  values: number[];
-}
+export { InvalidDiceFormulaError };
+export type { DieGroupResult };
 
 export interface DiceRollResult {
   rolls: DieGroupResult[];
   modifier: number;
   total: number;
 }
-
-// Solo términos "NdM" (dado) o enteros, unidos por + / -. Cualquier otra cosa
-// (paréntesis, multiplicación, referencias @mod sin resolver...) se rechaza
-// antes de llegar aquí — ver createRollSchema en shared/src/dice.ts.
-const TOKEN_PATTERN = /([+-]?)\s*(\d*d\d+|\d+)/gi;
-const MAX_DICE_COUNT = 100;
-const MAX_DIE_FACES = 1000;
 
 function rollDie(faces: number): number {
   return 1 + Math.floor(Math.random() * faces);
@@ -26,37 +22,57 @@ function rollDie(faces: number): number {
  * Tira una fórmula tipo "1d20+5" o "2d6+1d4-1" contra dados reales
  * (Math.random, no criptográfico — esto es una tirada de mesa, no algo que
  * necesite resistir manipulación de un atacante con acceso al proceso).
- * Lanza InvalidDiceFormulaError si la fórmula no tiene ningún término válido.
+ * Fallback para cuando el cliente no manda su propia tirada física (ver
+ * buildRollFromClientValues) — reduced-motion, sin WebGL, fallo de
+ * dice-box... Lanza InvalidDiceFormulaError si la fórmula no tiene ningún
+ * término válido.
  */
 export function rollFormula(formula: string): DiceRollResult {
-  const rolls: DieGroupResult[] = [];
-  let modifier = 0;
-  let total = 0;
-  let matchedAny = false;
+  const { groups, modifier } = parseDiceFormula(formula);
+  let total = modifier;
 
-  for (const match of formula.matchAll(TOKEN_PATTERN)) {
-    matchedAny = true;
-    const sign = match[1] === "-" ? -1 : 1;
-    const token = match[2]!.toLowerCase();
+  const rolls = groups.map((group) => {
+    const values = Array.from({ length: group.count }, () => rollDie(group.faces));
+    total += group.sign * values.reduce((a, b) => a + b, 0);
+    return { die: diceFormulaGroupLabel(group), values };
+  });
 
-    if (token.includes("d")) {
-      const [countRaw, facesRaw] = token.split("d");
-      const count = Math.min(Math.max(Number(countRaw || "1"), 1), MAX_DICE_COUNT);
-      const faces = Math.min(Math.max(Number(facesRaw), 1), MAX_DIE_FACES);
-      const values = Array.from({ length: count }, () => rollDie(faces));
-      const groupTotal = values.reduce((a, b) => a + b, 0);
-      total += sign * groupTotal;
-      rolls.push({ die: `${sign < 0 ? "-" : ""}${count}d${faces}`, values });
-    } else {
-      const value = Number(token);
-      modifier += sign * value;
-      total += sign * value;
+  return { rolls, modifier, total };
+}
+
+/**
+ * El dispositivo que tira ya animó los dados 3D con físicas reales (ver
+ * DiceOverlay.rollPhysics en el cliente) y manda los valores que salieron —
+ * el resultado real pasa a ser ese, no uno generado aparte aquí. Aun así se
+ * valida que cuadre con la fórmula (mismo número de dados, mismo tipo, cada
+ * valor dentro del rango de caras) para que no se pueda mandar cualquier
+ * resultado por API directamente.
+ */
+export function buildRollFromClientValues(
+  formula: string,
+  clientRolls: DieGroupResult[],
+): DiceRollResult {
+  const { groups, modifier } = parseDiceFormula(formula);
+
+  if (clientRolls.length !== groups.length) {
+    throw new InvalidDiceFormulaError("La tirada recibida no coincide con la fórmula");
+  }
+
+  let total = modifier;
+  const rolls = groups.map((group, i) => {
+    const client = clientRolls[i]!;
+    const expectedDie = diceFormulaGroupLabel(group);
+    if (client.die !== expectedDie || client.values.length !== group.count) {
+      throw new InvalidDiceFormulaError("La tirada recibida no coincide con la fórmula");
     }
-  }
-
-  if (!matchedAny) {
-    throw new InvalidDiceFormulaError(`Fórmula de dados no válida: "${formula}"`);
-  }
+    for (const value of client.values) {
+      if (!Number.isInteger(value) || value < 1 || value > group.faces) {
+        throw new InvalidDiceFormulaError("Valor de dado fuera de rango");
+      }
+    }
+    total += group.sign * client.values.reduce((a, b) => a + b, 0);
+    return { die: expectedDie, values: client.values };
+  });
 
   return { rolls, modifier, total };
 }
