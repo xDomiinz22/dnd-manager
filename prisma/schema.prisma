@@ -43,7 +43,7 @@ model Group {
   characters     CharacterSheet[]
   groupJournal   JournalEntry?    @relation("GroupJournal")
   musicPlaylists MusicPlaylist[]
-  map            GroupMap?
+  maps           GroupMap[]
   diceRolls      DiceRoll[]
   activeSession  GroupSession?
 }
@@ -259,13 +259,14 @@ model JournalPageLink {
   toPage   JournalPage @relation("LinkTo", fields: [toPageId], references: [id], onDelete: Cascade)
 }
 
-// Mapa de campaña por grupo: una sola imagen "actual" (se va reemplazando a
-// medida que el Master revela más terreno) más pines de posición fija que
-// sobreviven a esos reemplazos. Solo se guarda el estado actual, sin
-// histórico de versiones anteriores (decisión confirmada con el usuario).
+// Mapa de campaña por grupo: un grupo puede tener varios (mundo + zonas),
+// cada uno con una sola imagen "actual" (se va reemplazando a medida que el
+// Master revela más terreno) más pines de posición fija que sobreviven a esos
+// reemplazos. Solo se guarda el estado actual de cada mapa, sin histórico de
+// versiones anteriores (decisión confirmada con el usuario).
 model GroupMap {
   id      String @id @default(cuid())
-  groupId String @unique
+  groupId String
   group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   assetId String @unique
@@ -276,10 +277,23 @@ model GroupMap {
   width  Int
   height Int
 
+  title String @default("Mundo")
+  // Nombre libre (p.ej. "Costa Esmeralda") usado para agrupar mapas en el
+  // panel lateral — null = sin sección asignada. El mapa "isWorld" nunca
+  // lleva continente, se muestra siempre fijo arriba del árbol.
+  continent String?
+  // El primer mapa que se sube en un grupo se marca como el mapa del mundo
+  // (ver mapService.uploadGroupMap) y se muestra siempre primero/fijo en el
+  // panel — no se puede borrar mientras existan más mapas.
+  isWorld Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pins MapPin[]
+  pins         MapPin[]
+  linkedByPins MapPin[] @relation("PinLinkedMap")
+
+  @@index([groupId])
 }
 
 model MapPin {
@@ -298,6 +312,12 @@ model MapPin {
   // el "leer más" del popup del pin.
   journalPageId String?
   journalPage   JournalPage? @relation(fields: [journalPageId], references: [id], onDelete: SetNull)
+
+  // Enlace opcional a otro mapa del mismo grupo (p.ej. un pin en el mapa del
+  // mundo que lleva al mapa de esa ciudad). onDelete: SetNull para que borrar
+  // el mapa enlazado no arrastre el pin que apunta a él.
+  linkedMapId String?
+  linkedMap   GroupMap? @relation("PinLinkedMap", fields: [linkedMapId], references: [id], onDelete: SetNull)
 
   order     Int      @default(0)
   createdAt DateTime @default(now())

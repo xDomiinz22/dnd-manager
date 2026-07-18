@@ -6,11 +6,26 @@ export const mapPinSchema = z.object({
   y: z.number().min(0).max(1),
   title: z.string(),
   journalPageId: z.string().nullable(),
+  linkedMapId: z.string().nullable(),
   order: z.number(),
 });
 export type MapPin = z.infer<typeof mapPinSchema>;
 
+// Entrada del árbol de mapas del grupo (panel lateral) — sin imagen ni pines,
+// solo lo necesario para listar y agrupar por continente.
+export const mapSummarySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  continent: z.string().nullable(),
+  isWorld: z.boolean(),
+});
+export type MapSummary = z.infer<typeof mapSummarySchema>;
+
 export const groupMapSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  continent: z.string().nullable(),
+  isWorld: z.boolean(),
   imageUrl: z.string(),
   width: z.number(),
   height: z.number(),
@@ -24,6 +39,7 @@ export const createMapPinSchema = z.object({
   y: z.number().min(0).max(1),
   title: z.string().trim().min(1, "El título no puede estar vacío").max(120),
   journalPageId: z.string().nullable().optional(),
+  linkedMapId: z.string().nullable().optional(),
 });
 export type CreateMapPinInput = z.infer<typeof createMapPinSchema>;
 
@@ -32,5 +48,18 @@ export const updateMapPinSchema = z.object({
   y: z.number().min(0).max(1).optional(),
   title: z.string().trim().min(1, "El título no puede estar vacío").max(120).optional(),
   journalPageId: z.string().nullable().optional(),
+  linkedMapId: z.string().nullable().optional(),
 });
 export type UpdateMapPinInput = z.infer<typeof updateMapPinSchema>;
+
+export const updateMapMetaSchema = z.object({
+  title: z.string().trim().min(1, "El título no puede estar vacío").max(80).optional(),
+  continent: z
+    .string()
+    .trim()
+    .max(80)
+    .nullable()
+    .optional()
+    .transform((v) => (v === "" ? null : v)),
+});
+export type UpdateMapMetaInput = z.infer<typeof updateMapMetaSchema>;
