@@ -14,6 +14,8 @@ const CANVAS_ID = "dnd-dice-box-canvas";
 const DEFAULT_DICE_COLOR = "#6B1620";
 // Cuánto se queda visible el resultado ya asentado antes de desaparecer solo.
 const RESULT_HOLD_MS = 2500;
+// Cuánto tarda en desvanecerse (incluido en RESULT_HOLD_MS, no aparte).
+const RESULT_FADE_MS = 400;
 // Salvaguarda: en algunos móviles roll() no llega a rechazar nunca (contexto
 // WebGL perdido a media física, p.ej.) — sin este timeout, una tirada
 // colgada dejaría el visor bloqueado para siempre.
@@ -78,6 +80,7 @@ function formatBreakdown(result: LocalResult): string {
 export function DiceOverlayProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<"rolling" | "result" | null>(null);
   const [result, setResult] = useState<LocalResult | null>(null);
+  const [fading, setFading] = useState(false);
   const diceBoxRef = useRef<import("@3d-dice/dice-box").default | null>(null);
   const diceBoxLoading = useRef<Promise<import("@3d-dice/dice-box").default> | null>(null);
   // Evita que dos tiradas se pisen si se pulsa el botón varias veces seguidas.
@@ -137,17 +140,23 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
         label: params.label,
         characterName: params.characterName,
       });
+      setFading(false);
       setPhase("result");
 
       // No bloquea la promesa que se devuelve: el caller ya puede mandar la
       // tirada al servidor en cuanto la física termina, sin esperar a que
-      // el panel de resultado desaparezca solo.
+      // el panel de resultado desaparezca solo. Primero se desvanece
+      // (transición CSS de opacidad) y solo al terminar se desmonta, en vez
+      // de quitarse de golpe.
       setTimeout(() => {
-        diceBoxRef.current?.clear();
-        setPhase(null);
-        setResult(null);
-        busyRef.current = false;
-      }, RESULT_HOLD_MS);
+        setFading(true);
+        setTimeout(() => {
+          diceBoxRef.current?.clear();
+          setPhase(null);
+          setResult(null);
+          busyRef.current = false;
+        }, RESULT_FADE_MS);
+      }, RESULT_HOLD_MS - RESULT_FADE_MS);
 
       return { rolls, modifier, total };
     } catch (err) {
@@ -172,7 +181,9 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
       <div className="pointer-events-none fixed inset-0 z-[60]">
         <div id={CANVAS_ID} className="absolute inset-0" />
         {result && phase === "result" && (
-          <div className="absolute inset-x-0 bottom-[12%] flex justify-center px-4">
+          <div
+            className={`absolute inset-x-0 bottom-[12%] flex justify-center px-4 transition-opacity duration-[400ms] ease-out ${fading ? "opacity-0" : "opacity-100"}`}
+          >
             <div className="max-w-sm rounded-sm border-2 border-gold bg-parchment-panel/95 px-6 py-4 text-center shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm">
               <p className="text-sm text-ink">
                 <span className="font-semibold text-oxblood">
