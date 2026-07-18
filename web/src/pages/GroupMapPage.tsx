@@ -631,6 +631,7 @@ function MapCreateForm({
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
+            variant="secondary"
             isLoading={createMap.isPending}
             loadingText="Subiendo..."
             disabled={!title.trim()}

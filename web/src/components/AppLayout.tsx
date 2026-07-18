@@ -84,8 +84,19 @@ function AppLayoutContent() {
       />
 
       {/* padding-bottom = altura real de la mini-barra (0 si no suena nada,
-          ver --player-bar-height en MiniPlayerBar) + un margen fijo. */}
-      <div style={{ paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}>
+          ver --player-bar-height en MiniPlayerBar) + un margen fijo.
+          padding-right = ancho real del panel de chat en escritorio (0 si
+          está colapsado/cerrado o no aplica, ver --chat-dock-width en
+          ChatDockPanel) — sin esto, el panel fijo a la derecha se montaba
+          encima del contenido de la página en vez de dejarle hueco (más
+          visible en el mapa, cuyo lienzo y controles de zoom llegan hasta
+          el borde derecho). */}
+      <div
+        style={{
+          paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)",
+          paddingRight: "var(--chat-dock-width, 0px)",
+        }}
+      >
         <Outlet />
       </div>
 

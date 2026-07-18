@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChatMessageDto, CharacterRosterEntry } from "@dnd-manager/shared";
 import { useAuth } from "../../context/AuthContext";
 import { useGroupDetail } from "../groups/hooks";
@@ -18,6 +18,7 @@ import { ConfirmPanel } from "../../components/ui/ConfirmPanel";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
 
 const COLLAPSED_STORAGE_KEY = "chatDock.collapsed";
+const CHAT_DOCK_WIDTH_VAR = "--chat-dock-width";
 // Marcas diacríticas combinantes (acentos sueltos tras normalize("NFD")).
 const DIACRITICS_REGEX = /[̀-ͯ]/g;
 
@@ -184,6 +185,33 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
     window.localStorage.setItem(COLLAPSED_STORAGE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
 
+  // Publica el ancho real del panel en una variable CSS: el panel es `fixed
+  // right-0` y por su cuenta no reservaba hueco en ninguna página, así que
+  // se montaba encima de lo que hubiera ahí (más visible en el mapa, cuyo
+  // lienzo y controles de zoom llegan hasta el borde derecho). Mismo patrón
+  // que --player-bar-height en MiniPlayerBar. En móvil (o colapsado, o sin
+  // grupo activo) el panel real no está en pantalla, así que el ref queda a
+  // null y el ancho publicado es 0.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) {
+      document.documentElement.style.setProperty(CHAT_DOCK_WIDTH_VAR, "0px");
+      return;
+    }
+    const setWidth = (width: number) =>
+      document.documentElement.style.setProperty(CHAT_DOCK_WIDTH_VAR, `${width}px`);
+    setWidth(el.offsetWidth);
+    const observer = new ResizeObserver(([entry]) =>
+      setWidth(entry?.contentRect.width ?? el.offsetWidth),
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.setProperty(CHAT_DOCK_WIDTH_VAR, "0px");
+    };
+  }, [collapsed, groupId, group]);
+
   if (!groupId || !group) return null;
 
   const isMaster = group.role === "MASTER";
@@ -281,7 +309,10 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
             )}
           </button>
         ) : (
-          <div className="fixed right-0 top-0 z-[25] flex h-full w-[clamp(380px,28vw,560px)] max-w-[90vw] flex-col border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)]">
+          <div
+            ref={panelRef}
+            className="fixed right-0 top-0 z-[25] flex h-full w-[clamp(380px,28vw,560px)] max-w-[90vw] flex-col border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)]"
+          >
             <div className="flex items-center justify-between border-b border-rule px-5 py-4">
               <h2 className="truncate font-display text-base tracking-wide text-oxblood">
                 Chat — {group.name}
