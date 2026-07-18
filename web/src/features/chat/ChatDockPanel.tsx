@@ -10,7 +10,7 @@ import {
   useStartSession,
 } from "./hooks";
 import { useCurrentGroupId } from "./useCurrentGroupId";
-import { CharacterRollMenu } from "./CharacterRollMenu";
+import { CharacterRollMenu, CATEGORY_LABELS, type Category } from "./CharacterRollMenu";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { ConfirmPanel } from "../../components/ui/ConfirmPanel";
@@ -81,6 +81,16 @@ function downloadChatAsText(
   URL.revokeObjectURL(url);
 }
 
+function peekPreview(message: ChatMessageDto): { top: string; bottom: string } {
+  if (message.kind === "ROLL" && message.roll) {
+    return {
+      top: `${message.roll.characterName ?? message.username} — ${message.roll.label}`,
+      bottom: `${message.roll.formula} = ${message.roll.total}`,
+    };
+  }
+  return { top: message.username, bottom: message.text ?? "" };
+}
+
 function ChatIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
@@ -103,7 +113,15 @@ type PanelView = "chat" | "roll";
 /**
  * Chat acoplado a modo del reproductor de música: en escritorio, panel fijo
  * a la derecha, abierto por defecto (se puede plegar y lo recuerda en
- * localStorage); en móvil, un botón flotante que abre una hoja inferior.
+ * localStorage).
+ *
+ * En móvil, tres estados en vez de la hoja al 80% de antes: una barra
+ * "recogida" con el último mensaje (por defecto), una hoja a media pantalla
+ * al tocarla, y un menú fijo estilo Pokémon (Ataques/Objetos/Salvación/
+ * Habilidad) que abre una bandeja de tiradas APILADA sobre el chat (que se
+ * ve atenuado detrás, no desaparece) — al lanzar una tirada la bandeja se
+ * cierra sola y vuelve al chat.
+ *
  * Solo se muestra dentro de las páginas de un grupo concreto (ver
  * useCurrentGroupId) — al no haber websockets, que esté montado en todas
  * esas páginas (no solo en una página de chat dedicada) es lo que hace que
@@ -114,7 +132,7 @@ type PanelView = "chat" | "roll";
  * En escritorio, los z-index (20/25) se mantienen por debajo de los del
  * lanzador de cola de reproducción (30/40, ver TempQueueLauncher) para que
  * ese control siga siendo alcanzable por encima del panel de chat cuando
- * ambos coinciden. En móvil, el FAB de chat ocupa la esquina inferior
+ * ambos coinciden. En móvil, la barra/FAB de chat ocupa la esquina inferior
  * derecha "base"; el de la cola (si aparece) se apila encima del suyo, y
  * abrir una de las dos hojas cierra la otra (estado controlado desde
  * AppLayout) para que nunca queden ambas "abiertas" tapándose entre sí.
@@ -144,6 +162,22 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
   const [text, setText] = useState("");
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   const [view, setView] = useState<PanelView>("chat");
+  const [mobileRollCategory, setMobileRollCategory] = useState<Category | null>(null);
+
+  // Marca como "vista" la última tirada/mensaje justo al abrir la hoja móvil
+  // — ese id se queda fijo mientras está cerrada y sirve para saber si hay
+  // algo nuevo que mostrar en la barra recogida. Ajuste de estado durante el
+  // render (no en un efecto) siguiendo el patrón de React para "adaptar
+  // estado a un cambio de prop" — aquí no hace falta seguir sincronizando
+  // mientras la hoja sigue abierta, solo en el instante en que se abre.
+  const [lastSeenId, setLastSeenId] = useState<string | null>(null);
+  const [prevMobileOpen, setPrevMobileOpen] = useState(mobileOpen);
+  if (mobileOpen !== prevMobileOpen) {
+    setPrevMobileOpen(mobileOpen);
+    if (mobileOpen) {
+      setLastSeenId(messages?.[messages.length - 1]?.id ?? null);
+    }
+  }
 
   useEffect(() => {
     window.localStorage.setItem(COLLAPSED_STORAGE_KEY, collapsed ? "1" : "0");
@@ -188,7 +222,12 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
     downloadChatAsText(group!.name, session, messages ?? []);
   }
 
-  const content =
+  function closeMobile() {
+    onMobileOpenChange(false);
+    setMobileRollCategory(null);
+  }
+
+  const desktopContent =
     view === "roll" && session ? (
       <CharacterRollMenu
         characters={group.characters}
@@ -217,6 +256,9 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
         onDownload={handleDownload}
       />
     );
+
+  const lastMessage = messages && messages.length > 0 ? messages[messages.length - 1]! : null;
+  const hasUnread = !mobileOpen && !!lastMessage && lastMessage.id !== lastSeenId;
 
   return (
     <>
@@ -253,41 +295,65 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
               className="flex min-h-0 flex-1 flex-col px-4 py-3"
               style={{ paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
             >
-              {content}
+              {desktopContent}
             </div>
           </div>
         )}
       </div>
 
-      {/* Móvil: FAB a la derecha (esquina "base"; la cola se apila encima si aparece) + hoja inferior */}
+      {/* Móvil: barra recogida por defecto + hoja a media pantalla + bandeja de tiradas apilada */}
       <div className="sm:hidden">
-        <button
-          type="button"
-          onClick={() => onMobileOpenChange(true)}
-          aria-label="Abrir chat"
-          style={{ bottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
-          className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-parchment shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
-        >
-          <ChatIcon className="h-5 w-5" />
-          {session && (
-            <span
-              className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-parchment bg-oxblood-dark"
-              aria-label="Sesión activa"
-            />
-          )}
-        </button>
+        {!mobileOpen &&
+          (session && lastMessage ? (
+            <button
+              type="button"
+              onClick={() => onMobileOpenChange(true)}
+              aria-label="Abrir chat"
+              style={{ bottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
+              className="fixed inset-x-3 z-20 flex items-center gap-2 rounded-xl border border-rule-strong bg-parchment-panel px-2.5 py-2 text-left shadow-[0_4px_14px_-4px_rgba(0,0,0,0.3)]"
+            >
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-oxblood text-parchment">
+                <ChatIcon className="h-3.5 w-3.5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-xs font-semibold text-oxblood">
+                  {peekPreview(lastMessage).top}
+                </span>
+                <span className="block truncate text-[0.7rem] text-ink-muted">
+                  {peekPreview(lastMessage).bottom}
+                </span>
+              </span>
+              {hasUnread && (
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full bg-gold-bright"
+                  aria-label="Mensajes sin leer"
+                />
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onMobileOpenChange(true)}
+              aria-label="Abrir chat"
+              style={{ bottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
+              className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-parchment shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
+            >
+              <ChatIcon className="h-5 w-5" />
+            </button>
+          ))}
+
         {mobileOpen && (
-          <div
-            role="presentation"
-            onClick={() => onMobileOpenChange(false)}
-            className="fixed inset-0 z-40 bg-ink/40"
-          >
+          <>
+            <div
+              role="presentation"
+              onClick={closeMobile}
+              className="fixed inset-0 z-40 bg-ink/40"
+            />
             <div
               role="dialog"
               aria-modal="true"
               aria-label={`Chat — ${group.name}`}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute inset-x-0 bottom-0 flex max-h-[80vh] flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel"
+              className="fixed inset-x-0 bottom-0 z-40 flex max-h-[50vh] flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel"
             >
               <div className="flex items-center justify-between border-b border-rule px-4 py-3">
                 <h2 className="truncate font-display text-sm tracking-wide text-oxblood">
@@ -295,19 +361,83 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
                 </h2>
                 <button
                   type="button"
-                  onClick={() => onMobileOpenChange(false)}
+                  onClick={closeMobile}
                   aria-label="Cerrar"
                   className="text-ink-muted hover:text-ink"
                 >
                   ×
                 </button>
               </div>
-              <div className="flex min-h-0 flex-1 flex-col px-4 py-3">{content}</div>
+              <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
+                <ChatPanelContent
+                  isMaster={isMaster}
+                  session={session ?? null}
+                  messages={messages}
+                  text={text}
+                  onTextChange={setText}
+                  onSend={handleSend}
+                  isSending={sendMessage.isPending}
+                  onStart={handleStart}
+                  isStarting={startSession.isPending}
+                  confirmingEnd={confirmingEnd}
+                  onToggleConfirmEnd={() => setConfirmingEnd((v) => !v)}
+                  onConfirmEnd={handleConfirmEnd}
+                  onCancelConfirmEnd={() => setConfirmingEnd(false)}
+                  isEnding={endSession.isPending}
+                  onDownload={handleDownload}
+                  showRollButton={false}
+                  bottomMenu={
+                    session &&
+                    !confirmingEnd && <BattleMenu onSelect={(cat) => setMobileRollCategory(cat)} />
+                  }
+                />
+              </div>
             </div>
-          </div>
+
+            {mobileRollCategory && session && (
+              <>
+                <div
+                  role="presentation"
+                  onClick={() => setMobileRollCategory(null)}
+                  className="fixed inset-0 z-40 bg-ink/40"
+                />
+                <div className="fixed inset-x-0 bottom-0 top-[30%] z-40 flex flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel shadow-[0_-8px_22px_-6px_rgba(0,0,0,0.35)]">
+                  <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
+                    <CharacterRollMenu
+                      characters={group.characters}
+                      currentUserId={user?.id ?? ""}
+                      isMaster={isMaster}
+                      diceThemeColor={group.diceThemeColor}
+                      initialCategory={mobileRollCategory}
+                      onRolled={() => setMobileRollCategory(null)}
+                      onClose={() => setMobileRollCategory(null)}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </>
         )}
       </div>
     </>
+  );
+}
+
+/** Menú fijo estilo Pokémon (Ataques/Objetos/Salvación/Habilidad) — reemplaza al botón único "🎲 Tirar" en móvil. */
+function BattleMenu({ onSelect }: { onSelect: (category: Category) => void }) {
+  return (
+    <div className="mb-2 grid grid-cols-2 gap-1.5">
+      {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
+        <button
+          key={cat}
+          type="button"
+          onClick={() => onSelect(cat)}
+          className="rounded-sm bg-oxblood px-2.5 py-2 text-left font-display text-xs tracking-wide text-parchment hover:bg-oxblood-light"
+        >
+          {CATEGORY_LABELS[cat]}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -326,8 +456,12 @@ interface ChatPanelContentProps {
   onConfirmEnd: () => void;
   onCancelConfirmEnd: () => void;
   isEnding: boolean;
-  onOpenRoller: () => void;
   onDownload: () => void;
+  /** Botón "🎲 Tirar" de la cabecera — oculto en móvil, donde lo sustituye el menú fijo (ver BattleMenu). */
+  onOpenRoller?: () => void;
+  showRollButton?: boolean;
+  /** Se renderiza entre la lista de mensajes y el formulario — el menú fijo de tiradas en móvil. */
+  bottomMenu?: React.ReactNode;
 }
 
 function ChatPanelContent({
@@ -347,6 +481,8 @@ function ChatPanelContent({
   isEnding,
   onOpenRoller,
   onDownload,
+  showRollButton = true,
+  bottomMenu,
 }: ChatPanelContentProps) {
   if (!session) {
     return (
@@ -373,13 +509,15 @@ function ChatPanelContent({
           finalizar.
         </p>
         <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-          <Button
-            variant="ghost"
-            onClick={onOpenRoller}
-            className="!px-2 !py-1 !text-xs !normal-case !tracking-normal"
-          >
-            🎲 Tirar
-          </Button>
+          {showRollButton && (
+            <Button
+              variant="ghost"
+              onClick={onOpenRoller}
+              className="!px-2 !py-1 !text-xs !normal-case !tracking-normal"
+            >
+              🎲 Tirar
+            </Button>
+          )}
           <Button
             variant="ghost"
             onClick={onDownload}
@@ -412,6 +550,8 @@ function ChatPanelContent({
       )}
 
       <ChatMessages messages={messages} />
+
+      {bottomMenu}
 
       <form onSubmit={onSend} className="flex items-end gap-2">
         <TextField
@@ -449,23 +589,32 @@ function ChatMessages({ messages }: { messages: ChatMessageDto[] | undefined }) 
 function MessageRow({ message }: { message: ChatMessageDto }) {
   if (message.kind === "ROLL" && message.roll) {
     const roll = message.roll;
+    const dieLabel = roll.rolls[0]?.die.replace(/^-?\d*/, "") || "🎲";
     return (
-      <li className="rounded-sm border border-oxblood/40 bg-parchment-panel p-2.5">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="text-xs text-ink">
-            <span className="font-semibold text-oxblood">
-              {roll.characterName ?? message.username}
-            </span>
-            {" — "}
-            {roll.label}
+      <li className="flex overflow-hidden rounded-sm border border-oxblood/45">
+        <div className="w-1 shrink-0 bg-oxblood" aria-hidden="true" />
+        <div className="flex flex-1 items-center gap-2 bg-oxblood/[0.06] p-2">
+          <span className="flex h-6 w-6 shrink-0 -rotate-6 items-center justify-center rounded-sm bg-oxblood font-display text-[0.6rem] font-semibold text-parchment">
+            {dieLabel}
           </span>
-          <span className="whitespace-nowrap text-[0.65rem] text-ink-muted">
-            {formatTime(message.createdAt)}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="truncate text-xs text-ink">
+                <span className="font-semibold text-oxblood">
+                  {roll.characterName ?? message.username}
+                </span>
+                {" — "}
+                {roll.label}
+              </span>
+              <span className="whitespace-nowrap text-[0.65rem] text-ink-muted">
+                {formatTime(message.createdAt)}
+              </span>
+            </div>
+            <div className="truncate text-[0.65rem] text-ink-muted">{roll.formula}</div>
+          </div>
+          <span className="shrink-0 font-display text-lg font-semibold text-oxblood">
+            {roll.total}
           </span>
-        </div>
-        <div className="mt-1 flex items-baseline justify-between gap-3">
-          <span className="text-[0.65rem] text-ink-muted">{roll.formula}</span>
-          <span className="font-display text-base font-semibold text-oxblood">{roll.total}</span>
         </div>
       </li>
     );

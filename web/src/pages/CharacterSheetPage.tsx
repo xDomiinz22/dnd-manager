@@ -784,11 +784,11 @@ function SpellSlotsPanel({
               <div className="font-display text-xs tracking-wide text-ink-muted">Nivel {level}</div>
               <div className="mt-1 space-y-1">
                 <SpellSlotStepper
-                  label="Usados"
+                  label="Disponibles"
                   value={slot.used}
                   onDecrement={() => adjust(level, "used", slot.used, -1)}
                   onIncrement={() => adjust(level, "used", slot.used, 1)}
-                  ariaLabel={`usados nivel ${level}`}
+                  ariaLabel={`disponibles nivel ${level}`}
                 />
                 <SpellSlotStepper
                   label="Máx"

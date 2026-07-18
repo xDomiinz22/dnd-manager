@@ -15,9 +15,9 @@ import {
 
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
 
-type Category = "attacks" | "items" | "saves" | "skills";
+export type Category = "attacks" | "items" | "saves" | "skills";
 
-const CATEGORY_LABELS: Record<Category, string> = {
+export const CATEGORY_LABELS: Record<Category, string> = {
   attacks: "Ataques",
   items: "Objetos",
   saves: "Salvación",
@@ -30,6 +30,10 @@ interface CharacterRollMenuProps {
   isMaster: boolean;
   diceThemeColor: string | null;
   onClose: () => void;
+  /** Categoría con la que arranca el selector — p.ej. al entrar desde el menú fijo de móvil. */
+  initialCategory?: Category;
+  /** Se llama justo tras lanzar una tirada, además de (no en vez de) seguir en el selector — en móvil cierra la bandeja y vuelve al chat. */
+  onRolled?: () => void;
 }
 
 /**
@@ -46,6 +50,8 @@ export function CharacterRollMenu({
   isMaster,
   diceThemeColor,
   onClose,
+  initialCategory,
+  onRolled,
 }: CharacterRollMenuProps) {
   const eligible = isMaster ? characters : characters.filter((c) => c.ownerId === currentUserId);
   const [manualSelectedId, setManualSelectedId] = useState<string | null>(null);
@@ -95,6 +101,8 @@ export function CharacterRollMenu({
       diceThemeColor={diceThemeColor}
       onBack={() => (eligible.length === 1 ? onClose() : setManualSelectedId(null))}
       onClose={onClose}
+      initialCategory={initialCategory}
+      onRolled={onRolled}
     />
   );
 }
@@ -104,17 +112,21 @@ function CharacterRollPicker({
   diceThemeColor,
   onBack,
   onClose,
+  initialCategory,
+  onRolled,
 }: {
   characterId: string;
   diceThemeColor: string | null;
   onBack: () => void;
   onClose: () => void;
+  initialCategory?: Category;
+  onRolled?: () => void;
 }) {
   const { data, isLoading } = useCharacter(characterId);
   const toast = useToast();
   const createRoll = useCreateRoll(data?.access === "FULL" ? data.character.groupId : "");
   const { rollPhysics } = useDiceOverlay();
-  const [category, setCategory] = useState<Category>("attacks");
+  const [category, setCategory] = useState<Category>(initialCategory ?? "attacks");
 
   if (isLoading || !data) {
     return <p className="text-sm text-ink-muted">Cargando personaje...</p>;
@@ -141,6 +153,7 @@ function CharacterRollPicker({
         onError: (err) => toast.error(toErrorMessage(err, "No se pudo tirar los dados.")),
       },
     );
+    onRolled?.();
   }
 
   const actions = getRollableActions(character.items, character);
