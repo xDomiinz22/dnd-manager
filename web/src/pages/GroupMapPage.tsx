@@ -2,7 +2,12 @@ import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { KeepScale, TransformComponent, TransformWrapper, useControls } from "react-zoom-pan-pinch";
+import {
+  TransformComponent,
+  TransformWrapper,
+  useControls,
+  useTransformComponent,
+} from "react-zoom-pan-pinch";
 import {
   createMapPinSchema,
   type CreateMapPinInput,
@@ -231,6 +236,7 @@ export function GroupMapPage() {
               minScale={0.5}
               maxScale={6}
               centerOnInit
+              centerZoomedOut
               limitToBounds
               doubleClick={{ mode: "toggle" }}
               disabled={isAddPinMode}
@@ -261,9 +267,9 @@ export function GroupMapPage() {
                     <div
                       key={pin.id}
                       style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
-                      className="absolute z-10"
+                      className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
                     >
-                      <KeepScale className="block -translate-x-1/2 -translate-y-1/2">
+                      <FixedScale>
                         <button
                           type="button"
                           aria-label={pin.title}
@@ -275,28 +281,26 @@ export function GroupMapPage() {
                           }}
                           className="h-4 w-4 rounded-full border-2 border-parchment bg-oxblood shadow-md transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
                         />
-                      </KeepScale>
+                      </FixedScale>
                     </div>
                   ))}
                   {addingPinAt && !selectedPin && (
                     <div
                       style={{ left: `${addingPinAt.x * 100}%`, top: `${addingPinAt.y * 100}%` }}
-                      className="pointer-events-none absolute z-10"
+                      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
                     >
-                      <KeepScale className="block -translate-x-1/2 -translate-y-1/2">
+                      <FixedScale>
                         <div className="h-4 w-4 rounded-full border-2 border-oxblood bg-parchment" />
-                      </KeepScale>
+                      </FixedScale>
                     </div>
                   )}
                   {selectedPin && editingPinId !== selectedPin.id && (
                     <div
                       style={{ left: `${selectedPin.x * 100}%`, top: `${selectedPin.y * 100}%` }}
-                      className="absolute z-20"
+                      className="absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+14px)]"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <KeepScale
-                        className="block -translate-x-1/2 -translate-y-[calc(100%+14px)]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <FixedScale>
                         <PinPopup
                           pin={selectedPin}
                           groupId={groupId!}
@@ -311,7 +315,7 @@ export function GroupMapPage() {
                             setSelectedPinId(null);
                           }}
                         />
-                      </KeepScale>
+                      </FixedScale>
                     </div>
                   )}
                 </div>
@@ -360,6 +364,21 @@ export function GroupMapPage() {
 
 const ZOOM_BUTTON_CLASSES =
   "flex h-8 w-8 items-center justify-center rounded-sm border border-rule-strong bg-parchment-panel leading-none text-ink shadow-[0_2px_8px_-2px_rgba(0,0,0,0.3)] hover:bg-parchment-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood";
+
+/**
+ * Sustituye a `KeepScale` de la librería: esta contra-escala un hijo para
+ * que mantenga un tamaño de pantalla constante pese al zoom del mapa, pero
+ * solo actualiza su transform dentro de `instance.onChange(...)` — nunca al
+ * montarse. Un pin o el popup de un pin que se monta mientras el mapa ya
+ * está ampliado sale enorme (sin contra-escalar) hasta el siguiente
+ * pellizco/scroll que dispare ese evento. `useTransformComponent` sí calcula
+ * el valor inicial de forma síncrona en el primer render, así que no tiene
+ * ese hueco.
+ */
+function FixedScale({ children }: { children: React.ReactNode }) {
+  const scale = useTransformComponent(({ state }) => state.scale);
+  return <div style={{ transform: `scale(${1 / scale})` }}>{children}</div>;
+}
 
 /**
  * Controles de zoom (+/−/restablecer) superpuestos al mapa. Van en su propio
