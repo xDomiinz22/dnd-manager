@@ -1,6 +1,6 @@
 # D&D Manager
 
-App web para gestionar grupos de **Dungeons & Dragons 5e** (sistema Foundry `dnd5e`): grupos, fichas de personaje importadas del export `.md` de Foundry, y diarios (journals).
+App web para gestionar grupos de **Dungeons & Dragons 5e** (sistema Foundry `dnd5e`): grupos, fichas de personaje importadas del export `.md` de Foundry, diarios (journals), mapas de campaña con pines, música ambiente y un chat en vivo con tiradas de dados 3D.
 
 - **Producción:** https://dnd-manager-web.vercel.app
 - **Repo:** privado en `github.com/xDomiinz22/dnd-manager`
@@ -23,6 +23,8 @@ Monorepo **pnpm** desplegado como **un solo proyecto en Vercel** (frontend está
 | Parsing fichas  | `js-yaml` (bloque `Actor` del `.md` de Foundry)                                                                                            |
 | Parsing journal | `jszip` + `js-yaml` (frontmatter) + `marked` + `dompurify` (todo en el navegador)                                                          |
 | Imágenes        | `sharp` (valida el formato real y convierte a webp en la subida), `compression` (gzip/brotli en las respuestas de la API)                  |
+| Dados 3D        | `@3d-dice/dice-box` (física real con BabylonJS+Ammo.js) para las tiradas del chat de grupo                                                 |
+| Mapa            | `react-zoom-pan-pinch` (pan/zoom del mapa de campaña)                                                                                      |
 
 ### Estructura del repo
 
@@ -30,6 +32,9 @@ Monorepo **pnpm** desplegado como **un solo proyecto en Vercel** (frontend está
 /
 ├─ web/                 → app React (Vite). Alias @dnd-manager/shared → ../shared/src en dev
 │  └─ src/features/journal/  → parser del .zip (zipImport.ts), render markdown (render.ts), api/hooks
+│  └─ src/features/dice/     → overlay de dados 3D (DiceOverlay.tsx, @3d-dice/dice-box)
+│  └─ src/features/chat/     → chat de grupo en vivo (polling, ChatDockPanel.tsx, CharacterRollMenu.tsx)
+│  └─ src/features/map/      → api/hooks del mapa de campaña (web/src/pages/GroupMapPage.tsx es la página)
 ├─ api/index.ts         → función serverless: monta la app Express (todas las rutas /api/*)
 ├─ server/              → Express: routes / controllers / services / middlewares
 ├─ lib/                 → prisma (singleton), auth (jwt+argon2), dnd5e-derive, storage, imageConversion (webp)
@@ -581,6 +586,57 @@ A petición del usuario: primero un análisis de seguridad (revisión manual del
 
 **Verificación**: `typecheck`/`lint`/`test` (24/24)/`build` limpios en cada paso individual y en conjunto al final; `vercel build` local inspeccionado a mano (el bundle de la función incluye correctamente el cliente de Prisma) y la función bundleada cargada con Node real sin errores; pruebas en navegador contra servidor real en cada paso (login, música, atajos de teclado, swipe-to-queue, drag & drop, subida de imágenes); y verificación final **contra el despliegue de producción real** tras el push (login, painting de Tailwind, cabeceras de `helmet`, todo confirmado en `https://dnd-manager-web.vercel.app`).
 
+Commits (uno por paso, en este orden): `chore(deps)` con el bump de todas las dependencias, `fix(security)` con la validación de subida + rate limiting + cabeceras (agrupado con el fix de `req.params` de Express 5 en los mismos archivos, ver el propio mensaje del commit), `fix(server)` con el resto de `req.params`, `fix(db)` con la migración de Prisma a driver adapters, `fix(build)` con el tsconfig de TypeScript 6, `fix(web)` con el refactor de refs para react-hooks 7 (+ React 19), `fix(web)` con Zod 4, `fix` con js-yaml 5, `fix(web)` con Tailwind v4, y `docs` con este mismo README.
+
+### ✅ Logo temático (favicon + marca de cabecera)
+
+A petición del usuario, un logo coherente con la paleta ya establecida (sin colores nuevos): sello con forma de **d20** (el dado de 20 caras, el motivo más reconocible de D&D) en oxblood con borde dorado, con un **tomo abierto** en pergamino en el centro — combina el dado (D&D) con el tomo (Manager) en una sola pieza. Antes de implementarlo se mostró un preview a varios tamaños (128/48/24px y en la cabecera) para que el usuario lo aprobara.
+
+- `web/public/favicon.svg` — usado como favicon del navegador (`<link rel="icon">` en `index.html`).
+- `web/src/components/ui/BrandMark.tsx` — mismo dibujo como componente React, usado junto al texto "D&D Manager" en la cabecera (`AppLayout.tsx`).
+
+Verificado en navegador (local y en producción tras el deploy): el `<link rel="icon">` resuelve, el SVG de la cabecera renderiza al tamaño correcto con el color oxblood exacto (`rgb(107, 22, 32)`), sin errores de consola ni overflow horizontal en móvil.
+
+### 🔍 Investigación: timeout de `migrate deploy` en un despliegue real (P1002 / advisory lock)
+
+El primer intento de desplegar el commit del logo **falló** en Vercel con el mismo error `P1002` visto antes en pruebas locales:
+
+```
+Timed out trying to acquire a postgres advisory lock (SELECT pg_advisory_lock(72707369)). Timeout: 10000ms.
+```
+
+**Qué significa**: antes de aplicar migraciones, `prisma migrate deploy` pide un lock de sesión de Postgres para garantizar que no haya dos migraciones corriendo a la vez contra la misma base de datos. Si no lo consigue en 10s, falla.
+
+**Diagnóstico** (con la pista de un usuario, que compartió [este artículo](https://medium.com/israeli-tech-radar/fixing-a-stuck-postgres-advisory-lock-without-restarting-your-db-02c33d0f0c08) sobre locks atascados): se comprobó a mano contra la Neon real, siguiendo los pasos del artículo —
+
+```sql
+SELECT * FROM pg_locks WHERE objid = 72707369;        -- vacío, nada atascado ahora mismo
+SELECT pid, state, query, ... FROM pg_stat_activity ...; -- solo una conexión idle normal del pooler
+```
+
+No había ningún lock atascado ni sesión zombi. La explicación que mejor encaja con la evidencia: durante esa misma sesión se lanzó `migrate deploy` muchas veces seguidas y solapadas (build local, `vercel build` de prueba, `vercel --prod` manual, y el build automático en la nube por el push) — casi seguro que dos de esos procesos compitieron por el mismo lock a la vez; uno lo consiguió, el otro esperó 10s y falló. **No es una sesión rota que limpiar, es contención pasajera entre procesos.** Reintentar con `vercel --prod` (sin cambiar nada de código) funcionó a la primera — confirma que no era un problema de datos ni de configuración, solo de timing.
+
+**Estado**: la web quedó funcionando (mismo deploy del reintento, sigue siendo el `Ready` actual — comprobado con `vercel ls`). Este patrón concreto (contención entre MÚLTIPLES builds míos en paralelo) es muy improbable en el uso normal del proyecto (un push → un build), pero **no está descartado del todo**: dos pushes muy seguidos, o un `vercel --prod` manual coincidiendo con un deploy automático, podrían volver a chocar por el mismo lock. **Pendiente de decidir con el usuario**: añadir un reintento con backoff alrededor de `prisma migrate deploy` en el script de `build` como red de seguridad barata — propuesto, no implementado todavía (el usuario no se ha decidido aún entre añadirlo o dejarlo así asumiendo que es poco probable).
+
+### ✅ Chat en vivo por grupo + tiradas de dados 3D
+
+Cada grupo puede tener una sesión de chat en vivo: el Master la inicia ("Iniciar sesión") y a partir de ahí cualquier miembro puede escribir mensajes de texto y tirar dados dentro de esa sesión. Es efímero a propósito — terminar la sesión (solo Master) borra la sesión y en cascada todos sus mensajes —, a diferencia del historial de tiradas, que es permanente y aparte.
+
+- Prisma: `GroupSession` (una activa como mucho por grupo, `groupId @unique`) y `ChatMessage` (`kind: TEXT | ROLL`; los mensajes `ROLL` referencian un `DiceRoll` ya creado, no duplican el resultado) — migración `20260716164624_add_group_chat`. `DiceRoll` es el log permanente aparte (`groupId`+`createdAt` indexado) — migración `20260716140830_add_dice_roll`.
+- **Tiradas**: solo se pueden hacer con una sesión activa (si no, `409 NO_ACTIVE_SESSION`). Se resuelven con dados 3D físicos reales vía `@3d-dice/dice-box` (BabylonJS+Ammo.js, `DiceOverlay.tsx`, overlay a pantalla completa, resultado con fade-out); el servidor valida los valores que caen contra la fórmula pedida (`lib/diceRoll.ts`) y solo los recalcula él mismo (`Math.random`) si el cliente no llega a mandar valores (sin WebGL, `prefers-reduced-motion`, o si dice-box falla) — nunca se confía en un total mandado directamente por el cliente. Fórmula restringida y validada con zod (`shared/src/dice.ts`; máx. 100 dados / 1000 caras). Solo el Master o el dueño del personaje pueden tirar en su nombre.
+- **Chat**: sin websockets — se refresca por polling cada 3s (`web/src/features/chat/hooks.ts`), mismo criterio que el log de tiradas. `ChatDockPanel.tsx` es un panel fijo a la derecha en escritorio (colapsable, recuerda el estado en `localStorage`) y una bandeja apilada estilo "menú de combate" en móvil (Ataques/Objetos/Salvación/Habilidad); `CharacterRollMenu.tsx` reutiliza las mismas acciones tirables ya calculadas para la ficha de personaje. Botón "Descargar" exporta la sesión actual como `.txt`.
+- **Color de dados por grupo**: `Group.diceThemeColor` (hex, editable solo por el Master desde el detalle del grupo — migración `20260717145304_add_group_dice_theme_color`) se pasa como `themeColor` a `dice-box`, así cada grupo puede tener sus propios dados a juego con su identidad visual sin tocar código.
+
+### ✅ Mapa de campaña por grupo (pines + varios mapas por continente)
+
+Cada grupo puede tener varios mapas de campaña — uno por defecto (el mapa del Mundo) más los que se quieran por zona/ciudad —, navegables con pan/zoom, con pines de posición fija que el Master coloca y puede enlazar a una página del diario y/o a otro mapa del grupo.
+
+- Prisma: `GroupMap` (`title`, `continent?`, `isWorld`) + `MapPin` (`x`/`y` relativos 0-1 para sobrevivir a un reemplazo de imagen, `journalPageId?`, `linkedMapId?`) — migraciones `20260716112328_add_group_map` (mapa único por grupo) → `20260718222307_add_multi_map_sections` (varios mapas por grupo, continentes, enlace pin↔mapa; los mapas ya existentes se migraron automáticamente a mapa del Mundo de su grupo).
+- El primer mapa subido en un grupo se marca automáticamente como su mapa del Mundo (fijo arriba del panel lateral, no se le puede asignar continente ni se puede borrar mientras existan otros mapas del grupo). El resto de mapas se agrupan en `MapTreeSidebar.tsx` por el campo libre `continent` (secciones plegables + "Sin sección" para los que aún no tienen uno).
+- Un pin puede enlazar opcionalmente a una página del diario de grupo, a otro mapa del grupo (el popup muestra "Ir a X →", cambia la selección del panel sin recargar), a ambos o a ninguno.
+- Pan/zoom con `react-zoom-pan-pinch` (`GroupMapPage.tsx`); los pines y su popup mantienen un tamaño de pantalla constante pese al zoom (`FixedScale`, contra-escalado propio vía `useTransformComponent` en vez del `KeepScale` de la librería, que no aplica su corrección hasta el siguiente evento de zoom — sale enorme si se monta con el mapa ya ampliado).
+- Subida de imagen: se convierte a webp automáticamente (mismo pipeline que el resto de assets, con reescalado en el cliente antes de subir para no toparse con el límite de ~4.5MB de las funciones serverless de Vercel); reemplazar la imagen de un mapa exige las mismas dimensiones que la actual, porque los pines usan coordenadas relativas.
+
 ---
 
 ## Qué queda por hacer
@@ -592,3 +648,4 @@ A petición del usuario: primero un análisis de seguridad (revisión manual del
 - **Personaje duplicado con retrato roto**: existe un segundo personaje llamado "XxAlbertoPro01xX" (`cmrcjxc7r000911fu7m0df1du`, distinto del de "Grupo Demo") cuyo retrato apunta a un `Asset` con `data: NULL` — un dato corrupto de antes de esta sesión, no causado por ningún cambio reciente. El usuario pidió explícitamente dejarlo así por ahora (2026-07-11); no tocar sin que lo pida.
 - **Warning conocido e inofensivo**: ESLint marca `react-refresh/only-export-components` en `web/src/context/AuthContext.tsx` y en `web/src/components/ui/Toast.tsx` (mismo patrón Context+hook en un archivo). No es un error.
 - **Personajes ya importados con PG máximo mal calculado (multiclase)**: el fix del cálculo de PG máximo (ver sección de arriba) solo aplica a partir de ahora. Cualquier personaje multiclase importado antes de este fix (como "Dominz") sigue con el PG máximo viejo hasta que su Master haga "Actualizar .md" con el `.md` más reciente — el usuario prefirió dejarlo así en vez de un backfill automático.
+- **Decisión pendiente: reintento con backoff en `prisma migrate deploy`** (ver sección de arriba sobre el timeout P1002/advisory lock). No es un bug activo — la web funciona — pero un deploy podría volver a fallar si dos builds coinciden pidiendo el mismo lock a la vez (dos pushes muy seguidos, o un `vercel --prod` manual solapado con uno automático). Propuesto, no implementado; el usuario no se ha decidido aún.
