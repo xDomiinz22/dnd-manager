@@ -16,6 +16,7 @@ export type SendChatMessageInput = z.infer<typeof sendChatMessageSchema>;
 
 export const chatRollMentionSchema = z.object({
   id: z.string(),
+  characterId: z.string().nullable(),
   characterName: z.string().nullable(),
   label: z.string(),
   formula: z.string(),

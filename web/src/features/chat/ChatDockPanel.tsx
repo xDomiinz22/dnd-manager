@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ChatMessageDto } from "@dnd-manager/shared";
+import type { ChatMessageDto, CharacterRosterEntry } from "@dnd-manager/shared";
 import { useAuth } from "../../context/AuthContext";
 import { useGroupDetail } from "../groups/hooks";
 import {
@@ -11,6 +11,7 @@ import {
 } from "./hooks";
 import { useCurrentGroupId } from "./useCurrentGroupId";
 import { CharacterRollMenu, CATEGORY_LABELS, type Category } from "./CharacterRollMenu";
+import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { ConfirmPanel } from "../../components/ui/ConfirmPanel";
@@ -108,8 +109,6 @@ function ChatIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
-type PanelView = "chat" | "roll";
-
 /**
  * Chat acoplado a modo del reproductor de música: en escritorio, panel fijo
  * a la derecha, abierto por defecto (se puede plegar y lo recuerda en
@@ -161,8 +160,10 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
   });
   const [text, setText] = useState("");
   const [confirmingEnd, setConfirmingEnd] = useState(false);
-  const [view, setView] = useState<PanelView>("chat");
-  const [mobileRollCategory, setMobileRollCategory] = useState<Category | null>(null);
+  // Compartido entre escritorio (cambia el contenido del panel) y móvil
+  // (abre la bandeja apilada) — no distinto de "cuál tirada estoy viendo",
+  // sino "qué categoría del menú fijo estoy usando ahora mismo".
+  const [rollCategory, setRollCategory] = useState<Category | null>(null);
 
   // Marca como "vista" la última tirada/mensaje justo al abrir la hoja móvil
   // — ese id se queda fijo mientras está cerrada y sirve para saber si hay
@@ -198,7 +199,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
       onSuccess: () => {
         toast.success("Sesión finalizada. El chat se ha borrado.");
         setConfirmingEnd(false);
-        setView("chat");
+        setRollCategory(null);
       },
       onError: (err) => toast.error(toErrorMessage(err, "No se pudo finalizar la sesión.")),
     });
@@ -224,23 +225,26 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
 
   function closeMobile() {
     onMobileOpenChange(false);
-    setMobileRollCategory(null);
+    setRollCategory(null);
   }
 
   const desktopContent =
-    view === "roll" && session ? (
+    rollCategory && session ? (
       <CharacterRollMenu
         characters={group.characters}
         currentUserId={user?.id ?? ""}
         isMaster={isMaster}
         diceThemeColor={group.diceThemeColor}
-        onClose={() => setView("chat")}
+        initialCategory={rollCategory}
+        onRolled={() => setRollCategory(null)}
+        onClose={() => setRollCategory(null)}
       />
     ) : (
       <ChatPanelContent
         isMaster={isMaster}
         session={session ?? null}
         messages={messages}
+        characters={group.characters}
         text={text}
         onTextChange={setText}
         onSend={handleSend}
@@ -252,8 +256,8 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
         onConfirmEnd={handleConfirmEnd}
         onCancelConfirmEnd={() => setConfirmingEnd(false)}
         isEnding={endSession.isPending}
-        onOpenRoller={() => setView("roll")}
         onDownload={handleDownload}
+        bottomMenu={session && !confirmingEnd && <BattleMenu onSelect={setRollCategory} />}
       />
     );
 
@@ -373,6 +377,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
                   isMaster={isMaster}
                   session={session ?? null}
                   messages={messages}
+                  characters={group.characters}
                   text={text}
                   onTextChange={setText}
                   onSend={handleSend}
@@ -385,20 +390,18 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
                   onCancelConfirmEnd={() => setConfirmingEnd(false)}
                   isEnding={endSession.isPending}
                   onDownload={handleDownload}
-                  showRollButton={false}
                   bottomMenu={
-                    session &&
-                    !confirmingEnd && <BattleMenu onSelect={(cat) => setMobileRollCategory(cat)} />
+                    session && !confirmingEnd && <BattleMenu onSelect={setRollCategory} />
                   }
                 />
               </div>
             </div>
 
-            {mobileRollCategory && session && (
+            {rollCategory && session && (
               <>
                 <div
                   role="presentation"
-                  onClick={() => setMobileRollCategory(null)}
+                  onClick={() => setRollCategory(null)}
                   className="fixed inset-0 z-40 bg-ink/40"
                 />
                 <div className="fixed inset-x-0 bottom-0 top-[30%] z-40 flex flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel shadow-[0_-8px_22px_-6px_rgba(0,0,0,0.35)]">
@@ -408,9 +411,9 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
                       currentUserId={user?.id ?? ""}
                       isMaster={isMaster}
                       diceThemeColor={group.diceThemeColor}
-                      initialCategory={mobileRollCategory}
-                      onRolled={() => setMobileRollCategory(null)}
-                      onClose={() => setMobileRollCategory(null)}
+                      initialCategory={rollCategory ?? undefined}
+                      onRolled={() => setRollCategory(null)}
+                      onClose={() => setRollCategory(null)}
                     />
                   </div>
                 </div>
@@ -445,6 +448,7 @@ interface ChatPanelContentProps {
   isMaster: boolean;
   session: { id: string; startedAt: string } | null;
   messages: ChatMessageDto[] | undefined;
+  characters: CharacterRosterEntry[];
   text: string;
   onTextChange: (text: string) => void;
   onSend: (e: React.FormEvent) => void;
@@ -457,10 +461,7 @@ interface ChatPanelContentProps {
   onCancelConfirmEnd: () => void;
   isEnding: boolean;
   onDownload: () => void;
-  /** Botón "🎲 Tirar" de la cabecera — oculto en móvil, donde lo sustituye el menú fijo (ver BattleMenu). */
-  onOpenRoller?: () => void;
-  showRollButton?: boolean;
-  /** Se renderiza entre la lista de mensajes y el formulario — el menú fijo de tiradas en móvil. */
+  /** Se renderiza entre la lista de mensajes y el formulario — el menú fijo de tiradas (ver BattleMenu). */
   bottomMenu?: React.ReactNode;
 }
 
@@ -468,6 +469,7 @@ function ChatPanelContent({
   isMaster,
   session,
   messages,
+  characters,
   text,
   onTextChange,
   onSend,
@@ -479,9 +481,7 @@ function ChatPanelContent({
   onConfirmEnd,
   onCancelConfirmEnd,
   isEnding,
-  onOpenRoller,
   onDownload,
-  showRollButton = true,
   bottomMenu,
 }: ChatPanelContentProps) {
   if (!session) {
@@ -509,15 +509,6 @@ function ChatPanelContent({
           finalizar.
         </p>
         <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
-          {showRollButton && (
-            <Button
-              variant="ghost"
-              onClick={onOpenRoller}
-              className="!px-2 !py-1 !text-xs !normal-case !tracking-normal"
-            >
-              🎲 Tirar
-            </Button>
-          )}
           <Button
             variant="ghost"
             onClick={onDownload}
@@ -549,7 +540,7 @@ function ChatPanelContent({
         />
       )}
 
-      <ChatMessages messages={messages} />
+      <ChatMessages messages={messages} characters={characters} />
 
       {bottomMenu}
 
@@ -571,7 +562,13 @@ function ChatPanelContent({
   );
 }
 
-function ChatMessages({ messages }: { messages: ChatMessageDto[] | undefined }) {
+function ChatMessages({
+  messages,
+  characters,
+}: {
+  messages: ChatMessageDto[] | undefined;
+  characters: CharacterRosterEntry[];
+}) {
   return (
     <ul className="mb-3 flex-1 space-y-2 overflow-y-auto">
       {(!messages || messages.length === 0) && (
@@ -580,23 +577,30 @@ function ChatMessages({ messages }: { messages: ChatMessageDto[] | undefined }) 
         </li>
       )}
       {messages?.map((message) => (
-        <MessageRow key={message.id} message={message} />
+        <MessageRow key={message.id} message={message} characters={characters} />
       ))}
     </ul>
   );
 }
 
-function MessageRow({ message }: { message: ChatMessageDto }) {
+function MessageRow({
+  message,
+  characters,
+}: {
+  message: ChatMessageDto;
+  characters: CharacterRosterEntry[];
+}) {
   if (message.kind === "ROLL" && message.roll) {
     const roll = message.roll;
-    const dieLabel = roll.rolls[0]?.die.replace(/^-?\d*/, "") || "🎲";
+    const character = characters.find((c) => c.id === roll.characterId);
+    const portraitName = roll.characterName ?? message.username;
     return (
       <li className="flex overflow-hidden rounded-sm border border-oxblood/45">
         <div className="w-1 shrink-0 bg-oxblood" aria-hidden="true" />
         <div className="flex flex-1 items-center gap-2 bg-oxblood/[0.06] p-2">
-          <span className="flex h-6 w-6 shrink-0 -rotate-6 items-center justify-center rounded-sm bg-oxblood font-display text-[0.6rem] font-semibold text-parchment">
-            {dieLabel}
-          </span>
+          <div className="shrink-0">
+            <PortraitCircle url={character?.portraitUrl ?? null} name={portraitName} size={26} />
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
               <span className="truncate text-xs text-ink">

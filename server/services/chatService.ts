@@ -10,6 +10,7 @@ type MessageWithRelations = {
   text: string | null;
   diceRoll: {
     id: string;
+    characterId: string | null;
     label: string;
     formula: string;
     rolls: unknown;
@@ -25,6 +26,7 @@ const MESSAGE_INCLUDE = {
   diceRoll: {
     select: {
       id: true,
+      characterId: true,
       label: true,
       formula: true,
       rolls: true,
@@ -45,6 +47,7 @@ function toMessageDto(message: MessageWithRelations): ChatMessageDto {
     roll: message.diceRoll
       ? {
           id: message.diceRoll.id,
+          characterId: message.diceRoll.characterId,
           characterName: message.diceRoll.character?.name ?? null,
           label: message.diceRoll.label,
           formula: message.diceRoll.formula,
