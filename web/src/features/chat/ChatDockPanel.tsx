@@ -281,7 +281,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
             )}
           </button>
         ) : (
-          <div className="fixed right-0 top-0 z-[25] flex h-full w-[380px] max-w-[85vw] flex-col border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)]">
+          <div className="fixed right-0 top-0 z-[25] flex h-full w-[clamp(380px,28vw,560px)] max-w-[90vw] flex-col border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)]">
             <div className="flex items-center justify-between border-b border-rule px-5 py-4">
               <h2 className="truncate font-display text-base tracking-wide text-oxblood">
                 Chat — {group.name}
@@ -570,7 +570,7 @@ function ChatMessages({
   characters: CharacterRosterEntry[];
 }) {
   return (
-    <ul className="mb-3 flex-1 space-y-2 overflow-y-auto">
+    <ul className="themed-scroll mb-3 flex-1 space-y-2 overflow-y-auto">
       {(!messages || messages.length === 0) && (
         <li className="rounded-sm border border-dashed border-rule-strong px-4 py-6 text-center text-sm text-ink-muted">
           Todavía no hay mensajes en esta sesión.

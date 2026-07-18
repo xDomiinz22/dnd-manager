@@ -77,7 +77,7 @@ export function CharacterRollMenu({
             Volver al chat
           </button>
         </div>
-        <ul className="flex-1 space-y-1.5 overflow-y-auto">
+        <ul className="themed-scroll flex-1 space-y-1.5 overflow-y-auto">
           {eligible.map((c) => (
             <li key={c.id}>
               <button
@@ -202,7 +202,7 @@ function CharacterRollPicker({
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="themed-scroll flex-1 overflow-y-auto">
         {category === "attacks" && (
           <ActionList actions={attackActions} onRoll={handleRoll} empty="Sin ataques." />
         )}

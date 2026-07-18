@@ -125,6 +125,32 @@ body {
 }
 
 /*
+ * Scrollbar a juego con el tema (pergamino/granate) en vez de la barra gris
+ * genérica del sistema — se aplica a mano en los contenedores con scroll
+ * propio (lista de mensajes del chat, selector de tiradas...), no de forma
+ * global, para no tocar zonas de scroll de la web que no se han revisado.
+ */
+.themed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-oxblood) transparent;
+}
+.themed-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+.themed-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.themed-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--color-oxblood);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.themed-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-gold);
+}
+
+/*
  * @3d-dice/dice-box crea su propio <canvas class="dice-box-canvas"> dentro
  * del contenedor que le pasamos (ver DiceOverlay.tsx) pero no trae CSS
  * propio importado — sin esto el canvas se queda a tamaño intrínseco 0x0 (su
