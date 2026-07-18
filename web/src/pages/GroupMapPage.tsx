@@ -52,6 +52,10 @@ export function GroupMapPage() {
   const [editingPinId, setEditingPinId] = useState<string | null>(null);
   const [deletingPinId, setDeletingPinId] = useState<string | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  // Tamaño real del mapa, para que el hueco se ajuste a su proporción en vez
+  // de ser una caja genérica a ancho completo — se conoce solo tras cargar
+  // la imagen, así que hasta entonces se usa una altura fija de reserva.
+  const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
 
   if (isLoadingGroup || isLoadingMap || !group) {
     return (
@@ -213,9 +217,14 @@ export function GroupMapPage() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            className={`relative h-[60vh] w-full select-none overflow-hidden rounded-sm border transition-colors sm:h-[70vh] ${
-              isDraggingFile ? "border-oxblood" : "border-rule-strong"
-            }`}
+            style={
+              imgNatural
+                ? { aspectRatio: `${imgNatural.w} / ${imgNatural.h}`, maxHeight: "70vh" }
+                : undefined
+            }
+            className={`relative mx-auto max-w-full select-none overflow-hidden rounded-sm border transition-colors ${
+              imgNatural ? "w-fit" : "h-[60vh] w-full sm:h-[70vh]"
+            } ${isDraggingFile ? "border-oxblood" : "border-rule-strong"}`}
           >
             <TransformWrapper
               initialScale={1}
@@ -228,36 +237,56 @@ export function GroupMapPage() {
             >
               <MapZoomControls />
               <TransformComponent
-                wrapperClass="!w-full !h-full"
+                wrapperClass="!h-full !w-full"
                 contentClass={isAddPinMode ? "!cursor-crosshair" : ""}
               >
-                <div role="presentation" onClick={handleMapClick} className="relative inline-block">
+                <div
+                  role="presentation"
+                  onClick={handleMapClick}
+                  className="relative h-full w-full"
+                >
                   <img
                     src={map.imageUrl}
                     alt="Mapa del grupo"
-                    className="block max-h-[56vh] max-w-full sm:max-h-[66vh]"
+                    className="block h-full w-full"
                     draggable={false}
+                    onLoad={(e) =>
+                      setImgNatural({
+                        w: e.currentTarget.naturalWidth,
+                        h: e.currentTarget.naturalHeight,
+                      })
+                    }
                   />
                   {map.pins.map((pin) => (
-                    <button
+                    <div
                       key={pin.id}
-                      type="button"
-                      aria-label={pin.title}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsAddPinMode(false);
-                        setAddingPinAt(null);
-                        setSelectedPinId(selectedPinId === pin.id ? null : pin.id);
-                      }}
                       style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
-                      className="absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-parchment bg-oxblood shadow-md transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
-                    />
+                      className="absolute z-10"
+                    >
+                      <KeepScale className="block -translate-x-1/2 -translate-y-1/2">
+                        <button
+                          type="button"
+                          aria-label={pin.title}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAddPinMode(false);
+                            setAddingPinAt(null);
+                            setSelectedPinId(selectedPinId === pin.id ? null : pin.id);
+                          }}
+                          className="h-4 w-4 rounded-full border-2 border-parchment bg-oxblood shadow-md transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+                        />
+                      </KeepScale>
+                    </div>
                   ))}
                   {addingPinAt && !selectedPin && (
                     <div
                       style={{ left: `${addingPinAt.x * 100}%`, top: `${addingPinAt.y * 100}%` }}
-                      className="pointer-events-none absolute z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-oxblood bg-parchment"
-                    />
+                      className="pointer-events-none absolute z-10"
+                    >
+                      <KeepScale className="block -translate-x-1/2 -translate-y-1/2">
+                        <div className="h-4 w-4 rounded-full border-2 border-oxblood bg-parchment" />
+                      </KeepScale>
+                    </div>
                   )}
                   {selectedPin && editingPinId !== selectedPin.id && (
                     <div
