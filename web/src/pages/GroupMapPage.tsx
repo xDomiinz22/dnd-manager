@@ -25,6 +25,7 @@ import {
   useUploadGroupMap,
 } from "../features/map/hooks";
 import { resizeImageForUpload } from "../lib/imageResize";
+import { useCloseOnOutsideClick } from "../lib/useCloseOnOutsideClick";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { TextField } from "../components/ui/TextField";
@@ -530,6 +531,8 @@ function PinForm({
   const toast = useToast();
   const createPin = useCreateMapPin(groupId);
   const updatePin = useUpdateMapPin(groupId);
+  const formRef = useRef<HTMLDivElement>(null);
+  useCloseOnOutsideClick(formRef, onCancel);
   const {
     register,
     handleSubmit,
@@ -572,24 +575,26 @@ function PinForm({
   const isPending = createPin.isPending || updatePin.isPending;
 
   return (
-    <Card as="form" onSubmit={handleSubmit(onSubmit)} noValidate className="mt-4">
-      <TextField label="Título" error={errors.title?.message} {...register("title")} />
-      <SelectField label="Enlazar a página del diario (opcional)" {...register("journalPageId")}>
-        <option value="">Ninguna</option>
-        {journalPages.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.label}
-          </option>
-        ))}
-      </SelectField>
-      <div className="flex gap-2">
-        <Button type="submit" isLoading={isPending} loadingText="Guardando...">
-          {initial ? "Guardar cambios" : "Crear pin"}
-        </Button>
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={isPending}>
-          Cancelar
-        </Button>
-      </div>
-    </Card>
+    <div ref={formRef}>
+      <Card as="form" onSubmit={handleSubmit(onSubmit)} noValidate className="mt-4">
+        <TextField label="Título" error={errors.title?.message} {...register("title")} />
+        <SelectField label="Enlazar a página del diario (opcional)" {...register("journalPageId")}>
+          <option value="">Ninguna</option>
+          {journalPages.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </SelectField>
+        <div className="flex gap-2">
+          <Button type="submit" isLoading={isPending} loadingText="Guardando...">
+            {initial ? "Guardar cambios" : "Crear pin"}
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel} disabled={isPending}>
+            Cancelar
+          </Button>
+        </div>
+      </Card>
+    </div>
   );
 }
