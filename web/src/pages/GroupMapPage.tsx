@@ -274,9 +274,17 @@ export function GroupMapPage() {
                           type="button"
                           aria-label={pin.title}
                           onClick={(e) => {
+                            // stopPropagation impide que este click llegue al listener
+                            // de useCloseOnOutsideClick del formulario de edición (está
+                            // en document, y stopPropagation corta el burbujeo antes de
+                            // llegar ahí) — sin este reset explícito, editar un pin y
+                            // luego pinchar cualquier pin (el mismo u otro) dejaba
+                            // editingPinId "colgado" y la edición reaparecía al
+                            // reseleccionar ese pin.
                             e.stopPropagation();
                             setIsAddPinMode(false);
                             setAddingPinAt(null);
+                            setEditingPinId(null);
                             setSelectedPinId(selectedPinId === pin.id ? null : pin.id);
                           }}
                           className="h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-parchment bg-oxblood shadow-md transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
