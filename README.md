@@ -5,6 +5,7 @@ App web para gestionar grupos de **Dungeons & Dragons 5e** (sistema Foundry `dnd
 - **Producción:** https://dnd-manager-web.vercel.app
 - **Repo:** privado en `github.com/xDomiinz22/dnd-manager`
 - **Estado:** Fases 0–8 completas y verificadas. Desplegado y operativo.
+- **¿Buscas cómo usar la web (no cómo está hecha)?** Mira la [guía de uso](USE_GUIDE.md) — qué puede hacer un Master y qué puede hacer un jugador, sin detalles técnicos. Este README, en cambio, cubre arquitectura, stack y decisiones de implementación.
 
 ---
 
