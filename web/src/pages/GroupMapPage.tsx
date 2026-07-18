@@ -233,10 +233,9 @@ export function GroupMapPage() {
           >
             <TransformWrapper
               initialScale={1}
-              minScale={0.5}
+              minScale={1}
               maxScale={6}
               centerOnInit
-              centerZoomedOut
               limitToBounds
               doubleClick={{ mode: "toggle" }}
               disabled={isAddPinMode}
@@ -267,7 +266,7 @@ export function GroupMapPage() {
                     <div
                       key={pin.id}
                       style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
-                      className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
+                      className="absolute z-10"
                     >
                       <FixedScale>
                         <button
@@ -279,7 +278,7 @@ export function GroupMapPage() {
                             setAddingPinAt(null);
                             setSelectedPinId(selectedPinId === pin.id ? null : pin.id);
                           }}
-                          className="h-4 w-4 rounded-full border-2 border-parchment bg-oxblood shadow-md transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+                          className="h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-parchment bg-oxblood shadow-md transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
                         />
                       </FixedScale>
                     </div>
@@ -287,34 +286,38 @@ export function GroupMapPage() {
                   {addingPinAt && !selectedPin && (
                     <div
                       style={{ left: `${addingPinAt.x * 100}%`, top: `${addingPinAt.y * 100}%` }}
-                      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
+                      className="pointer-events-none absolute z-10"
                     >
                       <FixedScale>
-                        <div className="h-4 w-4 rounded-full border-2 border-oxblood bg-parchment" />
+                        <div className="h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-oxblood bg-parchment" />
                       </FixedScale>
                     </div>
                   )}
                   {selectedPin && editingPinId !== selectedPin.id && (
                     <div
                       style={{ left: `${selectedPin.x * 100}%`, top: `${selectedPin.y * 100}%` }}
-                      className="absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+14px)]"
-                      onClick={(e) => e.stopPropagation()}
+                      className="absolute z-20"
                     >
                       <FixedScale>
-                        <PinPopup
-                          pin={selectedPin}
-                          groupId={groupId!}
-                          isMaster={isMaster}
-                          onClose={() => setSelectedPinId(null)}
-                          onEdit={() => setEditingPinId(selectedPin.id)}
-                          onDelete={() => setDeletingPinId(selectedPin.id)}
-                          deleteConfirming={deletingPinId === selectedPin.id}
-                          onCancelDelete={() => setDeletingPinId(null)}
-                          onDeleted={() => {
-                            setDeletingPinId(null);
-                            setSelectedPinId(null);
-                          }}
-                        />
+                        <div
+                          className="-translate-x-1/2 -translate-y-[calc(100%+14px)]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <PinPopup
+                            pin={selectedPin}
+                            groupId={groupId!}
+                            isMaster={isMaster}
+                            onClose={() => setSelectedPinId(null)}
+                            onEdit={() => setEditingPinId(selectedPin.id)}
+                            onDelete={() => setDeletingPinId(selectedPin.id)}
+                            deleteConfirming={deletingPinId === selectedPin.id}
+                            onCancelDelete={() => setDeletingPinId(null)}
+                            onDeleted={() => {
+                              setDeletingPinId(null);
+                              setSelectedPinId(null);
+                            }}
+                          />
+                        </div>
                       </FixedScale>
                     </div>
                   )}
@@ -377,7 +380,16 @@ const ZOOM_BUTTON_CLASSES =
  */
 function FixedScale({ children }: { children: React.ReactNode }) {
   const scale = useTransformComponent(({ state }) => state.scale);
-  return <div style={{ transform: `scale(${1 / scale})` }}>{children}</div>;
+  // transformOrigin: "0 0" es la clave — sin esto, el contra-escalado pivota
+  // sobre el CENTRO de esta caja, que a su vez está Z veces más lejos del
+  // punto de anclaje real (el propio div, antes de contra-escalar, ya viene
+  // Z veces más grande/lejos por el zoom del mapa) — con zoom alto, el
+  // resultado se desplazaba cientos de píxeles del pin. Con el origen en la
+  // esquina superior izquierda (que sí coincide con el punto de anclaje real,
+  // fijado por left/top% en el div padre), el contra-escalado se queda fijo
+  // ahí y cualquier translate posterior (centrado, "flotar encima"...) opera
+  // ya en píxeles reales correctos.
+  return <div style={{ transform: `scale(${1 / scale})`, transformOrigin: "0 0" }}>{children}</div>;
 }
 
 /**
