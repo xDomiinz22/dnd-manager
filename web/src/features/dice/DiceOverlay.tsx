@@ -131,13 +131,28 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
           }
           if (cancelled) return;
           setDebugInfo("DEBUG: dice-box inicializado, lanzando roll()");
-          await diceBoxRef.current.roll(rollsToNotation(roll.rolls), { themeColor });
+          // Salvaguarda: en algunos móviles roll() no llega a rechazar nunca
+          // (contexto WebGL perdido a media física, p.ej.) — sin este
+          // timeout, una tirada colgada bloquearía la cola para siempre y
+          // ninguna tirada posterior volvería a reproducirse.
+          await Promise.race([
+            diceBoxRef.current.roll(rollsToNotation(roll.rolls), { themeColor }),
+            new Promise((_resolve, reject) =>
+              setTimeout(() => reject(new Error("roll() no respondió en 8s")), 8000),
+            ),
+          ]);
           setDebugInfo("DEBUG: roll() completado sin error");
         } catch (err) {
           console.error("No se pudo animar los dados 3D, se muestra solo el resultado.", err);
           setDebugInfo(
             `DEBUG ERROR: ${err instanceof Error ? `${err.name}: ${err.message}` : String(err)}`,
           );
+          // El visor puede haber quedado en mal estado (contexto WebGL
+          // perdido, físicas a medias...) — se descarta para forzar una
+          // reinicialización limpia en la siguiente tirada en vez de
+          // arrastrar el fallo para siempre.
+          diceBoxRef.current = null;
+          diceBoxLoading.current = null;
         }
       }
 
@@ -145,7 +160,15 @@ export function DiceOverlayProvider({ children }: { children: ReactNode }) {
       setPhase("result");
       await new Promise((resolve) => setTimeout(resolve, RESULT_HOLD_MS));
       if (cancelled) return;
-      diceBoxRef.current?.clear();
+      try {
+        diceBoxRef.current?.clear();
+      } catch (err) {
+        console.error("No se pudo limpiar el visor de dados 3D.", err);
+        diceBoxRef.current = null;
+        diceBoxLoading.current = null;
+      }
+      // Pase lo que pase arriba, la cola SIEMPRE tiene que avanzar — si no,
+      // una tirada que falla deja bloqueadas todas las que vengan después.
       setPhase(null);
       setQueue((prev) => prev.slice(1));
     }
