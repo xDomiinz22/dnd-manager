@@ -194,7 +194,7 @@ function CharacterRollPicker({
             aria-selected={category === cat}
             onClick={() => setCategory(cat)}
             className={`rounded-sm px-2 py-1 font-display text-xs tracking-wide ${
-              category === cat ? "bg-oxblood text-parchment" : "text-ink-muted hover:text-ink"
+              category === cat ? "bg-oxblood text-ivory" : "text-ink-muted hover:text-ink"
             }`}
           >
             {CATEGORY_LABELS[cat]}

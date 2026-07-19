@@ -27,7 +27,7 @@ const ICON_BUTTON =
   "flex h-8 w-8 items-center justify-center rounded-sm transition-shadow disabled:opacity-30";
 
 const TOGGLE_ACTIVE =
-  "bg-oxblood text-parchment shadow-[0_0_0_1px_rgba(201,162,39,0.6)] hover:bg-oxblood-dark";
+  "bg-oxblood text-ivory shadow-[0_0_0_1px_rgba(201,162,39,0.6)] hover:bg-oxblood-dark";
 const TOGGLE_INACTIVE = "text-ink-muted hover:bg-parchment-deep/60 hover:text-ink";
 
 /**

@@ -1,20 +1,84 @@
 @import "tailwindcss";
 /* Tailwind v4 config-en-CSS: se mantiene el `tailwind.config.js` existente
-   vía `@config` (ruta de migración más segura, soportada oficialmente) en
-   vez de reescribir toda la paleta/tema a `@theme` — así los colores no
-   cambian de fuente de verdad en esta subida. */
+   vía `@config` (ruta de migración más segura, soportada oficialmente) para
+   lo que no es color (fuentes) — la paleta se registra aquí con `@theme`
+   porque un intento de definirla en tailwind.config.js (función JS u
+   opacity-string `<alpha-value>`, los dos patrones habituales en Tailwind 3)
+   no sobrevivió al puente `@config`: generaba cero utilidades para esos
+   colores sin ningún error visible. `@theme` es el mecanismo nativo de
+   Tailwind 4 para esto y sí conserva `var(--color-x)` en el CSS generado
+   (en vez de inlinear el valor), que es lo que permite redefinir el mismo
+   nombre de variable más abajo para el tema oscuro sin tocar ninguna clase. */
 @config "../tailwind.config.js";
 
 /*
- * "Tomo del Jugador": ver DESIGN.md. Variables espejo de tailwind.config.js
- * para el CSS a medida de esta hoja (filetes, letra capital) — si cambia un
- * color en el config, cambiarlo aquí también.
+ * "Tomo del Jugador" (claro) / "Mazmorra" (oscuro) — ver DESIGN.md.
+ *
+ * `--color-ivory` es la única excepción que NO se redefine en oscuro: un
+ * blanco-hueso fijo (mismo valor en los dos temas) para texto que vive
+ * siempre sobre una superficie de acento (botones oxblood, insignias de
+ * tirada, moss...) — esas superficies no se aclaran en el tema oscuro, así
+ * que su texto tampoco debe oscurecerse con `ink`/`parchment`.
+ *
+ * `--color-abyss` tampoco se redefine: negro cálido fijo para scrims/overlays
+ * de modal (bg-abyss/40 sobre un `fixed inset-0`) — tienen que oscurecer lo
+ * que hay detrás en los dos temas, así que no pueden usar `ink` (que en
+ * oscuro pasa a ser un tono CLARO de texto). Mismo valor que el `ink` claro.
  */
-:root {
+@theme {
   --color-ink: #2a1b12;
-  --color-oxblood: #6b1620;
-  --color-gold: #a8792b;
+  --color-ink-muted: #6b5640;
   --color-parchment: #f0e4c8;
+  --color-parchment-panel: #e4d3a6;
+  --color-parchment-deep: #d8c08a;
+  --color-oxblood-light: #8b2430;
+  --color-oxblood: #6b1620;
+  --color-oxblood-dark: #4a0f16;
+  --color-gold: #a8792b;
+  --color-gold-bright: #c99a3e;
+  --color-rule: #c4af7c;
+  --color-rule-strong: #6b5640;
+  --color-moss: #3b5323;
+  --color-ivory: #f0e4c8;
+  --color-abyss: #2a1b12;
+}
+
+/* Mazmorra (oscuro): se activa si el sistema prefiere oscuro (salvo que el
+   usuario haya elegido claro a mano, data-theme="light") o si el usuario
+   eligió oscuro a mano (data-theme="dark", gane o no el sistema). Fuera del
+   bloque `@theme` a propósito: aquí solo se redefine el VALOR en tiempo de
+   ejecución de las mismas variables, no se registran tokens nuevos. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-ink: #e8d9bc;
+    --color-ink-muted: #b7a480;
+    --color-parchment: #17110a;
+    --color-parchment-panel: #241a10;
+    --color-parchment-deep: #33261a;
+    --color-oxblood-light: #c2434b;
+    --color-oxblood: #a02c33;
+    --color-oxblood-dark: #d9525c;
+    --color-gold: #d2a749;
+    --color-gold-bright: #eac873;
+    --color-rule: #4a3826;
+    --color-rule-strong: #b7a480;
+    --color-moss: #436b32;
+  }
+}
+:root[data-theme="dark"] {
+  --color-ink: #e8d9bc;
+  --color-ink-muted: #b7a480;
+  --color-parchment: #17110a;
+  --color-parchment-panel: #241a10;
+  --color-parchment-deep: #33261a;
+  --color-oxblood-light: #c2434b;
+  --color-oxblood: #a02c33;
+  --color-oxblood-dark: #d9525c;
+  --color-gold: #d2a749;
+  --color-gold-bright: #eac873;
+  --color-rule: #4a3826;
+  --color-rule-strong: #b7a480;
+  --color-moss: #436b32;
 }
 
 html {
@@ -30,6 +94,9 @@ body {
   background-color: var(--color-parchment);
   color: var(--color-ink);
   font-family: "EB Garamond", serif;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 
 /* Filete doble dorado bajo un encabezado de capítulo (ver ChapterHeading.tsx). */

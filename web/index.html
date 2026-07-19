@@ -5,6 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>D&D Manager</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Aplica el tema antes del primer pintado (mismo criterio que
+      // web/src/lib/theme.ts) para no destellar el tema equivocado un
+      // instante mientras carga React.
+      (function () {
+        try {
+          var stored = window.localStorage.getItem("theme");
+          var theme =
+            stored === "light" || stored === "dark"
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch {
+          // localStorage bloqueado (modo privado estricto, etc.) — se queda
+          // en el tema claro por defecto, sin romper la carga de la página.
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

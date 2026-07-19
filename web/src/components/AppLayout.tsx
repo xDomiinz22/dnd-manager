@@ -11,6 +11,7 @@ import { MiniPlayerBar } from "./music/MiniPlayerBar";
 import { TempQueueLauncher } from "./music/TempQueueLauncher";
 import { BrandMark } from "./ui/BrandMark";
 import { Button } from "./ui/Button";
+import { ThemeToggle } from "./ui/ThemeToggle";
 
 type MobileSheet = "chat" | "queue" | null;
 
@@ -57,6 +58,7 @@ function AppLayoutContent() {
         </nav>
         <div className="flex items-center gap-3 text-sm">
           <span className="text-ink-muted">{user?.username}</span>
+          <ThemeToggle />
           <Button
             variant="secondary"
             onClick={() => logout.mutate()}

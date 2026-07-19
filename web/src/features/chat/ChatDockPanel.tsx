@@ -347,7 +347,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
               style={{ bottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
               className="fixed inset-x-3 z-20 flex items-center gap-2 rounded-xl border border-rule-strong bg-parchment-panel px-2.5 py-2 text-left shadow-[0_4px_14px_-4px_rgba(0,0,0,0.3)]"
             >
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-oxblood text-parchment">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-oxblood text-ivory">
                 <ChatIcon className="h-3.5 w-3.5" />
               </span>
               <span className="min-w-0 flex-1">
@@ -371,7 +371,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
               onClick={() => onMobileOpenChange(true)}
               aria-label="Abrir chat"
               style={{ bottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
-              className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-parchment shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
+              className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-ivory shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
             >
               <ChatIcon className="h-5 w-5" />
             </button>
@@ -382,7 +382,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
             <div
               role="presentation"
               onClick={closeMobile}
-              className="fixed inset-0 z-40 bg-ink/40"
+              className="fixed inset-0 z-40 bg-abyss/40"
             />
             <div
               role="dialog"
@@ -433,7 +433,7 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
                 <div
                   role="presentation"
                   onClick={() => setRollCategory(null)}
-                  className="fixed inset-0 z-40 bg-ink/40"
+                  className="fixed inset-0 z-40 bg-abyss/40"
                 />
                 <div className="fixed inset-x-0 bottom-0 top-[30%] z-40 flex flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel shadow-[0_-8px_22px_-6px_rgba(0,0,0,0.35)]">
                   <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
@@ -466,7 +466,7 @@ function BattleMenu({ onSelect }: { onSelect: (category: Category) => void }) {
           key={cat}
           type="button"
           onClick={() => onSelect(cat)}
-          className="rounded-sm bg-oxblood px-2.5 py-2 text-left font-display text-xs tracking-wide text-parchment hover:bg-oxblood-light sm:px-4 sm:py-4 sm:text-sm"
+          className="rounded-sm bg-oxblood px-2.5 py-2 text-left font-display text-xs tracking-wide text-ivory hover:bg-oxblood-light sm:px-4 sm:py-4 sm:text-sm"
         >
           {CATEGORY_LABELS[cat]}
         </button>

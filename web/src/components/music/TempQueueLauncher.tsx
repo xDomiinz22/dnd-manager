@@ -61,7 +61,7 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
         >
           <QueueIcon />
           {count > 0 && (
-            <span className="rounded-full bg-oxblood-dark px-1.5 text-[0.65rem] font-semibold text-parchment">
+            <span className="rounded-full bg-oxblood-dark px-1.5 text-[0.65rem] font-semibold text-ivory">
               {count}
             </span>
           )}
@@ -100,11 +100,11 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
           onClick={() => onMobileOpenChange(true)}
           aria-label="Reproducir después"
           style={{ bottom: mobileBottom }}
-          className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-parchment shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
+          className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-ivory shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
         >
           <QueueIcon className="h-5 w-5" />
           {count > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-[0.65rem] font-bold text-parchment">
+            <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-[0.65rem] font-bold text-ivory">
               {count}
             </span>
           )}
@@ -113,7 +113,7 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
           <div
             role="presentation"
             onClick={() => onMobileOpenChange(false)}
-            className="fixed inset-0 z-40 bg-ink/40"
+            className="fixed inset-0 z-40 bg-abyss/40"
           >
             <div
               role="dialog"

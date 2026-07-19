@@ -48,7 +48,7 @@ export function MiniConfirmPopover({
           onClick={onConfirm}
           disabled={isLoading}
           aria-label="Confirmar borrado"
-          className="flex h-6 w-6 items-center justify-center rounded-sm bg-oxblood-dark text-xs text-parchment transition-colors hover:bg-oxblood disabled:opacity-50"
+          className="flex h-6 w-6 items-center justify-center rounded-sm bg-oxblood-dark text-xs text-ivory transition-colors hover:bg-oxblood disabled:opacity-50"
         >
           {isLoading ? "…" : "✓"}
         </button>

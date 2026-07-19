@@ -144,7 +144,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
       {/* Cabecera hero */}
-      <div className="mb-6 flex flex-col items-center gap-4 rounded-sm border border-rule bg-parchment-panel p-6 shadow-[inset_0_0_28px_-6px_rgba(107,22,32,0.22)] sm:flex-row sm:items-start">
+      <div className="mb-6 flex flex-col items-center gap-4 rounded-sm border border-rule bg-parchment-panel p-6 shadow-[inset_0_0_28px_-6px_rgb(from_var(--color-oxblood)_r_g_b/0.22)] sm:flex-row sm:items-start">
         <div className="flex flex-col items-center">
           <PortraitCircle url={character.portraitUrl} name={character.name} size={112} />
           <CharacterImageManager

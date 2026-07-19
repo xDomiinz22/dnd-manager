@@ -187,7 +187,7 @@ export function SwipeableRow({
             type="button"
             onClick={handleConfirmDelete}
             aria-label={deleteLabel}
-            className="flex h-full w-full items-center justify-center bg-oxblood-dark text-parchment transition-colors hover:bg-oxblood"
+            className="flex h-full w-full items-center justify-center bg-oxblood-dark text-ivory transition-colors hover:bg-oxblood"
           >
             <TrashIcon />
           </button>
@@ -200,7 +200,7 @@ export function SwipeableRow({
         // justo lo contrario de lo que hace (acción positiva, sin peligro).
         <div
           aria-hidden="true"
-          className="absolute inset-y-0 left-0 flex w-[112px] items-center bg-moss px-3 text-center text-[0.7rem] font-medium leading-tight text-parchment"
+          className="absolute inset-y-0 left-0 flex w-[112px] items-center bg-moss px-3 text-center text-[0.7rem] font-medium leading-tight text-ivory"
           style={{ opacity: Math.max(0, Math.min(1, translateX / RIGHT_ACTION_THRESHOLD)) }}
         >
           {swipeRightLabel}

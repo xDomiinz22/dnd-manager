@@ -97,7 +97,7 @@ function CharacterImageModal({
     <div
       role="presentation"
       onClick={onClose}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-abyss/40 p-4 backdrop-blur-sm"
     >
       <div
         role="dialog"
@@ -147,23 +147,21 @@ function CharacterImageModal({
                         type="button"
                         onClick={() => setConfirmingId(img.id)}
                         aria-label="Borrar imagen"
-                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-parchment opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-ivory opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
                       >
                         ×
                       </button>
                     )}
                     {confirmingId === img.id && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-sm bg-ink/80 p-1 text-center">
-                        <span className="text-[0.65rem] leading-tight text-parchment">
-                          ¿Borrar?
-                        </span>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 rounded-sm bg-abyss/80 p-1 text-center">
+                        <span className="text-[0.65rem] leading-tight text-ivory">¿Borrar?</span>
                         <div className="flex gap-1">
                           <button
                             type="button"
                             onClick={() => handleDelete(img.id)}
                             disabled={deleteImage.isPending}
                             aria-label="Confirmar borrado"
-                            className="flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-parchment hover:bg-oxblood disabled:opacity-50"
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-ivory hover:bg-oxblood disabled:opacity-50"
                           >
                             ✓
                           </button>

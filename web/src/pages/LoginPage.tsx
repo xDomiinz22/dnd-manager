@@ -27,7 +27,7 @@ export function LoginPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-parchment text-ink">
-      <div className="w-full max-w-sm rounded-sm border border-rule bg-parchment-panel p-8 shadow-[inset_0_0_28px_-6px_rgba(107,22,32,0.22)]">
+      <div className="w-full max-w-sm rounded-sm border border-rule bg-parchment-panel p-8 shadow-[inset_0_0_28px_-6px_rgb(from_var(--color-oxblood)_r_g_b/0.22)]">
         <h1 className="mb-1 font-display text-2xl tracking-wide text-oxblood">Iniciar sesión</h1>
         <div className="chapter-rule mb-6" />
 

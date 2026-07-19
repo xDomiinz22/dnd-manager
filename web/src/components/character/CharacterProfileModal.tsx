@@ -38,7 +38,7 @@ export function CharacterProfileModal() {
     <div
       role="presentation"
       onClick={close}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-ink/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-abyss/40 p-4 backdrop-blur-sm"
     >
       <div
         role="dialog"

@@ -457,7 +457,7 @@ export function GroupMapPage() {
                     </TransformComponent>
                   </TransformWrapper>
                   {(isDraggingFile || replaceMapImage.isPending) && (
-                    <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-ink/50 text-center font-display text-lg tracking-wide text-parchment">
+                    <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-abyss/50 text-center font-display text-lg tracking-wide text-ivory">
                       {replaceMapImage.isPending
                         ? "Subiendo..."
                         : "Suelta la imagen para reemplazar el mapa"}

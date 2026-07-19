@@ -20,11 +20,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 // para el hover y el estado pulsado (:active).
 const VARIANT_CLASSES: Record<Variant, string> = {
   primary:
-    "rounded-sm border border-gold/60 bg-oxblood px-3 py-2 text-sm font-semibold uppercase tracking-wide text-parchment hover:bg-oxblood-dark active:bg-oxblood-dark disabled:opacity-50",
+    "rounded-sm border border-gold/60 bg-oxblood px-3 py-2 text-sm font-semibold uppercase tracking-wide text-ivory hover:bg-oxblood-dark active:bg-oxblood-dark disabled:opacity-50",
   secondary:
     "rounded-sm border border-oxblood px-3 py-2 text-sm font-semibold uppercase tracking-wide text-oxblood hover:border-rule-strong hover:bg-parchment-deep hover:text-ink active:border-rule-strong active:bg-parchment-deep active:text-ink disabled:opacity-50",
   danger:
-    "rounded-sm border border-oxblood-dark px-3 py-2 text-sm font-semibold text-oxblood-dark hover:bg-oxblood-dark hover:text-parchment active:bg-oxblood-dark active:text-parchment disabled:opacity-50",
+    "rounded-sm border border-oxblood-dark px-3 py-2 text-sm font-semibold text-oxblood-dark hover:bg-oxblood-dark hover:text-ivory active:bg-oxblood-dark active:text-ivory disabled:opacity-50",
   ghost:
     "rounded-sm border border-rule px-3 py-2 text-sm font-semibold text-ink hover:border-rule-strong hover:bg-parchment-deep active:border-rule-strong active:bg-parchment-deep disabled:opacity-50",
 };

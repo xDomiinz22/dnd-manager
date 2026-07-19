@@ -11,7 +11,7 @@ export function HomePage() {
       <p className="mb-6 text-ink-muted">Bienvenido a D&D Manager.</p>
       <Link
         to="/groups"
-        className="inline-block rounded-sm border border-gold/60 bg-oxblood px-4 py-2 font-semibold uppercase tracking-wide text-parchment hover:bg-oxblood-dark"
+        className="inline-block rounded-sm border border-gold/60 bg-oxblood px-4 py-2 font-semibold uppercase tracking-wide text-ivory hover:bg-oxblood-dark"
       >
         Ver tus grupos
       </Link>

@@ -532,14 +532,16 @@ function TrackRow({
           // `SwipeableRow` — un fondo translúcido deja que se transparenten
           // en reposo (bug real reportado: el cubo de borrar se veía con solo
           // pasar el ratón por encima, porque el hover anterior usaba
-          // `bg-parchment-deep/40`). Los tonos de abajo son el resultado ya
-          // mezclado (mismo aspecto visual que antes, pero sólido).
+          // `bg-parchment-deep/40`). `color-mix()` mezcla en el momento los
+          // colores ya resueltos (los dos temas usan variables CSS), así que
+          // el resultado sigue siendo opaco en los dos sin tener que
+          // precalcular un hex distinto por tema.
           contentClassName={`flex items-center justify-between gap-2 px-2 py-1 ${
             isDragging
               ? "z-10 bg-parchment-panel shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)]"
               : isCurrent
-                ? "bg-[#d8c099] shadow-[inset_0_0_0_1px_rgba(107,22,32,0.35)]"
-                : "bg-parchment-panel hover:bg-[#dfcb9b]"
+                ? "bg-[color-mix(in_srgb,var(--color-oxblood)_10%,var(--color-parchment-panel))] shadow-[inset_0_0_0_1px_rgb(from_var(--color-oxblood)_r_g_b/0.35)]"
+                : "bg-parchment-panel hover:bg-[color-mix(in_srgb,var(--color-parchment-deep)_40%,var(--color-parchment-panel))]"
           }`}
         >
           {canReorder && (
