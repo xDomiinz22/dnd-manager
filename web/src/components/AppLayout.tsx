@@ -37,6 +37,15 @@ function AppLayoutContent() {
   // "abiertas" a la vez tapándose entre sí sin más salida que adivinar cuál
   // backdrop hay que tocar.
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheet>(null);
+  // Ancho real del panel de chat, para reservarle hueco con padding-right.
+  // Estado de React (no una variable CSS mutada a mano vía JS) a propósito:
+  // en este entorno, un `transition` sobre una propiedad cuyo valor viene de
+  // una custom property tocada con `style.setProperty()` se queda pillado en
+  // el valor inicial y nunca llega a animar (mismo fallo de fondo que el que
+  // obligó a cambiar `translate-x-*` por `transform:translateX()` en las
+  // demás animaciones de esta pasada) — con estado de React, el valor nuevo
+  // llega como un re-render normal y la transición sí interpola.
+  const [chatDockWidth, setChatDockWidth] = useState(0);
 
   return (
     <div className="min-h-screen bg-parchment text-ink">
@@ -88,15 +97,23 @@ function AppLayoutContent() {
       {/* padding-bottom = altura real de la mini-barra (0 si no suena nada,
           ver --player-bar-height en MiniPlayerBar) + un margen fijo.
           padding-right = ancho real del panel de chat en escritorio (0 si
-          está colapsado/cerrado o no aplica, ver --chat-dock-width en
-          ChatDockPanel) — sin esto, el panel fijo a la derecha se montaba
-          encima del contenido de la página en vez de dejarle hueco (más
-          visible en el mapa, cuyo lienzo y controles de zoom llegan hasta
-          el borde derecho). */}
+          está colapsado/cerrado o no aplica) — sin esto, el panel fijo a la
+          derecha se montaba encima del contenido de la página en vez de
+          dejarle hueco (más visible en el mapa, cuyo lienzo y controles de
+          zoom llegan hasta el borde derecho). La transición es a propósito:
+          mismos 200ms que la propia animación de deslizado del panel (ver
+          ChatDockPanel), para que el contenido se desplace en el mismo
+          tiempo que tarda el chat en abrirse/cerrarse, no de golpe. Animar
+          padding SÍ provoca layout/reflow (no es gratis como transform),
+          pero aquí es intencional: necesitamos que el contenido de la
+          página reserve hueco de verdad, no solo desplazar un elemento
+          visualmente — y solo ocurre en la acción puntual de abrir/cerrar
+          el chat, no en bucle. */}
       <div
         style={{
           paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)",
-          paddingRight: "var(--chat-dock-width, 0px)",
+          paddingRight: `${chatDockWidth}px`,
+          transition: "padding-right 200ms ease-out",
         }}
       >
         <Outlet />
@@ -110,6 +127,7 @@ function AppLayoutContent() {
       <ChatDockPanel
         mobileOpen={activeMobileSheet === "chat"}
         onMobileOpenChange={(open) => setActiveMobileSheet(open ? "chat" : null)}
+        onDockWidthChange={setChatDockWidth}
       />
     </div>
   );

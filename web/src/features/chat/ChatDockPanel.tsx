@@ -19,7 +19,6 @@ import { ConfirmPanel } from "../../components/ui/ConfirmPanel";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
 
 const COLLAPSED_STORAGE_KEY = "chatDock.collapsed";
-const CHAT_DOCK_WIDTH_VAR = "--chat-dock-width";
 const SHEET_TRANSITION_MS = 200;
 // Marcas diacríticas combinantes (acentos sueltos tras normalize("NFD")).
 const DIACRITICS_REGEX = /[̀-ͯ]/g;
@@ -142,9 +141,19 @@ function ChatIcon({ className = "h-4 w-4" }: { className?: string }) {
 interface ChatDockPanelProps {
   mobileOpen: boolean;
   onMobileOpenChange: (open: boolean) => void;
+  /** Ancho real del panel (0 si colapsado/no aplica) — lo consume AppLayout
+   * para reservarle hueco. Viene por prop (estado de React), no por una
+   * variable CSS mutada a mano, porque un `transition` sobre una propiedad
+   * cuyo valor depende de una custom property tocada vía `style.setProperty`
+   * no anima en este entorno (se queda pillada en el valor inicial). */
+  onDockWidthChange: (width: number) => void;
 }
 
-export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelProps) {
+export function ChatDockPanel({
+  mobileOpen,
+  onMobileOpenChange,
+  onDockWidthChange,
+}: ChatDockPanelProps) {
   const groupId = useCurrentGroupId();
   const gid = groupId ?? "";
   const { user } = useAuth();
@@ -187,32 +196,32 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
     window.localStorage.setItem(COLLAPSED_STORAGE_KEY, collapsed ? "1" : "0");
   }, [collapsed]);
 
-  // Publica el ancho real del panel en una variable CSS: el panel es `fixed
-  // right-0` y por su cuenta no reservaba hueco en ninguna página, así que
-  // se montaba encima de lo que hubiera ahí (más visible en el mapa, cuyo
-  // lienzo y controles de zoom llegan hasta el borde derecho). Mismo patrón
-  // que --player-bar-height en MiniPlayerBar. En móvil (o colapsado, o sin
-  // grupo activo) el panel real no está en pantalla, así que el ref queda a
-  // null y el ancho publicado es 0.
+  // Avisa a AppLayout del ancho real del panel para que le reserve hueco: el
+  // panel es `fixed right-0` y por su cuenta no reservaba nada en ninguna
+  // página, así que se montaba encima de lo que hubiera ahí (más visible en
+  // el mapa, cuyo lienzo y controles de zoom llegan hasta el borde derecho).
+  // En móvil (o colapsado, o sin grupo activo) el ancho avisado es 0 — el
+  // panel ahora se queda SIEMPRE montado (para poder animar la entrada/
+  // salida, ver más abajo), así que `collapsed` hay que comprobarlo
+  // explícitamente: `panelRef.current` ya no es null cuando está colapsado,
+  // solo desplazado fuera de la pantalla.
   const panelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = panelRef.current;
-    if (!el) {
-      document.documentElement.style.setProperty(CHAT_DOCK_WIDTH_VAR, "0px");
+    if (!el || collapsed) {
+      onDockWidthChange(0);
       return;
     }
-    const setWidth = (width: number) =>
-      document.documentElement.style.setProperty(CHAT_DOCK_WIDTH_VAR, `${width}px`);
-    setWidth(el.offsetWidth);
+    onDockWidthChange(el.offsetWidth);
     const observer = new ResizeObserver(([entry]) =>
-      setWidth(entry?.contentRect.width ?? el.offsetWidth),
+      onDockWidthChange(entry?.contentRect.width ?? el.offsetWidth),
     );
     observer.observe(el);
     return () => {
       observer.disconnect();
-      document.documentElement.style.setProperty(CHAT_DOCK_WIDTH_VAR, "0px");
+      onDockWidthChange(0);
     };
-  }, [collapsed, groupId, group]);
+  }, [collapsed, groupId, group, onDockWidthChange]);
 
   // Hoja móvil y bandeja de tiradas: montadas siempre que estén "de camino"
   // a abrirse o cerrarse (no solo mientras open === true), para que la
