@@ -5,8 +5,11 @@ import {
   useDeleteCharacterImage,
   useUploadCharacterImage,
 } from "../../features/characters/hooks";
+import { useModalTransition } from "../../lib/useMountTransition";
 import { Button } from "../ui/Button";
 import { toErrorMessage, useToast } from "../ui/Toast";
+
+const MODAL_TRANSITION_MS = 150;
 
 interface CharacterImageManagerProps {
   characterId: string;
@@ -51,10 +54,11 @@ function CharacterImageModal({
   const changePortrait = useChangePortrait(characterId);
   const deleteImage = useDeleteCharacterImage(characterId);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const { visible, handleClose: close } = useModalTransition(onClose, MODAL_TRANSITION_MS);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") close();
     }
     document.addEventListener("keydown", onKeyDown);
     const previousOverflow = document.body.style.overflow;
@@ -63,7 +67,7 @@ function CharacterImageModal({
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [onClose]);
+  }, [close]);
 
   function handleFile(file: File) {
     uploadImage.mutate(file, {
@@ -96,19 +100,23 @@ function CharacterImageModal({
   return (
     <div
       role="presentation"
-      onClick={onClose}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-abyss/40 p-4 backdrop-blur-sm"
+      onClick={close}
+      className={`fixed inset-0 z-40 flex items-center justify-center bg-abyss/40 p-4 backdrop-blur-sm transition-opacity duration-150 ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Imágenes del personaje"
         onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[80vh] w-full max-w-sm flex-col rounded-sm border border-rule/70 bg-parchment-panel/80 p-6 shadow-2xl backdrop-blur-xl"
+        className={`relative flex max-h-[80vh] w-full max-w-sm flex-col rounded-sm border border-rule/70 bg-parchment-panel/80 p-6 shadow-2xl backdrop-blur-xl transition-[opacity,transform] duration-150 ${
+          visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+        }`}
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={close}
           aria-label="Cerrar"
           className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
         >

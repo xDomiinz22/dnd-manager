@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useAmbientPlayerContext } from "../../features/music/AmbientPlayerContext";
 import { useCurrentGroupId } from "../../features/chat/useCurrentGroupId";
+import { useMountTransition } from "../../lib/useMountTransition";
 import { TempQueuePanel } from "./TempQueuePanel";
+
+const SHEET_TRANSITION_MS = 200;
 
 function QueueIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -37,8 +40,14 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
   const player = useAmbientPlayerContext();
   const groupId = useCurrentGroupId();
   const [desktopOpen, setDesktopOpen] = useState(false);
+  const mobileSheet = useMountTransition(mobileOpen, SHEET_TRANSITION_MS);
 
-  if (player.tempQueue.length === 0 && !desktopOpen && !mobileOpen) return null;
+  // `mobileSheet.shouldRender` se comprueba aparte de `mobileOpen`: si se
+  // vacía la cola justo al cerrar la hoja móvil, este early return no debe
+  // desmontarlo todo a media transición de salida.
+  if (player.tempQueue.length === 0 && !desktopOpen && !mobileOpen && !mobileSheet.shouldRender) {
+    return null;
+  }
 
   const count = player.tempQueue.length;
   // El FAB del chat (ver ChatDockPanel) ocupa la esquina inferior derecha en
@@ -68,7 +77,7 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
         </button>
         <div
           className={`fixed right-0 top-0 z-40 h-full w-80 max-w-[85vw] border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
-            desktopOpen ? "translate-x-0" : "translate-x-full"
+            desktopOpen ? "[transform:translateX(0)]" : "[transform:translateX(100%)]"
           }`}
         >
           <div
@@ -109,18 +118,22 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
             </span>
           )}
         </button>
-        {mobileOpen && (
+        {mobileSheet.shouldRender && (
           <div
             role="presentation"
             onClick={() => onMobileOpenChange(false)}
-            className="fixed inset-0 z-40 bg-abyss/40"
+            className={`fixed inset-0 z-40 bg-abyss/40 transition-opacity duration-200 ${
+              mobileSheet.visible ? "opacity-100" : "opacity-0"
+            }`}
           >
             <div
               role="dialog"
               aria-modal="true"
               aria-label="Reproducir después"
               onClick={(e) => e.stopPropagation()}
-              className="absolute inset-x-0 bottom-0 max-h-[75vh] overflow-y-auto rounded-t-lg border-t border-rule bg-parchment-panel p-4"
+              className={`absolute inset-x-0 bottom-0 max-h-[75vh] overflow-y-auto rounded-t-lg border-t border-rule bg-parchment-panel p-4 transition-transform duration-200 ${
+                mobileSheet.visible ? "[transform:translateY(0)]" : "[transform:translateY(100%)]"
+              }`}
             >
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="font-display text-sm tracking-wide text-oxblood">

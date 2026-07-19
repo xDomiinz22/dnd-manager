@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -588,6 +588,11 @@ function MapCreateForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [continent, setContinent] = useState("");
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -606,7 +611,12 @@ function MapCreateForm({
   }
 
   return (
-    <div ref={formRef}>
+    <div
+      ref={formRef}
+      className={`transition-[opacity,transform] duration-150 ease-out ${
+        visible ? "[transform:translateY(0)] opacity-100" : "[transform:translateY(-4px)] opacity-0"
+      }`}
+    >
       <Card>
         <input
           ref={fileInputRef}
@@ -669,6 +679,11 @@ function MapEditForm({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
   useCloseOnOutsideClick(formRef, onCancel);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -692,7 +707,12 @@ function MapEditForm({
   }
 
   return (
-    <div ref={formRef}>
+    <div
+      ref={formRef}
+      className={`transition-[opacity,transform] duration-150 ease-out ${
+        visible ? "[transform:translateY(0)] opacity-100" : "[transform:translateY(-4px)] opacity-0"
+      }`}
+    >
       <Card as="form" onSubmit={handleSave} className="mb-4">
         <TextField label="Título" value={title} onChange={(e) => setTitle(e.target.value)} />
         {!map.isWorld && (
@@ -866,6 +886,11 @@ function PinForm({
   const updatePin = useUpdateMapPin(groupId);
   const formRef = useRef<HTMLDivElement>(null);
   useCloseOnOutsideClick(formRef, onCancel);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
   const linkableMaps = maps.filter((m) => m.id !== mapId);
   const {
     register,
@@ -917,7 +942,12 @@ function PinForm({
   const isPending = createPin.isPending || updatePin.isPending;
 
   return (
-    <div ref={formRef}>
+    <div
+      ref={formRef}
+      className={`transition-[opacity,transform] duration-150 ease-out ${
+        visible ? "[transform:translateY(0)] opacity-100" : "[transform:translateY(-4px)] opacity-0"
+      }`}
+    >
       <Card as="form" onSubmit={handleSubmit(onSubmit)} noValidate className="mt-4">
         <TextField label="Título" error={errors.title?.message} {...register("title")} />
         <SelectField label="Enlazar a página del diario (opcional)" {...register("journalPageId")}>

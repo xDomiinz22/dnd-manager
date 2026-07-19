@@ -110,8 +110,12 @@ function ContinentSection({
         </button>
         <span className="truncate">{label}</span>
       </div>
-      {open && (
-        <ul className="ml-2 border-l border-rule pl-2">
+      <div
+        className={`grid transition-[grid-template-rows] duration-150 ease-out ${
+          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        }`}
+      >
+        <ul className="ml-2 overflow-hidden border-l border-rule pl-2">
           {maps.map((map) => (
             <li key={map.id}>
               <button
@@ -128,7 +132,7 @@ function ContinentSection({
             </li>
           ))}
         </ul>
-      )}
+      </div>
     </li>
   );
 }

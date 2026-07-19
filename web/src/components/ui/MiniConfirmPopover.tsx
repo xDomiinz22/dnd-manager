@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCloseOnOutsideClick } from "../../lib/useCloseOnOutsideClick";
 
 interface MiniConfirmPopoverProps {
@@ -24,13 +24,25 @@ export function MiniConfirmPopover({
 }: MiniConfirmPopoverProps) {
   const ref = useRef<HTMLDivElement>(null);
   useCloseOnOutsideClick(ref, onCancel);
+  // Solo entrada animada (fade + un pelín de escala) — el cierre lo decide
+  // el padre desmontando este nodo (click fuera/Escape/confirmar), y para
+  // algo tan pequeño y anclado no compensa la complejidad de retrasar ese
+  // desmontaje para animar también la salida (sí se hace en modales más
+  // grandes, ver useModalTransition).
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   return (
     <div
       ref={ref}
       role="dialog"
       aria-modal="true"
-      className={`absolute right-0 top-full z-40 mt-1 w-max max-w-[220px] rounded-sm border border-rule bg-parchment-panel p-2 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)] ${className}`}
+      className={`absolute right-0 top-full z-40 mt-1 w-max max-w-[220px] origin-top-right rounded-sm border border-rule bg-parchment-panel p-2 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)] transition-[opacity,transform] duration-100 ${
+        visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+      } ${className}`}
     >
       <p className="mb-2 text-xs text-oxblood">{message}</p>
       <div className="flex justify-end gap-1.5">

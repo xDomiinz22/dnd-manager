@@ -10,6 +10,7 @@ import {
   useStartSession,
 } from "./hooks";
 import { useCurrentGroupId } from "./useCurrentGroupId";
+import { useMountTransition } from "../../lib/useMountTransition";
 import { CharacterRollMenu, CATEGORY_LABELS, type Category } from "./CharacterRollMenu";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { Button } from "../../components/ui/Button";
@@ -19,6 +20,7 @@ import { toErrorMessage, useToast } from "../../components/ui/Toast";
 
 const COLLAPSED_STORAGE_KEY = "chatDock.collapsed";
 const CHAT_DOCK_WIDTH_VAR = "--chat-dock-width";
+const SHEET_TRANSITION_MS = 200;
 // Marcas diacríticas combinantes (acentos sueltos tras normalize("NFD")).
 const DIACRITICS_REGEX = /[̀-ͯ]/g;
 
@@ -212,6 +214,15 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
     };
   }, [collapsed, groupId, group]);
 
+  // Hoja móvil y bandeja de tiradas: montadas siempre que estén "de camino"
+  // a abrirse o cerrarse (no solo mientras open === true), para que la
+  // transición de salida (deslizar hacia abajo + atenuar el scrim) llegue a
+  // verse en vez de que React desmonte el nodo en el acto al cerrar. Antes
+  // del `return null` de abajo a propósito — los hooks no pueden ser
+  // condicionales.
+  const mobileSheet = useMountTransition(mobileOpen, SHEET_TRANSITION_MS);
+  const rollTray = useMountTransition(!!(rollCategory && session), SHEET_TRANSITION_MS);
+
   if (!groupId || !group) return null;
 
   const isMaster = group.role === "MASTER";
@@ -294,46 +305,53 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
 
   return (
     <>
-      {/* Escritorio: panel fijo a la derecha, abierto por defecto */}
+      {/* Escritorio: panel fijo a la derecha, abierto por defecto. La
+          pestaña colapsada y el panel están SIEMPRE montados (nunca se
+          desmontan entre sí) para poder cruzar opacidad/transform en vez de
+          que uno aparezca de golpe en cuanto el otro desaparece. */}
       <div className="hidden sm:block">
-        {collapsed ? (
-          <button
-            type="button"
-            onClick={() => setCollapsed(false)}
-            aria-label="Abrir chat"
-            className="fixed right-0 top-[35%] z-20 flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-sm border border-r-0 border-rule bg-parchment-panel px-2 py-3 text-ink-muted shadow-[0_2px_10px_-2px_rgba(0,0,0,0.2)] hover:bg-parchment-deep hover:text-ink"
-          >
-            <ChatIcon />
-            {session && (
-              <span className="h-1.5 w-1.5 rounded-full bg-oxblood" aria-label="Sesión activa" />
-            )}
-          </button>
-        ) : (
-          <div
-            ref={panelRef}
-            className="fixed right-0 top-0 z-[25] flex h-full w-[clamp(380px,28vw,560px)] max-w-[90vw] flex-col border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)]"
-          >
-            <div className="flex items-center justify-between border-b border-rule px-5 py-4">
-              <h2 className="truncate font-display text-base tracking-wide text-oxblood">
-                Chat — {group.name}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setCollapsed(true)}
-                aria-label="Plegar chat"
-                className="text-ink-muted hover:text-ink"
-              >
-                ×
-              </button>
-            </div>
-            <div
-              className="flex min-h-0 flex-1 flex-col px-4 py-3"
-              style={{ paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          aria-label="Abrir chat"
+          aria-hidden={!collapsed}
+          tabIndex={collapsed ? 0 : -1}
+          className={`fixed right-0 top-[35%] z-20 flex -translate-y-1/2 flex-col items-center gap-1 rounded-l-sm border border-r-0 border-rule bg-parchment-panel px-2 py-3 text-ink-muted shadow-[0_2px_10px_-2px_rgba(0,0,0,0.2)] transition-opacity duration-200 hover:bg-parchment-deep hover:text-ink ${
+            collapsed ? "opacity-100" : "pointer-events-none opacity-0"
+          }`}
+        >
+          <ChatIcon />
+          {session && (
+            <span className="h-1.5 w-1.5 rounded-full bg-oxblood" aria-label="Sesión activa" />
+          )}
+        </button>
+        <div
+          ref={panelRef}
+          aria-hidden={collapsed}
+          className={`fixed right-0 top-0 z-[25] flex h-full w-[clamp(380px,28vw,560px)] max-w-[90vw] flex-col border-l border-rule bg-parchment-panel shadow-[-4px_0_16px_-4px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
+            collapsed ? "[transform:translateX(100%)]" : "[transform:translateX(0)]"
+          }`}
+        >
+          <div className="flex items-center justify-between border-b border-rule px-5 py-4">
+            <h2 className="truncate font-display text-base tracking-wide text-oxblood">
+              Chat — {group.name}
+            </h2>
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              aria-label="Plegar chat"
+              className="text-ink-muted hover:text-ink"
             >
-              {desktopContent}
-            </div>
+              ×
+            </button>
           </div>
-        )}
+          <div
+            className="flex min-h-0 flex-1 flex-col px-4 py-3"
+            style={{ paddingBottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
+          >
+            {desktopContent}
+          </div>
+        </div>
       </div>
 
       {/* Móvil: barra recogida por defecto + hoja a media pantalla + bandeja de tiradas apilada */}
@@ -377,18 +395,22 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
             </button>
           ))}
 
-        {mobileOpen && (
+        {mobileSheet.shouldRender && (
           <>
             <div
               role="presentation"
               onClick={closeMobile}
-              className="fixed inset-0 z-40 bg-abyss/40"
+              className={`fixed inset-0 z-40 bg-abyss/40 transition-opacity duration-200 ${
+                mobileSheet.visible ? "opacity-100" : "opacity-0"
+              }`}
             />
             <div
               role="dialog"
               aria-modal="true"
               aria-label={`Chat — ${group.name}`}
-              className="fixed inset-x-0 bottom-0 z-40 flex max-h-[50vh] flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel"
+              className={`fixed inset-x-0 bottom-0 z-40 flex max-h-[50vh] flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel transition-transform duration-200 ${
+                mobileSheet.visible ? "[transform:translateY(0)]" : "[transform:translateY(100%)]"
+              }`}
             >
               <div className="flex items-center justify-between border-b border-rule px-4 py-3">
                 <h2 className="truncate font-display text-sm tracking-wide text-oxblood">
@@ -428,14 +450,20 @@ export function ChatDockPanel({ mobileOpen, onMobileOpenChange }: ChatDockPanelP
               </div>
             </div>
 
-            {rollCategory && session && (
+            {rollTray.shouldRender && (
               <>
                 <div
                   role="presentation"
                   onClick={() => setRollCategory(null)}
-                  className="fixed inset-0 z-40 bg-abyss/40"
+                  className={`fixed inset-0 z-40 bg-abyss/40 transition-opacity duration-200 ${
+                    rollTray.visible ? "opacity-100" : "opacity-0"
+                  }`}
                 />
-                <div className="fixed inset-x-0 bottom-0 top-[30%] z-40 flex flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel shadow-[0_-8px_22px_-6px_rgba(0,0,0,0.35)]">
+                <div
+                  className={`fixed inset-x-0 bottom-0 top-[30%] z-40 flex flex-col overflow-hidden rounded-t-lg border-t border-rule bg-parchment-panel shadow-[0_-8px_22px_-6px_rgba(0,0,0,0.35)] transition-transform duration-200 ${
+                    rollTray.visible ? "[transform:translateY(0)]" : "[transform:translateY(100%)]"
+                  }`}
+                >
                   <div className="flex min-h-0 flex-1 flex-col px-4 py-3">
                     <CharacterRollMenu
                       characters={group.characters}

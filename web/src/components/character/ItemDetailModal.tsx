@@ -1,4 +1,7 @@
 import { useEffect } from "react";
+import { useModalTransition } from "../../lib/useMountTransition";
+
+const MODAL_TRANSITION_MS = 150;
 
 interface ItemDetailModalProps {
   title: string;
@@ -12,9 +15,11 @@ interface ItemDetailModalProps {
  * desplegable `<details>/<summary>` nativo que usaba antes cada pestaña.
  */
 export function ItemDetailModal({ title, descriptionHtml, onClose }: ItemDetailModalProps) {
+  const { visible, handleClose } = useModalTransition(onClose, MODAL_TRANSITION_MS);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     }
     document.addEventListener("keydown", onKeyDown);
     const previousOverflow = document.body.style.overflow;
@@ -23,24 +28,28 @@ export function ItemDetailModal({ title, descriptionHtml, onClose }: ItemDetailM
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [onClose]);
+  }, [handleClose]);
 
   return (
     <div
       role="presentation"
-      onClick={onClose}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-abyss/40 p-4 backdrop-blur-sm"
+      onClick={handleClose}
+      className={`fixed inset-0 z-40 flex items-center justify-center bg-abyss/40 p-4 backdrop-blur-sm transition-opacity duration-150 ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="relative max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-sm border border-rule/70 bg-parchment-panel/60 p-6 shadow-2xl backdrop-blur-xl sm:p-8"
+        className={`relative max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-sm border border-rule/70 bg-parchment-panel/60 p-6 shadow-2xl backdrop-blur-xl transition-[opacity,transform] duration-150 sm:p-8 ${
+          visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+        }`}
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           aria-label="Cerrar"
           className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
         >

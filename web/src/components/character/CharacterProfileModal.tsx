@@ -1,20 +1,23 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCharacter } from "../../features/characters/hooks";
+import { useModalTransition } from "../../lib/useMountTransition";
 import { PortraitCircle } from "./PortraitCircle";
+
+const MODAL_TRANSITION_MS = 150;
 
 export function CharacterProfileModal() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, isLoading } = useCharacter(id!);
-
-  function close() {
-    navigate(-1);
-  }
+  const { visible, handleClose: close } = useModalTransition(
+    () => navigate(-1),
+    MODAL_TRANSITION_MS,
+  );
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") navigate(-1);
+      if (e.key === "Escape") close();
     }
     document.addEventListener("keydown", onKeyDown);
     const previousOverflow = document.body.style.overflow;
@@ -23,7 +26,7 @@ export function CharacterProfileModal() {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [navigate]);
+  }, [close]);
 
   useEffect(() => {
     // Si resulta tener acceso FULL (p. ej. cambió tu rol mientras el modal
@@ -38,14 +41,18 @@ export function CharacterProfileModal() {
     <div
       role="presentation"
       onClick={close}
-      className="fixed inset-0 z-40 flex items-center justify-center bg-abyss/40 p-4 backdrop-blur-sm"
+      className={`fixed inset-0 z-40 flex items-center justify-center bg-abyss/40 p-4 backdrop-blur-sm transition-opacity duration-150 ${
+        visible ? "opacity-100" : "opacity-0"
+      }`}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={data ? `Perfil de ${data.character.name}` : "Perfil de personaje"}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-sm rounded-sm border border-rule/70 bg-parchment-panel/60 p-8 text-center shadow-2xl backdrop-blur-xl sm:max-w-md sm:p-10"
+        className={`relative w-full max-w-sm rounded-sm border border-rule/70 bg-parchment-panel/60 p-8 text-center shadow-2xl backdrop-blur-xl transition-[opacity,transform] duration-150 sm:max-w-md sm:p-10 ${
+          visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
+        }`}
       >
         <button
           type="button"

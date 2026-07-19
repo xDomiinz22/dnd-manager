@@ -460,8 +460,11 @@ function MemberMenu({
       </button>
       <div
         role="menu"
-        className={`absolute right-0 top-full z-40 mt-1 w-56 rounded-sm border border-rule bg-parchment-panel p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)] ${
-          visible ? "block" : "hidden"
+        aria-hidden={!visible}
+        className={`absolute right-0 top-full z-40 mt-1 w-56 origin-top-right rounded-sm border border-rule bg-parchment-panel p-1 shadow-[0_4px_16px_-4px_rgba(0,0,0,0.3)] transition-[opacity,transform] duration-100 ${
+          visible
+            ? "pointer-events-auto scale-100 opacity-100"
+            : "pointer-events-none scale-95 opacity-0"
         }`}
       >
         {isMaster && (

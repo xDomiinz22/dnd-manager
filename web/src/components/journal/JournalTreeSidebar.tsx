@@ -133,18 +133,24 @@ function TreeNode({
           {node.title}
         </button>
       </div>
-      {hasChildren && open && (
-        <ul>
-          {node.children.map((child) => (
-            <TreeNode
-              key={child.id}
-              node={child}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              depth={depth + 1}
-            />
-          ))}
-        </ul>
+      {hasChildren && (
+        <div
+          className={`grid transition-[grid-template-rows] duration-150 ease-out ${
+            open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+        >
+          <ul className="overflow-hidden">
+            {node.children.map((child) => (
+              <TreeNode
+                key={child.id}
+                node={child}
+                selectedId={selectedId}
+                onSelect={onSelect}
+                depth={depth + 1}
+              />
+            ))}
+          </ul>
+        </div>
       )}
     </li>
   );
