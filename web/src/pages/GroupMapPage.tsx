@@ -928,17 +928,21 @@ function PinForm({
             </option>
           ))}
         </SelectField>
-        {linkableMaps.length > 0 && (
-          <SelectField label="Enlazar a otro mapa (opcional)" {...register("linkedMapId")}>
-            <option value="">Ninguno</option>
-            {linkableMaps.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.title}
-                {m.continent ? ` (${m.continent})` : ""}
-              </option>
-            ))}
-          </SelectField>
-        )}
+        <SelectField
+          label="Enlazar a otro mapa (opcional)"
+          disabled={linkableMaps.length === 0}
+          {...register("linkedMapId")}
+        >
+          <option value="">
+            {linkableMaps.length === 0 ? "No hay otro mapa todavía" : "Ninguno"}
+          </option>
+          {linkableMaps.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.title}
+              {m.continent ? ` (${m.continent})` : ""}
+            </option>
+          ))}
+        </SelectField>
         <div className="flex gap-2">
           <Button type="submit" isLoading={isPending} loadingText="Guardando...">
             {initial ? "Guardar cambios" : "Crear pin"}
