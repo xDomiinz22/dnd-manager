@@ -12,6 +12,7 @@ import {
 import { useCurrentGroupId } from "./useCurrentGroupId";
 import { useMountTransition } from "../../lib/useMountTransition";
 import { CharacterRollMenu, CATEGORY_LABELS, type Category } from "./CharacterRollMenu";
+import { CombatPanel } from "../combat/CombatPanel";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
@@ -305,6 +306,18 @@ export function ChatDockPanel({
         onCancelConfirmEnd={() => setConfirmingEnd(false)}
         isEnding={endSession.isPending}
         onDownload={handleDownload}
+        combatPanel={
+          !confirmingEnd && (
+            <CombatPanel
+              groupId={gid}
+              isMaster={isMaster}
+              currentUserId={user?.id ?? ""}
+              diceThemeColor={group.diceThemeColor}
+              sessionActive={!!session}
+              characters={group.characters}
+            />
+          )
+        }
         bottomMenu={session && !confirmingEnd && <BattleMenu onSelect={setRollCategory} />}
       />
     );
@@ -452,6 +465,18 @@ export function ChatDockPanel({
                   onCancelConfirmEnd={() => setConfirmingEnd(false)}
                   isEnding={endSession.isPending}
                   onDownload={handleDownload}
+                  combatPanel={
+                    !confirmingEnd && (
+                      <CombatPanel
+                        groupId={gid}
+                        isMaster={isMaster}
+                        currentUserId={user?.id ?? ""}
+                        diceThemeColor={group.diceThemeColor}
+                        sessionActive={!!session}
+                        characters={group.characters}
+                      />
+                    )
+                  }
                   bottomMenu={
                     session && !confirmingEnd && <BattleMenu onSelect={setRollCategory} />
                   }
@@ -529,6 +554,8 @@ interface ChatPanelContentProps {
   onCancelConfirmEnd: () => void;
   isEnding: boolean;
   onDownload: () => void;
+  /** Rastreador de combate (ver features/combat/CombatPanel) — entre el aviso de sesión y la lista de mensajes. */
+  combatPanel?: React.ReactNode;
   /** Se renderiza entre la lista de mensajes y el formulario — el menú fijo de tiradas (ver BattleMenu). */
   bottomMenu?: React.ReactNode;
 }
@@ -550,6 +577,7 @@ function ChatPanelContent({
   onCancelConfirmEnd,
   isEnding,
   onDownload,
+  combatPanel,
   bottomMenu,
 }: ChatPanelContentProps) {
   if (!session) {
@@ -608,6 +636,8 @@ function ChatPanelContent({
         />
       )}
 
+      {combatPanel}
+
       <ChatMessages messages={messages} characters={characters} />
 
       {bottomMenu}
@@ -658,6 +688,12 @@ function MessageRow({
   message: ChatMessageDto;
   characters: CharacterRosterEntry[];
 }) {
+  if (message.kind === "COMBAT") {
+    return (
+      <li className="px-2 py-1 text-center text-xs italic text-ink-muted">⚔ {message.text}</li>
+    );
+  }
+
   if (message.kind === "ROLL" && message.roll) {
     const roll = message.roll;
     const character = characters.find((c) => c.id === roll.characterId);

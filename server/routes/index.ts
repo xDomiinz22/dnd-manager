@@ -10,6 +10,8 @@ import { musicRouter } from "./music";
 import { mapRouter } from "./map";
 import { diceRouter } from "./dice";
 import { chatRouter } from "./chat";
+import { enemiesRouter } from "./enemies";
+import { combatRouter } from "./combat";
 
 export const apiRouter = Router();
 
@@ -24,3 +26,5 @@ apiRouter.use(musicRouter);
 apiRouter.use(mapRouter);
 apiRouter.use(diceRouter);
 apiRouter.use(chatRouter);
+apiRouter.use(enemiesRouter);
+apiRouter.use(combatRouter);

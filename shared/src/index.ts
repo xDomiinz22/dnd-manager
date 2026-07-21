@@ -9,3 +9,5 @@ export * from "./music";
 export * from "./map";
 export * from "./dice";
 export * from "./chat";
+export * from "./enemies";
+export * from "./combat";

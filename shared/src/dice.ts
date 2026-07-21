@@ -4,7 +4,8 @@ import { z } from "zod";
 // una suma de términos "NdM" o enteros antes de que llegue al roller (ver
 // parseDiceFormula más abajo). Sin esto, un formula arbitraria podría
 // intentar cosas como paréntesis o texto que el roller no sabe interpretar.
-const FORMULA_PATTERN = /^[0-9dD+\-\s]+$/;
+// Exportado porque enemies.ts/combat.ts también validan fórmulas de ataque.
+export const FORMULA_PATTERN = /^[0-9dD+\-\s]+$/;
 
 export const dieGroupResultSchema = z.object({
   die: z.string(),

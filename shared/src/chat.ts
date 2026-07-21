@@ -28,11 +28,13 @@ export type ChatRollMention = z.infer<typeof chatRollMentionSchema>;
 
 export const chatMessageSchema = z.object({
   id: z.string(),
-  kind: z.enum(["TEXT", "ROLL"]),
+  kind: z.enum(["TEXT", "ROLL", "COMBAT"]),
   userId: z.string(),
   username: z.string(),
   text: z.string().nullable(),
   roll: chatRollMentionSchema.nullable(),
+  // kind === "COMBAT": "STARTED" | "INITIATIVE_LOCKED" | "TURN" | "ENDED".
+  combatEvent: z.string().nullable().optional(),
   createdAt: z.string(),
 });
 export type ChatMessageDto = z.infer<typeof chatMessageSchema>;

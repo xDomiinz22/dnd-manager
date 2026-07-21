@@ -4,10 +4,11 @@ import { AppError } from "../errors/AppError";
 
 type MessageWithRelations = {
   id: string;
-  kind: "TEXT" | "ROLL";
+  kind: "TEXT" | "ROLL" | "COMBAT";
   userId: string;
   user: { username: string };
   text: string | null;
+  combatEvent: string | null;
   diceRoll: {
     id: string;
     characterId: string | null;
@@ -44,6 +45,7 @@ function toMessageDto(message: MessageWithRelations): ChatMessageDto {
     userId: message.userId,
     username: message.user.username,
     text: message.text,
+    combatEvent: message.combatEvent,
     roll: message.diceRoll
       ? {
           id: message.diceRoll.id,
@@ -127,5 +129,23 @@ export async function mentionRollInActiveSession(
   if (!session) return;
   await prisma.chatMessage.create({
     data: { sessionId: session.id, userId, kind: "ROLL", diceRollId },
+  });
+}
+
+/**
+ * Igual que mentionRollInActiveSession pero para eventos de encuadre del
+ * combate (inicio, orden fijado, cambio de turno, fin) — se llama desde
+ * combatService justo después de cada acción de ciclo de vida del combate.
+ */
+export async function mentionCombatEvent(
+  groupId: string,
+  userId: string,
+  combatEvent: string,
+  text: string,
+) {
+  const session = await prisma.groupSession.findUnique({ where: { groupId } });
+  if (!session) return;
+  await prisma.chatMessage.create({
+    data: { sessionId: session.id, userId, kind: "COMBAT", combatEvent, text },
   });
 }

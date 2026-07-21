@@ -165,6 +165,12 @@ export function GroupDetailPage() {
             >
               Diario de grupo
             </Link>
+            <Link
+              to={`/groups/${group.id}/enemies`}
+              className="rounded-sm border border-rule px-3 py-1.5 text-ink transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
+            >
+              Enemigos
+            </Link>
           </div>
         }
       >

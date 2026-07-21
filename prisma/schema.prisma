@@ -20,32 +20,34 @@ model User {
   avatarUrl    String?
   createdAt    DateTime @default(now())
 
-  ownedGroups Group[]          @relation("GroupMaster")
-  memberships GroupMember[]
-  characters  CharacterSheet[]
-  assets      Asset[]
-  addedTracks MusicTrack[]     @relation("MusicTrackAddedBy")
-  diceRolls   DiceRoll[]
+  ownedGroups  Group[]          @relation("GroupMaster")
+  memberships  GroupMember[]
+  characters   CharacterSheet[]
+  assets       Asset[]
+  addedTracks  MusicTrack[]     @relation("MusicTrackAddedBy")
+  diceRolls    DiceRoll[]
   chatMessages ChatMessage[]
 }
 
 model Group {
-  id              String   @id @default(cuid())
-  name            String
-  inviteCode      String   @unique
-  masterId        String
-  master          User     @relation("GroupMaster", fields: [masterId], references: [id])
+  id             String   @id @default(cuid())
+  name           String
+  inviteCode     String   @unique
+  masterId       String
+  master         User     @relation("GroupMaster", fields: [masterId], references: [id])
   // Color de los dados 3D (hex, p.ej. "#6B1620"); null = color por defecto de la librería.
-  diceThemeColor  String?
-  createdAt       DateTime @default(now())
+  diceThemeColor String?
+  createdAt      DateTime @default(now())
 
-  members        GroupMember[]
-  characters     CharacterSheet[]
-  groupJournal   JournalEntry?    @relation("GroupJournal")
-  musicPlaylists MusicPlaylist[]
-  maps           GroupMap[]
-  diceRolls      DiceRoll[]
-  activeSession  GroupSession?
+  members         GroupMember[]
+  characters      CharacterSheet[]
+  groupJournal    JournalEntry?    @relation("GroupJournal")
+  musicPlaylists  MusicPlaylist[]
+  maps            GroupMap[]
+  diceRolls       DiceRoll[]
+  activeSession   GroupSession?
+  enemies         EnemyStatBlock[]
+  combatEncounter CombatEncounter?
 }
 
 enum GroupRole {
@@ -150,6 +152,12 @@ model Asset {
   // Imagen actual del mapa de un grupo (Asset.kind = IMAGE). Cada subida crea
   // un Asset nuevo (el anterior queda huérfano, igual que al cambiar retrato).
   groupMap GroupMap?
+
+  // Retrato activo / galería de fichas de enemigo — mismo patrón que
+  // portraitOf/characterId de CharacterSheet.
+  enemyPortraitOf EnemyStatBlock[] @relation("EnemyPortrait")
+  enemyId         String?
+  enemy           EnemyStatBlock?  @relation("EnemyImages", fields: [enemyId], references: [id])
 }
 
 model CharacterSheet {
@@ -187,13 +195,102 @@ model CharacterSheet {
   derived      Json?
   sourceMdHash String?
 
-  personalJournal JournalEntry? @relation("CharacterJournal")
-  diceRolls       DiceRoll[]
+  personalJournal    JournalEntry?       @relation("CharacterJournal")
+  diceRolls          DiceRoll[]
+  combatParticipants CombatParticipant[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([ownerId, groupId, name])
+}
+
+// Ficha de enemigo: biblioteca por grupo, solo editable por el Master. Puede
+// crearse "rápido" (quickAttacks como texto libre) o importarse desde un .md
+// de Foundry igual que un personaje (rawSystem/items/derived/sourceMdHash) —
+// exactamente uno de los dos caminos rellena sus campos correspondientes,
+// mismo patrón que CharacterSheet pero sin ownerId (no pertenece a un jugador).
+model EnemyStatBlock {
+  id      String @id @default(cuid())
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  name            String
+  maxHp           Int    @default(1)
+  armorClass      Int?
+  initiativeBonus Int    @default(0)
+
+  portraitAssetId String?
+  portraitAsset   Asset?  @relation("EnemyPortrait", fields: [portraitAssetId], references: [id])
+  images          Asset[] @relation("EnemyImages")
+
+  // Ataques de creación rápida: [{ name, attackFormula, damageFormula }].
+  // Null cuando la ficha viene de un import (usa `items` en su lugar).
+  quickAttacks Json?
+
+  // Datos crudos de Foundry cuando se importó vía .md — igual que CharacterSheet.
+  rawSystem    Json?
+  items        Json?
+  derived      Json?
+  sourceMdHash String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants CombatParticipant[]
+
+  @@index([groupId])
+}
+
+// Combate activo de un grupo (a lo sumo uno, como GroupSession). Vive dentro
+// de la sesión de chat en la que se inició: si esa sesión termina, el combate
+// cae en cascada con ella — es tan efímero como el propio chat.
+model CombatEncounter {
+  id      String @id @default(cuid())
+  groupId String @unique
+  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  sessionId String       @unique
+  session   GroupSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  // Null mientras se está en fase de tirar iniciativa (todavía no hay orden fijo).
+  currentTurnIndex Int?
+  round            Int  @default(1)
+
+  startedByUserId String
+  startedAt       DateTime @default(now())
+
+  participants CombatParticipant[]
+}
+
+// Un combatiente dentro de un CombatEncounter: exactamente uno de
+// characterId/enemyId está relleno (se valida en el servicio, no en la BD).
+model CombatParticipant {
+  id          String          @id @default(cuid())
+  encounterId String
+  encounter   CombatEncounter @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+
+  characterId String?
+  character   CharacterSheet? @relation(fields: [characterId], references: [id], onDelete: SetNull)
+  enemyId     String?
+  enemy       EnemyStatBlock? @relation(fields: [enemyId], references: [id], onDelete: SetNull)
+
+  // Nombre congelado al añadir (sobrevive a un SetNull, distingue copias del
+  // mismo enemigo, p.ej. "Goblin 2").
+  displayName String
+
+  // Total de iniciativa tirado (null hasta que se tira) y el bono copiado al
+  // añadir el combatiente (nunca se confía en un valor mandado por el cliente
+  // al tirar — se reconstruye la fórmula en el servidor a partir de este bono).
+  initiativeTotal Int?
+  initiativeBonus Int  @default(0)
+
+  // Posición en el orden de turnos, fijada una vez todos han tirado.
+  turnOrder Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([encounterId])
 }
 
 enum JournalScope {
@@ -274,10 +371,10 @@ model GroupMap {
   // Dimensiones en px de la imagen actual, capturadas en la subida: toda
   // imagen de reemplazo debe medir exactamente esto (ver mapService), para
   // que los MapPin (posición relativa 0-1) no queden descuadrados.
-  width  Int
-  height Int
+  width   Int
+  height  Int
 
-  title String @default("Mundo")
+  title     String  @default("Mundo")
   // Nombre libre (p.ej. "Costa Esmeralda") usado para agrupar mapas en el
   // panel lateral — null = sin sección asignada. El mapa "isWorld" nunca
   // lleva continente, se muestra siempre fijo arriba del árbol.
@@ -285,7 +382,7 @@ model GroupMap {
   // El primer mapa que se sube en un grupo se marca como el mapa del mundo
   // (ver mapService.uploadGroupMap) y se muestra siempre primero/fijo en el
   // panel — no se puede borrar mientras existan más mapas.
-  isWorld Boolean @default(false)
+  isWorld   Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -364,15 +461,17 @@ model GroupSession {
   groupId String @unique
   group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  startedAt     DateTime @default(now())
+  startedAt       DateTime @default(now())
   startedByUserId String
 
-  messages ChatMessage[]
+  messages        ChatMessage[]
+  combatEncounter CombatEncounter?
 }
 
 enum ChatMessageKind {
   TEXT
   ROLL
+  COMBAT
 }
 
 model ChatMessage {
@@ -393,6 +492,10 @@ model ChatMessage {
   // solo se "menciona" en el chat de la sesión activa en ese momento.
   diceRollId String?
   diceRoll   DiceRoll? @relation(fields: [diceRollId], references: [id], onDelete: SetNull)
+
+  // kind = COMBAT: evento de encuadre del combate ("STARTED" | "INITIATIVE_LOCKED"
+  // | "TURN" | "ENDED"); el texto legible reutiliza la columna `text` de arriba.
+  combatEvent String?
 
   createdAt DateTime @default(now())
 
