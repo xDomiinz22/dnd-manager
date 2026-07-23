@@ -66,10 +66,6 @@ export function GroupMapPage() {
   const [editingPinId, setEditingPinId] = useState<string | null>(null);
   const [deletingPinId, setDeletingPinId] = useState<string | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
-  // Tamaño real del mapa, para que el hueco se ajuste a su proporción en vez
-  // de ser una caja genérica a ancho completo — se conoce solo tras cargar
-  // la imagen, así que hasta entonces se usa una altura fija de reserva.
-  const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(null);
 
   // Si no hay selección explícita todavía, o el mapa seleccionado ya no
   // existe (se borró en otra pestaña), cae al mapa del Mundo o al primero
@@ -110,7 +106,6 @@ export function GroupMapPage() {
     setIsAddPinMode(false);
     setIsAddingMap(false);
     setIsEditingMap(false);
-    setImgNatural(null);
   }
 
   async function handleUploadFile(file: File) {
@@ -332,14 +327,17 @@ export function GroupMapPage() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  style={
-                    imgNatural
-                      ? { aspectRatio: `${imgNatural.w} / ${imgNatural.h}`, maxHeight: "70vh" }
-                      : undefined
-                  }
-                  className={`relative mx-auto max-w-full select-none overflow-hidden rounded-sm border transition-colors ${
-                    imgNatural ? "w-fit" : "h-[60vh] w-full sm:h-[70vh]"
-                  } ${isDraggingFile ? "border-oxblood" : "border-rule-strong"}`}
+                  // Proporción real del mapa desde el propio DTO (map.width/height,
+                  // capturados en la subida — ver mapService), no del `onLoad` de
+                  // la imagen en el cliente: esperar a que la imagen cargue en el
+                  // navegador para conocer su tamaño metía un cambio de layout a
+                  // medio pintar (caja genérica → caja con la proporción real) que
+                  // TransformWrapper nunca volvía a recalcular, dejando el mapa
+                  // descuadrado la primera vez que se abría cada mapa.
+                  style={{ aspectRatio: `${map.width} / ${map.height}`, maxHeight: "70vh" }}
+                  className={`relative mx-auto w-fit max-w-full select-none overflow-hidden rounded-sm border transition-colors ${
+                    isDraggingFile ? "border-oxblood" : "border-rule-strong"
+                  }`}
                 >
                   <TransformWrapper
                     key={map.id}
@@ -366,12 +364,6 @@ export function GroupMapPage() {
                           alt={map.title}
                           className="block h-full w-full"
                           draggable={false}
-                          onLoad={(e) =>
-                            setImgNatural({
-                              w: e.currentTarget.naturalWidth,
-                              h: e.currentTarget.naturalHeight,
-                            })
-                          }
                         />
                         {map.pins.map((pin) => (
                           <div

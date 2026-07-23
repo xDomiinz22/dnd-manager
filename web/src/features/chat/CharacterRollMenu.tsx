@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { AbilityKey, CharacterRosterEntry } from "@dnd-manager/shared";
+import type { AbilityKey, CharacterFull, CharacterRosterEntry } from "@dnd-manager/shared";
 import { useCharacter } from "../characters/hooks";
 import { useCreateRoll } from "../dice/hooks";
 import { useDiceOverlay } from "../dice/DiceOverlay";
@@ -127,6 +127,8 @@ function CharacterRollPicker({
   const createRoll = useCreateRoll(data?.access === "FULL" ? data.character.groupId : "");
   const { rollPhysics } = useDiceOverlay();
   const [category, setCategory] = useState<Category>(initialCategory ?? "attacks");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   if (isLoading || !data) {
     return <p className="text-sm text-ink-muted">Cargando personaje...</p>;
@@ -185,64 +187,236 @@ function CharacterRollPicker({
         </div>
       </div>
 
-      <div role="tablist" className="mb-2 flex flex-wrap gap-1 border-b border-rule pb-2">
-        {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
+      <div className="mb-2 flex flex-wrap items-center gap-1 border-b border-rule pb-2">
+        <div role="tablist" className="flex flex-1 flex-wrap gap-1">
+          {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              role="tab"
+              aria-selected={category === cat}
+              onClick={() => setCategory(cat)}
+              className={`rounded-sm px-2 py-1 font-display text-xs tracking-wide ${
+                category === cat ? "bg-oxblood text-ivory" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              {CATEGORY_LABELS[cat]}
+            </button>
+          ))}
+        </div>
+        {searchOpen ? (
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar..."
+              className="w-28 rounded-sm border border-rule-strong bg-parchment px-2 py-1 text-xs text-ink outline-none focus:border-oxblood"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setSearchOpen(false);
+                setQuery("");
+              }}
+              aria-label="Cerrar búsqueda"
+              className="text-ink-muted hover:text-ink"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
           <button
-            key={cat}
             type="button"
-            role="tab"
-            aria-selected={category === cat}
-            onClick={() => setCategory(cat)}
-            className={`rounded-sm px-2 py-1 font-display text-xs tracking-wide ${
-              category === cat ? "bg-oxblood text-ivory" : "text-ink-muted hover:text-ink"
-            }`}
+            onClick={() => setSearchOpen(true)}
+            aria-label="Buscar"
+            title="Buscar entre hechizos, ataques y objetos"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border border-rule text-ink-muted hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
           >
-            {CATEGORY_LABELS[cat]}
+            <SearchIcon />
           </button>
-        ))}
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {category === "attacks" && (
-          <ActionList actions={attackActions} onRoll={handleRoll} empty="Sin ataques." />
-        )}
-        {category === "items" && (
-          <ActionList actions={itemActions} onRoll={handleRoll} empty="Sin objetos tirables." />
-        )}
-        {category === "saves" && (
-          <ul className="space-y-1.5">
-            {ABILITY_KEYS.map((key) => {
-              const mod = character.derived.savingThrows[key];
-              const formula = `1d20${mod >= 0 ? "+" : ""}${mod}`;
-              return (
-                <li key={key}>
-                  <MoveButton
-                    text={`${ABILITY_FULL_LABELS[key]} (${formula})`}
-                    onClick={() => handleRoll(`Salvación de ${ABILITY_FULL_LABELS[key]}`, formula)}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {category === "skills" && (
-          <ul className="space-y-1.5">
-            {Object.entries(character.derived.skills).map(([code, skill]) => {
-              const label = SKILL_LABELS[code] ?? code;
-              const formula = `1d20${skill.bonus >= 0 ? "+" : ""}${skill.bonus}`;
-              return (
-                <li key={code}>
-                  <MoveButton
-                    text={`${label} (${ABILITY_LABELS[skill.ability]}) — ${formula}`}
-                    onClick={() => handleRoll(label, formula)}
-                  />
-                </li>
-              );
-            })}
-          </ul>
+        {query.trim() ? (
+          <SearchResults
+            query={query}
+            actions={actions}
+            itemTypeById={itemTypeById}
+            character={character}
+            onRoll={handleRoll}
+          />
+        ) : (
+          <>
+            {category === "attacks" && (
+              <ActionList actions={attackActions} onRoll={handleRoll} empty="Sin ataques." />
+            )}
+            {category === "items" && (
+              <ActionList actions={itemActions} onRoll={handleRoll} empty="Sin objetos tirables." />
+            )}
+            {category === "saves" && (
+              <ul className="space-y-1.5">
+                {ABILITY_KEYS.map((key) => {
+                  const mod = character.derived.savingThrows[key];
+                  const formula = `1d20${mod >= 0 ? "+" : ""}${mod}`;
+                  return (
+                    <li key={key}>
+                      <MoveButton
+                        text={`${ABILITY_FULL_LABELS[key]} (${formula})`}
+                        onClick={() =>
+                          handleRoll(`Salvación de ${ABILITY_FULL_LABELS[key]}`, formula)
+                        }
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {category === "skills" && (
+              <ul className="space-y-1.5">
+                {Object.entries(character.derived.skills).map(([code, skill]) => {
+                  const label = SKILL_LABELS[code] ?? code;
+                  const formula = `1d20${skill.bonus >= 0 ? "+" : ""}${skill.bonus}`;
+                  return (
+                    <li key={code}>
+                      <MoveButton
+                        text={`${label} (${ABILITY_LABELS[skill.ability]}) — ${formula}`}
+                        onClick={() => handleRoll(label, formula)}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className="h-3.5 w-3.5"
+    >
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="M16.5 16.5 13 13" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Marcas diacríticas combinantes (acentos sueltos tras normalize("NFD")) —
+// para que "pocion" encuentre "Poción" y viceversa.
+const DIACRITICS_REGEX = /[̀-ͯ]/g;
+function normalizeSearch(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(DIACRITICS_REGEX, "");
+}
+
+/**
+ * Búsqueda unificada: mezcla ataques, objetos, salvaciones y habilidades en
+ * una sola lista (a diferencia de las pestañas, separadas por categoría) —
+ * para no obligar a saber de antemano si "bola de fuego" es un ataque o un
+ * objeto, ni tener que cambiar de pestaña para encontrar una salvación.
+ */
+function SearchResults({
+  query,
+  actions,
+  itemTypeById,
+  character,
+  onRoll,
+}: {
+  query: string;
+  actions: RollableAction[];
+  itemTypeById: Map<string, string>;
+  character: CharacterFull;
+  onRoll: (label: string, formula: string) => void;
+}) {
+  const normalizedQuery = normalizeSearch(query.trim());
+
+  const actionMatches = actions
+    .map((action, index) => ({
+      action,
+      index,
+      label: action.activityName ? `${action.itemName} (${action.activityName})` : action.itemName,
+      category: ["weapon", "spell"].includes(itemTypeById.get(action.itemId) ?? "")
+        ? "Ataque"
+        : "Objeto",
+    }))
+    .filter(({ label }) => normalizeSearch(label).includes(normalizedQuery));
+
+  const saveMatches = ABILITY_KEYS.filter((key) =>
+    normalizeSearch(ABILITY_FULL_LABELS[key]).includes(normalizedQuery),
+  );
+
+  const skillMatches = Object.entries(character.derived.skills).filter(([code]) =>
+    normalizeSearch(SKILL_LABELS[code] ?? code).includes(normalizedQuery),
+  );
+
+  if (actionMatches.length === 0 && saveMatches.length === 0 && skillMatches.length === 0) {
+    return <p className="text-sm text-ink-muted">Sin resultados para «{query.trim()}».</p>;
+  }
+
+  return (
+    <ul className="space-y-1.5">
+      {actionMatches.map(({ action, index, label, category }) => (
+        <li
+          key={`${action.itemId}-${action.activityId}-${index}`}
+          className="rounded-sm border border-rule bg-parchment-panel px-2.5 py-2"
+        >
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="truncate text-sm text-ink">{label}</span>
+            <span className="shrink-0 text-[0.65rem] uppercase tracking-wide text-ink-muted">
+              {category}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {action.attackFormula && (
+              <MoveButton
+                text={`Atacar (${action.attackFormula})`}
+                onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
+              />
+            )}
+            {action.damageFormula && (
+              <MoveButton
+                text={`Daño (${action.damageFormula})`}
+                onClick={() => onRoll(`Daño: ${label}`, action.damageFormula!)}
+              />
+            )}
+          </div>
+        </li>
+      ))}
+      {saveMatches.map((key) => {
+        const mod = character.derived.savingThrows[key];
+        const formula = `1d20${mod >= 0 ? "+" : ""}${mod}`;
+        return (
+          <li key={`save-${key}`}>
+            <MoveButton
+              text={`Salvación de ${ABILITY_FULL_LABELS[key]} (${formula})`}
+              onClick={() => onRoll(`Salvación de ${ABILITY_FULL_LABELS[key]}`, formula)}
+            />
+          </li>
+        );
+      })}
+      {skillMatches.map(([code, skill]) => {
+        const label = SKILL_LABELS[code] ?? code;
+        const formula = `1d20${skill.bonus >= 0 ? "+" : ""}${skill.bonus}`;
+        return (
+          <li key={`skill-${code}`}>
+            <MoveButton
+              text={`${label} (${ABILITY_LABELS[skill.ability]}) — ${formula}`}
+              onClick={() => onRoll(label, formula)}
+            />
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

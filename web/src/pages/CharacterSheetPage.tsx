@@ -26,6 +26,7 @@ import { useChatSession } from "../features/chat/hooks";
 import { useGroupDetail } from "../features/groups/hooks";
 import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
 import { Button } from "../components/ui/Button";
+import { TextField } from "../components/ui/TextField";
 import { PortraitCircle } from "../components/character/PortraitCircle";
 import { CharacterImageManager } from "../components/character/CharacterImageManager";
 import { ItemDetailModal } from "../components/character/ItemDetailModal";
@@ -41,6 +42,39 @@ import {
 } from "../features/characters/foundryDisplay";
 
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
+// Tipos de item de Foundry que tiene sentido encontrar por nombre (deja fuera
+// cosas sin nombre útil para buscar, como configuraciones internas).
+const SEARCHABLE_TYPES = [
+  "weapon",
+  "equipment",
+  "consumable",
+  "container",
+  "loot",
+  "feat",
+  "class",
+  "subclass",
+  "race",
+  "background",
+  "spell",
+];
+const SEARCH_CATEGORY_LABELS: Record<string, string> = {
+  weapon: "Arma",
+  equipment: "Equipo",
+  consumable: "Consumible",
+  container: "Contenedor",
+  loot: "Botín",
+  feat: "Dote/Rasgo",
+  class: "Clase",
+  subclass: "Subclase",
+  race: "Especie",
+  background: "Trasfondo",
+};
+// Marcas diacríticas combinantes (acentos sueltos tras normalize("NFD")) —
+// para que "pocion" encuentre "Poción" y viceversa.
+const DIACRITICS_REGEX = /[̀-ͯ]/g;
+function normalizeSearch(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(DIACRITICS_REGEX, "");
+}
 const TABS = [
   "Details",
   "Skills & Tools",
@@ -92,6 +126,8 @@ export function CharacterSheetPage() {
 
 function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const [tab, setTab] = useState<Tab>("Details");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const system = (character.rawSystem ?? {}) as Record<string, any>;
   const details = system.details ?? {};
   const attributes = system.attributes ?? {};
@@ -196,58 +232,119 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
         ))}
       </div>
 
-      {/* Pestañas */}
-      <div role="tablist" className="mb-4 flex flex-wrap gap-2 border-b-2 border-rule">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            id={`tab-${t}`}
-            aria-selected={tab === t}
-            aria-controls={`tabpanel-${t}`}
-            onClick={() => setTab(t)}
-            className={`px-3 py-2 font-display text-sm tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${
-              tab === t ? "border-b-2 border-oxblood text-oxblood" : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      {/* Pestañas + búsqueda: buscar filtra entre TODO lo tirable/consultable
+          del personaje (hechizos, trucos, ataques, objetos, rasgos...) sin
+          tener que adivinar en qué pestaña vive cada cosa; mientras hay texto
+          en la caja, sustituye al contenido de la pestaña seleccionada. */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b-2 border-rule">
+        <div role="tablist" className="flex flex-wrap gap-2">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              id={`tab-${t}`}
+              aria-selected={tab === t}
+              aria-controls={`tabpanel-${t}`}
+              onClick={() => setTab(t)}
+              className={`px-3 py-2 font-display text-sm tracking-wide focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood ${
+                tab === t
+                  ? "border-b-2 border-oxblood text-oxblood"
+                  : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        <div className="pb-2">
+          {searchOpen ? (
+            <div className="flex items-center gap-1.5">
+              <TextField
+                label="Buscar"
+                hideLabel
+                autoFocus
+                wrapperClassName="mb-0"
+                placeholder="Hechizos, ataques, objetos..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="!py-1.5 !text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchOpen(false);
+                  setQuery("");
+                }}
+                aria-label="Cerrar búsqueda"
+                className="text-ink-muted hover:text-ink"
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Buscar"
+              title="Buscar entre hechizos, ataques y objetos"
+              className="flex h-8 w-8 items-center justify-center rounded-sm border border-rule text-ink-muted hover:border-rule-strong hover:bg-parchment-deep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+            >
+              <SearchIcon />
+            </button>
+          )}
+        </div>
       </div>
 
       <div role="tabpanel" id={`tabpanel-${tab}`} aria-labelledby={`tab-${tab}`}>
-        {tab === "Details" && (
-          <DetailsTab character={character} system={system} onRoll={handleRoll} canRoll={canRoll} />
-        )}
-        {tab === "Skills & Tools" && <SkillsTab character={character} />}
-        {tab === "Inventory" && (
-          <InventoryTab
+        {query.trim() ? (
+          <SearchResultsTab
             items={character.items}
+            query={query}
             actionsByItem={actionsByItem}
             onRoll={handleRoll}
             canRoll={canRoll}
           />
+        ) : (
+          <>
+            {tab === "Details" && (
+              <DetailsTab
+                character={character}
+                system={system}
+                onRoll={handleRoll}
+                canRoll={canRoll}
+              />
+            )}
+            {tab === "Skills & Tools" && <SkillsTab character={character} />}
+            {tab === "Inventory" && (
+              <InventoryTab
+                items={character.items}
+                actionsByItem={actionsByItem}
+                onRoll={handleRoll}
+                canRoll={canRoll}
+              />
+            )}
+            {tab === "Features" && (
+              <FeaturesTab
+                items={character.items}
+                actionsByItem={actionsByItem}
+                onRoll={handleRoll}
+                canRoll={canRoll}
+              />
+            )}
+            {tab === "Spellbook" && (
+              <SpellbookTab
+                characterId={character.id}
+                spellSlots={character.spellSlots}
+                items={character.items}
+                actionsByItem={actionsByItem}
+                onRoll={handleRoll}
+                canRoll={canRoll}
+              />
+            )}
+            {tab === "Biography" && <BiographyTab details={details} />}
+          </>
         )}
-        {tab === "Features" && (
-          <FeaturesTab
-            items={character.items}
-            actionsByItem={actionsByItem}
-            onRoll={handleRoll}
-            canRoll={canRoll}
-          />
-        )}
-        {tab === "Spellbook" && (
-          <SpellbookTab
-            characterId={character.id}
-            spellSlots={character.spellSlots}
-            items={character.items}
-            actionsByItem={actionsByItem}
-            onRoll={handleRoll}
-            canRoll={canRoll}
-          />
-        )}
-        {tab === "Biography" && <BiographyTab details={details} />}
       </div>
     </div>
   );
@@ -662,6 +759,98 @@ function RollButtons({
         );
       })}
     </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      className="h-4 w-4"
+    >
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="M16.5 16.5 13 13" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * Resultados de búsqueda: mezcla armas/objetos/rasgos/conjuros en una sola
+ * lista (a diferencia de las demás pestañas, que están separadas por tipo)
+ * para no obligar a saber de antemano en cuál vive lo que se busca — p.ej.
+ * "bola de fuego" es un conjuro, pero un jugador nuevo puede no saberlo.
+ */
+function SearchResultsTab({
+  items,
+  query,
+  actionsByItem,
+  onRoll,
+  canRoll,
+}: { items: unknown; query: string } & RollTabProps) {
+  const normalizedQuery = normalizeSearch(query.trim());
+  const matches = itemsOfType(items, SEARCHABLE_TYPES).filter((item) =>
+    normalizeSearch(item.name ?? "").includes(normalizedQuery),
+  );
+  const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
+
+  if (matches.length === 0) {
+    return <p className="text-ink-muted">Sin resultados para «{query.trim()}».</p>;
+  }
+
+  return (
+    <>
+      <ul className="space-y-2">
+        {matches.map((item) => {
+          const description = item.system?.description?.value;
+          const spellLevel = item.type === "spell" ? Number(item.system?.level) || 0 : null;
+          const categoryLabel =
+            item.type === "spell"
+              ? spellLevel === 0
+                ? "Truco"
+                : `Conjuro nivel ${spellLevel}`
+              : (SEARCH_CATEGORY_LABELS[item.type ?? ""] ?? item.type);
+          return (
+            <li
+              key={item._id}
+              onClick={
+                description
+                  ? () =>
+                      setOpenItem({
+                        title: item.name ?? "Sin nombre",
+                        html: sanitizeHtml(description),
+                      })
+                  : undefined
+              }
+              className={`rounded-sm border border-rule bg-parchment-panel p-4 ${
+                description ? "cursor-pointer transition-colors hover:bg-parchment-deep/40" : ""
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-ink">{item.name}</span>
+                <span className="shrink-0 text-xs uppercase tracking-wide text-ink-muted">
+                  {categoryLabel}
+                </span>
+              </div>
+              <RollButtons
+                actions={actionsByItem.get(item._id ?? "")}
+                onRoll={onRoll}
+                canRoll={canRoll}
+              />
+            </li>
+          );
+        })}
+      </ul>
+      {openItem && (
+        <ItemDetailModal
+          title={openItem.title}
+          descriptionHtml={openItem.html}
+          onClose={() => setOpenItem(null)}
+        />
+      )}
+    </>
   );
 }
 
