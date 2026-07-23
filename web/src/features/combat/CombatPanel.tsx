@@ -9,6 +9,7 @@ import { useCharacter } from "../characters/hooks";
 import { useCreateRoll } from "../dice/hooks";
 import { useDiceOverlay } from "../dice/DiceOverlay";
 import { getRollableActions, type RollableAction } from "../characters/rollableActions";
+import { ScalableDamageButton } from "../characters/ScalableDamageButton";
 import {
   useCombatEncounter,
   useEndCombat,
@@ -372,11 +373,14 @@ function ActionButtons({
                   🎲 Atacar ({action.attackFormula})
                 </MiniButton>
               )}
-              {action.damageFormula && (
-                <MiniButton onClick={() => onRoll(`Daño: ${label}`, action.damageFormula!)}>
-                  🎲 Daño ({action.damageFormula})
-                </MiniButton>
-              )}
+              <ScalableDamageButton
+                label={`Daño: ${label}`}
+                action={action}
+                onRoll={onRoll}
+                renderButton={(formula, onClick) => (
+                  <MiniButton onClick={onClick}>🎲 Daño ({formula})</MiniButton>
+                )}
+              />
             </div>
           </li>
         );

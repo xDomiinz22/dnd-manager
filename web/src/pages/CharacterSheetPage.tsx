@@ -25,6 +25,7 @@ import { useDiceOverlay } from "../features/dice/DiceOverlay";
 import { useChatSession } from "../features/chat/hooks";
 import { useGroupDetail } from "../features/groups/hooks";
 import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
+import { ScalableDamageButton } from "../features/characters/ScalableDamageButton";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
 import { PortraitCircle } from "../components/character/PortraitCircle";
@@ -744,17 +745,22 @@ function RollButtons({
                 🎲 Atacar ({action.attackFormula})
               </Button>
             )}
-            {action.damageFormula && (
-              <Button
-                variant="ghost"
-                onClick={() => onRoll(`Daño: ${label}`, action.damageFormula!)}
-                disabled={!canRoll}
-                title={`Tirar daño: ${action.damageFormula}${rollTitleSuffix}`}
-                className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
-              >
-                🎲 Daño ({action.damageFormula})
-              </Button>
-            )}
+            <ScalableDamageButton
+              label={`Daño: ${label}`}
+              action={action}
+              onRoll={onRoll}
+              renderButton={(formula, onClick) => (
+                <Button
+                  variant="ghost"
+                  onClick={onClick}
+                  disabled={!canRoll}
+                  title={`Tirar daño: ${formula}${rollTitleSuffix}`}
+                  className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+                >
+                  🎲 Daño ({formula})
+                </Button>
+              )}
+            />
           </div>
         );
       })}

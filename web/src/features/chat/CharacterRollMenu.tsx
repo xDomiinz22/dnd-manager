@@ -4,6 +4,7 @@ import { useCharacter } from "../characters/hooks";
 import { useCreateRoll } from "../dice/hooks";
 import { useDiceOverlay } from "../dice/DiceOverlay";
 import { getRollableActions, type RollableAction } from "../characters/rollableActions";
+import { ScalableDamageButton } from "../characters/ScalableDamageButton";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
 import {
@@ -383,12 +384,14 @@ function SearchResults({
                 onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
               />
             )}
-            {action.damageFormula && (
-              <MoveButton
-                text={`Daño (${action.damageFormula})`}
-                onClick={() => onRoll(`Daño: ${label}`, action.damageFormula!)}
-              />
-            )}
+            <ScalableDamageButton
+              label={`Daño: ${label}`}
+              action={action}
+              onRoll={onRoll}
+              renderButton={(formula, onClick) => (
+                <MoveButton text={`Daño (${formula})`} onClick={onClick} />
+              )}
+            />
           </div>
         </li>
       ))}
@@ -453,12 +456,14 @@ function ActionList({
                   onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
                 />
               )}
-              {action.damageFormula && (
-                <MoveButton
-                  text={`Daño (${action.damageFormula})`}
-                  onClick={() => onRoll(`Daño: ${label}`, action.damageFormula!)}
-                />
-              )}
+              <ScalableDamageButton
+                label={`Daño: ${label}`}
+                action={action}
+                onRoll={onRoll}
+                renderButton={(formula, onClick) => (
+                  <MoveButton text={`Daño (${formula})`} onClick={onClick} />
+                )}
+              />
             </div>
           </li>
         );
