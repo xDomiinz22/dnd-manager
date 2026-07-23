@@ -11,6 +11,7 @@ import {
 } from "./hooks";
 import { useCurrentGroupId } from "./useCurrentGroupId";
 import { useMountTransition } from "../../lib/useMountTransition";
+import { useCloseOnOutsideClick } from "../../lib/useCloseOnOutsideClick";
 import { CharacterRollMenu, CATEGORY_LABELS, type Category } from "./CharacterRollMenu";
 import { CombatPanel } from "../combat/CombatPanel";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
@@ -223,6 +224,17 @@ export function ChatDockPanel({
       onDockWidthChange(0);
     };
   }, [collapsed, groupId, group, onDockWidthChange]);
+
+  // Escritorio: pulsar fuera del panel (o Escape) lo pliega, igual que el
+  // resto de popovers de la app (ver useCloseOnOutsideClick). Solo aplica
+  // mientras está abierto — el hook se llama siempre (los hooks no pueden
+  // ser condicionales), pero no hace nada si ya está colapsado; sin ese
+  // guard, cualquier click fuera volvería a "cerrar" un panel ya cerrado sin
+  // efecto visible, pero también interferiría con la pestaña colapsada, que
+  // vive fuera de panelRef y solo es clicable cuando collapsed === true.
+  useCloseOnOutsideClick(panelRef, () => {
+    if (!collapsed) setCollapsed(true);
+  });
 
   // Hoja móvil y bandeja de tiradas: montadas siempre que estén "de camino"
   // a abrirse o cerrarse (no solo mientras open === true), para que la
