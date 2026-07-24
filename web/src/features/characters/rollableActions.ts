@@ -36,6 +36,15 @@ export interface RollableAction {
   saveDc: number | null;
   /** Texto "A niveles superiores" extraído de la descripción (A15) — red de seguridad para lo que el resto del algoritmo no llega a calcular. */
   higherLevelText: string | null;
+  /**
+   * A5 (rebanada práctica): rasgos de "gasta N puntos, recibe N" con
+   * `consumption.scaling.allowed: true` y una fórmula que referencia
+   * `@scaling` (p.ej. Imponer las Manos — cura tantos PG como puntos de la
+   * reserva gastes, hasta el máximo disponible). `damageFormula` ya trae un
+   * valor por defecto (gasto máximo); esto permite a la UI ofrecer elegir
+   * cuánto gastar dentro de `[min, max]` y recalcular en el cliente.
+   */
+  resourceScaling: { formula: string; rollData: RollData; min: number; max: number } | null;
 }
 
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -122,6 +131,33 @@ interface FoundryActivity {
   save?: { ability?: string[]; dc?: { calculation?: string; formula?: string; bonus?: string } };
   damage?: { includeBase?: boolean; parts?: DiceEntry[] };
   healing?: DiceEntry;
+  consumption?: { scaling?: { allowed?: boolean; max?: string } };
+}
+
+/**
+ * A5 (rebanada práctica): tope de puntos gastables en un rasgo
+ * "gasta N, recibe N" — `consumption.scaling.max` cuando está presente
+ * (p.ej. Imponer las Manos: `5 * @classes.paladin.levels - @item.uses.spent`,
+ * ya descuenta lo gastado hoy); si no hay fórmula propia, se cae al pool de
+ * usos del propio ítem (`item.system.uses.max` — puede ser fórmula o
+ * número — menos `uses.spent`).
+ */
+function resolveResourceMax(
+  item: FoundryItem,
+  activity: FoundryActivity,
+  rollData: RollData,
+): number {
+  const maxFormula = activity.consumption?.scaling?.max;
+  if (maxFormula) {
+    return Math.max(1, evaluateFormula(maxFormula, rollData, { deterministic: true }));
+  }
+  const usesMax = item.system?.uses?.max;
+  const spent = Number(item.system?.uses?.spent) || 0;
+  if (typeof usesMax === "string" && usesMax) {
+    return Math.max(1, evaluateFormula(usesMax, rollData, { deterministic: true }) - spent);
+  }
+  if (typeof usesMax === "number") return Math.max(1, usesMax - spent);
+  return 1;
 }
 
 interface ActorBonusFormulas {
@@ -578,6 +614,16 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
       let spellBaseLevel: number | null = null;
       let maxCastableLevel: number | null = null;
       let higherLevelText: string | null = null;
+      let resourceScaling: RollableAction["resourceScaling"] = null;
+
+      // A5 (rebanada práctica): "gasta N puntos de una reserva, recibe N"
+      // (Imponer las Manos) — `@scaling` no está en ninguna otra ruta de
+      // rollData, así que sin esto siempre resolvía a 0 ("Curar (0)").
+      if (built.base && activity.consumption?.scaling?.allowed && /@scaling\b/.test(built.base)) {
+        const max = resolveResourceMax(item, activity, rollData);
+        resourceScaling = { formula: built.base, rollData, min: 1, max };
+        damageFormula = evaluateFormula(built.base, { ...rollData, scaling: max });
+      }
 
       if (item.type === "spell" && built.base) {
         const itemLevel = typeof item.system?.level === "number" ? item.system.level : null;
@@ -630,6 +676,7 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
         maxCastableLevel,
         saveDc,
         higherLevelText,
+        resourceScaling,
       });
     }
   }

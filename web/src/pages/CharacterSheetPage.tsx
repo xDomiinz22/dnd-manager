@@ -30,6 +30,7 @@ import {
   type RollableAction,
 } from "../features/characters/rollableActions";
 import { ScalableDamageButton } from "../features/characters/ScalableDamageButton";
+import { ResourceAmountButton } from "../features/characters/ResourceAmountButton";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
 import { PortraitCircle } from "../components/character/PortraitCircle";
@@ -749,22 +750,41 @@ function RollButtons({
                 🎲 Atacar ({action.attackFormula})
               </Button>
             )}
-            <ScalableDamageButton
-              label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-              action={action}
-              onRoll={onRoll}
-              renderButton={(formula, onClick) => (
-                <Button
-                  variant="ghost"
-                  onClick={onClick}
-                  disabled={!canRoll}
-                  title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${formula}${rollTitleSuffix}`}
-                  className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
-                >
-                  🎲 {damageActionLabels(action.kind).verb} ({formula})
-                </Button>
-              )}
-            />
+            {action.resourceScaling ? (
+              <ResourceAmountButton
+                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
+                action={action.resourceScaling}
+                onRoll={onRoll}
+                renderButton={(formula, onClick) => (
+                  <Button
+                    variant="ghost"
+                    onClick={onClick}
+                    disabled={!canRoll}
+                    title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${formula}${rollTitleSuffix}`}
+                    className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+                  >
+                    🎲 {damageActionLabels(action.kind).verb} ({formula})
+                  </Button>
+                )}
+              />
+            ) : (
+              <ScalableDamageButton
+                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
+                action={action}
+                onRoll={onRoll}
+                renderButton={(formula, onClick) => (
+                  <Button
+                    variant="ghost"
+                    onClick={onClick}
+                    disabled={!canRoll}
+                    title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${formula}${rollTitleSuffix}`}
+                    className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+                  >
+                    🎲 {damageActionLabels(action.kind).verb} ({formula})
+                  </Button>
+                )}
+              />
+            )}
           </div>
         );
       })}

@@ -14,6 +14,7 @@ import {
   type RollableAction,
 } from "../characters/rollableActions";
 import { ScalableDamageButton } from "../characters/ScalableDamageButton";
+import { ResourceAmountButton } from "../characters/ResourceAmountButton";
 import {
   useCombatEncounter,
   useEndCombat,
@@ -377,16 +378,29 @@ function ActionButtons({
                   🎲 Atacar ({action.attackFormula})
                 </MiniButton>
               )}
-              <ScalableDamageButton
-                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                action={action}
-                onRoll={onRoll}
-                renderButton={(formula, onClick) => (
-                  <MiniButton onClick={onClick}>
-                    🎲 {damageActionLabels(action.kind).verb} ({formula})
-                  </MiniButton>
-                )}
-              />
+              {action.resourceScaling ? (
+                <ResourceAmountButton
+                  label={`${damageActionLabels(action.kind).prefix}: ${label}`}
+                  action={action.resourceScaling}
+                  onRoll={onRoll}
+                  renderButton={(formula, onClick) => (
+                    <MiniButton onClick={onClick}>
+                      🎲 {damageActionLabels(action.kind).verb} ({formula})
+                    </MiniButton>
+                  )}
+                />
+              ) : (
+                <ScalableDamageButton
+                  label={`${damageActionLabels(action.kind).prefix}: ${label}`}
+                  action={action}
+                  onRoll={onRoll}
+                  renderButton={(formula, onClick) => (
+                    <MiniButton onClick={onClick}>
+                      🎲 {damageActionLabels(action.kind).verb} ({formula})
+                    </MiniButton>
+                  )}
+                />
+              )}
             </div>
           </li>
         );

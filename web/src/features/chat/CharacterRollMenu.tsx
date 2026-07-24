@@ -9,6 +9,7 @@ import {
   type RollableAction,
 } from "../characters/rollableActions";
 import { ScalableDamageButton } from "../characters/ScalableDamageButton";
+import { ResourceAmountButton } from "../characters/ResourceAmountButton";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
 import {
@@ -388,17 +389,31 @@ function SearchResults({
                 onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
               />
             )}
-            <ScalableDamageButton
-              label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-              action={action}
-              onRoll={onRoll}
-              renderButton={(formula, onClick) => (
-                <MoveButton
-                  text={`${damageActionLabels(action.kind).verb} (${formula})`}
-                  onClick={onClick}
-                />
-              )}
-            />
+            {action.resourceScaling ? (
+              <ResourceAmountButton
+                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
+                action={action.resourceScaling}
+                onRoll={onRoll}
+                renderButton={(formula, onClick) => (
+                  <MoveButton
+                    text={`${damageActionLabels(action.kind).verb} (${formula})`}
+                    onClick={onClick}
+                  />
+                )}
+              />
+            ) : (
+              <ScalableDamageButton
+                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
+                action={action}
+                onRoll={onRoll}
+                renderButton={(formula, onClick) => (
+                  <MoveButton
+                    text={`${damageActionLabels(action.kind).verb} (${formula})`}
+                    onClick={onClick}
+                  />
+                )}
+              />
+            )}
           </div>
         </li>
       ))}
@@ -463,17 +478,31 @@ function ActionList({
                   onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
                 />
               )}
-              <ScalableDamageButton
-                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                action={action}
-                onRoll={onRoll}
-                renderButton={(formula, onClick) => (
-                  <MoveButton
-                    text={`${damageActionLabels(action.kind).verb} (${formula})`}
-                    onClick={onClick}
-                  />
-                )}
-              />
+              {action.resourceScaling ? (
+                <ResourceAmountButton
+                  label={`${damageActionLabels(action.kind).prefix}: ${label}`}
+                  action={action.resourceScaling}
+                  onRoll={onRoll}
+                  renderButton={(formula, onClick) => (
+                    <MoveButton
+                      text={`${damageActionLabels(action.kind).verb} (${formula})`}
+                      onClick={onClick}
+                    />
+                  )}
+                />
+              ) : (
+                <ScalableDamageButton
+                  label={`${damageActionLabels(action.kind).prefix}: ${label}`}
+                  action={action}
+                  onRoll={onRoll}
+                  renderButton={(formula, onClick) => (
+                    <MoveButton
+                      text={`${damageActionLabels(action.kind).verb} (${formula})`}
+                      onClick={onClick}
+                    />
+                  )}
+                />
+              )}
             </div>
           </li>
         );

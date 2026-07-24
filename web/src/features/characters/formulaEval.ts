@@ -36,6 +36,8 @@ export interface RollData {
   /** Modificador de característica resuelto para la activity concreta que se está tirando (equivale a `@mod`). */
   mod: number;
   item?: { level?: number };
+  /** `@scaling` — cantidad elegida por el jugador en rasgos de "gasta N, recibe N" (A5, p.ej. Imponer las Manos). Ausente ⇒ resuelve a 0 como cualquier ruta no definida. */
+  scaling?: number;
 }
 
 /**
