@@ -1,26 +1,37 @@
 import type { AbilityKey, CharacterFull } from "@dnd-manager/shared";
 import { ABILITY_FULL_LABELS, asFoundryItems, type FoundryItem } from "./foundryDisplay";
+import { evaluateFormula, multiplyFormulaTerms, type RollData } from "./formulaEval";
+import { formatIdentifier, resolveScaleValues } from "./scaleValues";
+
+export type RollableActionKind = "damage" | "heal";
 
 export interface RollableAction {
   itemId: string;
   activityId: string;
   itemName: string;
   activityName: string | null;
+  /** "heal" para activities `type: "heal"` (Curar heridas...) — el resto son "damage". */
+  kind: RollableActionKind;
   attackFormula: string | null;
   damageFormula: string | null;
   /**
-   * Solo presente en conjuros de nivel 1+ cuyo daño escala al lanzarlos con
-   * un hueco de nivel superior (p.ej. Ola atronadora: +1d8 por nivel por
-   * encima del 1) — los dados que se SUMAN por cada nivel de más, ya
-   * multiplicados si la propia entrada trae más de un dado por paso.
-   * `spellBaseLevel` es el nivel del hueco "de serie" del conjuro, contra el
-   * que se cuentan esos niveles de más. Los trucos (nivel 0) no usan esto:
-   * su escalado no es una elección, así que ya viene sumado en
-   * `damageFormula` según el nivel total del personaje (ver
-   * `cantripScalingSteps`).
+   * Solo presente en conjuros de nivel 1+ cuyo daño/curación escala al
+   * lanzarlos con un hueco de nivel superior (p.ej. Ola atronadora: +1d8
+   * por nivel por encima del 1) — los dados que se SUMAN por cada nivel de
+   * más. `spellBaseLevel` es el nivel del hueco "de serie", contra el que
+   * se cuentan esos niveles de más. Los trucos (nivel 0) no usan esto: su
+   * escalado no es una elección, así que ya viene sumado en `damageFormula`
+   * según el nivel total del personaje (ver `cantripScalingSteps`).
    */
   damageScalingPerLevel: string | null;
   spellBaseLevel: number | null;
+}
+
+const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
+
+/** Texto del botón/etiqueta de tirada según el tipo de activity — reutilizado en ficha, chat y combate. */
+export function damageActionLabels(kind: RollableActionKind): { verb: string; prefix: string } {
+  return kind === "heal" ? { verb: "Curar", prefix: "Curación" } : { verb: "Daño", prefix: "Daño" };
 }
 
 /**
@@ -74,47 +85,20 @@ function isProficientWithWeapon(item: FoundryItem, character: CharacterFull): bo
   return baseItem ? weaponProf.includes(baseItem) : false;
 }
 
+function formatSigned(n: number): string {
+  return n >= 0 ? `+${n}` : `${n}`;
+}
+
 interface DiceEntry {
   number?: number;
   denomination?: number | string;
+  bonus?: string;
   custom?: { enabled?: boolean; formula?: string };
-  // Dados extra por "paso" de escalado — un espacio de conjuro por encima
-  // del nivel base (conjuros normales) o un tramo de nivel de personaje
-  // (trucos). `mode` casi siempre es "whole" (un múltiplo entero de
-  // `number` dados por paso); no hay ningún otro modo en la práctica en los
-  // exports que hemos visto, así que no se distingue aquí.
-  scaling?: { mode?: string; number?: number };
-}
-
-function diceTerm(entry: DiceEntry | undefined): string | null {
-  if (!entry) return null;
-  if (entry.custom?.enabled && entry.custom.formula) return entry.custom.formula;
-  if (entry.denomination) return `${entry.number ?? 1}d${entry.denomination}`;
-  return null;
-}
-
-interface ScalingDice {
-  count: number;
-  denomination: number;
-}
-
-function scalingDiceEntry(entry: DiceEntry | undefined): ScalingDice | null {
-  const count = entry?.scaling?.number;
-  const denomination = entry?.denomination;
-  if (!count || denomination === undefined) return null;
-  const denominationNumber = typeof denomination === "number" ? denomination : Number(denomination);
-  if (!Number.isFinite(denominationNumber)) return null;
-  return { count, denomination: denominationNumber };
-}
-
-/** `[{count:1,denomination:8}, {count:1,denomination:6}]` × 2 pasos → `"2d8+2d6"`. */
-function formatScalingDice(scalingDice: ScalingDice[], steps: number): string | null {
-  if (steps <= 0 || scalingDice.length === 0) return null;
-  return scalingDice.map((d) => `${d.count * steps}d${d.denomination}`).join("+");
-}
-
-function formatSigned(n: number): string {
-  return n >= 0 ? `+${n}` : `${n}`;
+  // "whole" (1 paso por nivel) | "half" (floor(niveles/2)) | ausente/otro ⇒
+  // NO escala — ver §4.3 de la guía: `scaling.number` sin `mode` es ruido
+  // frecuente (Ataque furtivo, Longbow, el dardo de Ice Knife...), no una
+  // señal de escalado por hueco.
+  scaling?: { mode?: string; number?: number; formula?: string };
 }
 
 // Forma mínima de una activity de Foundry que necesitamos leer aquí — el
@@ -125,49 +109,117 @@ interface FoundryActivity {
   attack?: { ability?: string };
   save?: { ability?: string[] };
   damage?: { includeBase?: boolean; parts?: DiceEntry[] };
+  healing?: DiceEntry;
 }
 
-interface BuiltDamage {
-  formula: string | null;
+/**
+ * Fórmula "de serie" (increase=0) de una entrada de daño/curación. Si
+ * `custom.enabled`, la fórmula es la que traiga `custom.formula` tal cual —
+ * y el `bonus` del part se IGNORA (Foundry lo hace así: ver "Ataque sin
+ * armas", `custom:{enabled:true, formula:"1"}` + `bonus:"@mod"`, cuyo daño
+ * real es `1 + @mod` porque el "+@mod" lo añade la lógica de armas, no este
+ * campo — ver rollData/mod más abajo). El texto puede llevar `@refs` sin
+ * resolver todavía (se resuelven al final, una sola vez, con
+ * `evaluateFormula`).
+ */
+function baseFormulaText(entry: DiceEntry | undefined, extraCount = 0): string {
+  if (!entry) return "";
+  if (entry.custom?.enabled) return entry.custom.formula ?? "";
+  const count = (entry.number ?? 0) + extraCount;
+  let text = count && entry.denomination ? `${count}d${entry.denomination}` : "";
+  if (entry.bonus) text = text ? `${text} + ${entry.bonus}` : entry.bonus;
+  return text;
+}
+
+function scalingSteps(entry: DiceEntry | undefined, increase: number): number {
+  const mode = entry?.scaling?.mode;
+  if (mode === "whole") return increase;
+  if (mode === "half") return Math.floor(increase / 2);
+  return 0;
+}
+
+/**
+ * `scaledFormula` (A6 de la guía) — el algoritmo central de escalado,
+ * traducción literal de `DamageData#scaledFormula` de dnd5e. Se usa cuando
+ * el `increase` ya se conoce de antemano (trucos: automático según nivel de
+ * personaje). Para conjuros de nivel 1+ (el jugador elige el hueco en la
+ * UI) se usa en su lugar `buildDeferred`, más abajo, que solo soporta el
+ * canal A (dados) — ver la nota ahí.
+ */
+function scaledFormulaText(entry: DiceEntry | undefined, increase: number): string {
+  const steps = scalingSteps(entry, increase);
+  if (!steps) return baseFormulaText(entry);
+
+  const dieIncrease = (entry?.scaling?.number ?? 0) * steps;
+  let text: string;
+  if (entry?.custom?.enabled) {
+    const custom = entry.custom.formula ?? "";
+    text = dieIncrease
+      ? custom.replace(/^(\d*)d/, (_match, n: string) => `${(Number(n) || 1) + dieIncrease}d`)
+      : custom;
+  } else {
+    text = baseFormulaText(entry, dieIncrease);
+  }
+
+  // Canal B (§4.1): casi siempre vacío en datos reales, pero hace falta
+  // implementarlo para homebrew/contenido migrado de dnd5e ≤v3 — si no,
+  // esos conjuros escalarían de menos en silencio.
+  if (entry?.scaling?.formula) {
+    const scaled = multiplyFormulaTerms(entry.scaling.formula, steps);
+    text = text ? `${text} + ${scaled}` : scaled;
+  }
+  return text;
+}
+
+interface ScalingDice {
+  count: number;
+  denomination: number;
+}
+
+interface BuiltFormula {
+  /** Fórmula con increase=0, con `@refs` sin resolver todavía. */
+  base: string | null;
+  /** Dados que añade CADA nivel de más — solo entradas `mode:"whole"` sin `custom` (ver comentario en `DiceEntry.scaling`). */
   scalingDice: ScalingDice[];
 }
 
-function buildDamage(
-  item: FoundryItem,
-  activity: FoundryActivity,
-  abilityMod: number,
-): BuiltDamage {
+function buildDeferred(entries: DiceEntry[]): BuiltFormula {
   const terms: string[] = [];
   const scalingDice: ScalingDice[] = [];
-
-  if (activity.damage?.includeBase !== false) {
-    const baseEntry = item.system?.damage?.base as DiceEntry | undefined;
-    const base = diceTerm(baseEntry);
-    if (base) terms.push(base);
-    const baseScaling = scalingDiceEntry(baseEntry);
-    if (baseScaling) scalingDice.push(baseScaling);
-  }
-  for (const part of activity.damage?.parts ?? []) {
-    const term = diceTerm(part);
+  for (const entry of entries) {
+    const term = baseFormulaText(entry);
     if (term) terms.push(term);
-    const scaling = scalingDiceEntry(part);
-    if (scaling) scalingDice.push(scaling);
+    if (
+      entry.scaling?.mode === "whole" &&
+      entry.scaling.number &&
+      !entry.custom?.enabled &&
+      entry.denomination !== undefined
+    ) {
+      const denomination =
+        typeof entry.denomination === "number" ? entry.denomination : Number(entry.denomination);
+      if (Number.isFinite(denomination))
+        scalingDice.push({ count: entry.scaling.number, denomination });
+    }
   }
-  if (terms.length === 0) return { formula: null, scalingDice: [] };
+  return { base: terms.length > 0 ? terms.join(" + ") : null, scalingDice };
+}
 
-  let formula = terms.join("+");
-  if (item.system?.damage?.base?.bonus === "@mod" && abilityMod !== 0) {
-    formula += formatSigned(abilityMod);
+function collectDamageEntries(item: FoundryItem, activity: FoundryActivity): DiceEntry[] {
+  const entries: DiceEntry[] = [];
+  if (activity.damage?.includeBase !== false) {
+    const base = item.system?.damage?.base as DiceEntry | undefined;
+    if (base) entries.push(base);
   }
-  return { formula, scalingDice };
+  entries.push(...(activity.damage?.parts ?? []));
+  return entries;
 }
 
 /**
  * Escalado de un truco (nivel 0): NO es una elección al lanzarlo (a
  * diferencia de un conjuro con hueco), escala solo con el nivel total del
- * personaje — por eso se suma directo a `damageFormula` en vez de dejarse
- * como opción en la UI. Tramos estándar de 5e (2014 y 2024): nivel 5, 11 y
- * 17.
+ * personaje — por eso se aplica ya mismo en vez de dejarse como opción en
+ * la UI. Tramos estándar de 5e (2014 y 2024): nivel 5, 11 y 17
+ * (`floor((nivel+1)/6)`).
  */
 function cantripScalingSteps(characterLevel: number): number {
   if (characterLevel >= 17) return 3;
@@ -191,69 +243,74 @@ function resolveSaveAbilityLabel(activity: FoundryActivity): string | null {
 }
 
 /**
- * Aplica el escalado de daño de un conjuro (ver `DiceEntry.scaling`):
- * - Truco (nivel 0 del ítem): se suma ya mismo a `damageFormula` según el
- *   nivel total del personaje — el jugador no elige nada.
- * - Conjuro de nivel 1+: se deja como `damageScalingPerLevel` +
- *   `spellBaseLevel` para que la UI ofrezca elegir con qué nivel de hueco
- *   se lanza antes de tirar (el mismo dato, pero por nivel, no ya sumado).
- * - Armas u otros ítems: el campo `scaling` (si lo trajeran) se ignora, no
- *   existe el concepto de "hueco de conjuro" para ellos.
+ * Roll data (§2 de la guía) común a todo el personaje — se construye UNA
+ * vez por ficha, no por activity. Cubre las rutas que necesitamos en esta
+ * fase: `@abilities.*`, `@details.level`, `@classes.*.levels`,
+ * `@subclasses.*.levels`, `@scale.*` (vía `resolveScaleValues`, A2) y
+ * `@prof`. Cualquier otra ruta (`@item.uses.spent`, `@attributes.spell.*`...)
+ * resuelve a 0 — fases posteriores de la guía las añadirán.
  */
-function applySpellScaling(
-  item: FoundryItem,
-  character: CharacterFull,
-  built: BuiltDamage,
-): {
-  damageFormula: string | null;
-  damageScalingPerLevel: string | null;
-  spellBaseLevel: number | null;
-} {
-  if (!built.formula || built.scalingDice.length === 0 || item.type !== "spell") {
-    return { damageFormula: built.formula, damageScalingPerLevel: null, spellBaseLevel: null };
-  }
+function buildRollDataBase(character: CharacterFull): Omit<RollData, "mod" | "item"> {
+  const abilities = Object.fromEntries(
+    ABILITY_KEYS.map((key) => [key, { value: 10, mod: character.derived.abilityModifiers[key] }]),
+  );
 
-  const itemLevel = typeof item.system?.level === "number" ? item.system.level : null;
-  if (itemLevel === 0) {
-    const extra = formatScalingDice(built.scalingDice, cantripScalingSteps(character.level));
-    return {
-      damageFormula: extra ? `${built.formula}+${extra}` : built.formula,
-      damageScalingPerLevel: null,
-      spellBaseLevel: null,
-    };
-  }
-  if (itemLevel !== null && itemLevel >= 1) {
-    return {
-      damageFormula: built.formula,
-      damageScalingPerLevel: built.scalingDice.map((d) => `${d.count}d${d.denomination}`).join("+"),
-      spellBaseLevel: itemLevel,
-    };
-  }
-  return { damageFormula: built.formula, damageScalingPerLevel: null, spellBaseLevel: null };
+  const items = asFoundryItems(character.items);
+  const classItems = items.filter((item) => item.type === "class");
+  const subclassItems = items.filter((item) => item.type === "subclass");
+
+  const classes = Object.fromEntries(
+    classItems.map((item) => [
+      item.system?.identifier || formatIdentifier(item.name ?? ""),
+      { levels: Number(item.system?.levels) || 0 },
+    ]),
+  );
+  const subclasses = Object.fromEntries(
+    subclassItems.map((item) => {
+      const parent = classItems.find((c) => c.system?.identifier === item.system?.classIdentifier);
+      return [
+        item.system?.identifier || formatIdentifier(item.name ?? ""),
+        { levels: Number(parent?.system?.levels) || 0 },
+      ];
+    }),
+  );
+
+  const originalClassId =
+    (character.rawSystem as { details?: { originalClass?: string } } | null)?.details
+      ?.originalClass ?? null;
+
+  return {
+    abilities,
+    attributes: { spellcasting: character.derived.spellcastingAbility },
+    classes,
+    subclasses,
+    details: { level: character.level },
+    prof: character.derived.proficiencyBonus,
+    scale: resolveScaleValues(character.items, originalClassId),
+  };
 }
 
 /**
  * Ataques/acciones tirables de un personaje: recorre TODOS sus items
- * (armas, dotes, conjuros...) buscando activities `type: "attack"` o
- * `type: "save"` de Foundry. Es una estimación de mejor esfuerzo (ver
- * resolveAbilityMod / isProficientWithWeapon) — la fórmula calculada se
- * muestra siempre junto al botón para que el jugador pueda comprobarla
- * antes de tirar.
+ * (armas, dotes, conjuros...) buscando activities `type: "attack"`,
+ * `"save"`, `"damage"` o `"heal"` de Foundry. Es una estimación de mejor
+ * esfuerzo (ver resolveAbilityMod / isProficientWithWeapon) — la fórmula
+ * calculada se muestra siempre junto al botón para que el jugador pueda
+ * comprobarla antes de tirar.
  *
- * Las activities `save` (Ola atronadora, Bola de fuego...) no tienen tirada
- * de ataque — es el OBJETIVO quien tira la salvación — así que solo
- * generan botón de daño, nunca de "Atacar". Su daño tampoco suma el
- * modificador de característica del lanzador (a diferencia de un ataque):
- * por eso se llama a buildDamage con abilityMod=0 — en la práctica da
- * igual, porque item.system.damage.base.bonus (el único sitio donde ese mod
- * se sumaría) nunca es "@mod" en un conjuro, pero así queda explícito y a
- * prueba de que algún día lo sea. Muchas activities `save` no hacen daño en
- * absoluto (Enmarañar, Hechizar persona... solo imponen una condición) —
- * esas se descartan porque buildDamage no encuentra ningún término de dados
- * que montar.
+ * - `attack`: tirada de ataque + daño opcional (True Strike no tiene daño
+ *   propio — usa el del arma empuñada, algo que no cruzamos aquí).
+ * - `save`: sin tirada de ataque (tira el OBJETIVO la salvación) — su daño
+ *   tampoco suma el modificador del lanzador (RAW), por eso usa `mod=0`.
+ *   Se descarta si no hay ningún dado que montar (Enmarañar, Hechizar
+ *   persona... solo imponen una condición).
+ * - `damage`/`heal`: activities "sueltas" sin tirada propia (Ataque
+ *   furtivo, Castigo Divino, Curar heridas...) — antes se ignoraban por
+ *   completo (bug #1 del diagnóstico).
  */
 export function getRollableActions(items: unknown, character: CharacterFull): RollableAction[] {
   const actions: RollableAction[] = [];
+  const rollDataBase = buildRollDataBase(character);
 
   for (const item of asFoundryItems(items)) {
     const activities = item.system?.activities;
@@ -262,40 +319,79 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
     for (const [activityId, activity] of Object.entries(
       activities as Record<string, FoundryActivity>,
     )) {
-      if (activity?.type === "attack") {
-        const abilityMod = resolveAbilityMod(activity.attack?.ability, item, character);
+      const type = activity?.type;
+      if (type !== "attack" && type !== "save" && type !== "damage" && type !== "heal") continue;
+
+      const kind: RollableActionKind = type === "heal" ? "heal" : "damage";
+      const entries =
+        kind === "heal"
+          ? activity.healing
+            ? [activity.healing]
+            : []
+          : collectDamageEntries(item, activity);
+
+      // @mod para esta activity concreta: en un ataque, la característica
+      // resuelta para el propio ataque; en una salvación, 0 (RAW: el daño
+      // de una salvación no suma el mod del lanzador); en `damage`/`heal`
+      // sueltos (sin tirada propia, casi siempre de conjuro), la de
+      // conjuro por defecto vía el mismo fallback que ya usa el ataque.
+      const mod =
+        type === "attack"
+          ? resolveAbilityMod(activity.attack?.ability, item, character)
+          : type === "damage" || type === "heal"
+            ? resolveAbilityMod(undefined, item, character)
+            : 0;
+
+      const rollData: RollData = { ...rollDataBase, mod };
+
+      let attackFormula: string | null = null;
+      if (type === "attack") {
         const proficient = item.type === "weapon" ? isProficientWithWeapon(item, character) : true;
-        const attackBonus = abilityMod + (proficient ? character.derived.proficiencyBonus : 0);
-        const built = buildDamage(item, activity, abilityMod);
-        const scaled = applySpellScaling(item, character, built);
-
-        actions.push({
-          itemId: item._id ?? activityId,
-          activityId,
-          itemName: item.name ?? "Sin nombre",
-          activityName: activity.name && activity.name !== "Attack" ? activity.name : null,
-          attackFormula: `1d20${formatSigned(attackBonus)}`,
-          ...scaled,
-        });
-        continue;
+        const attackBonus = mod + (proficient ? character.derived.proficiencyBonus : 0);
+        attackFormula = `1d20${formatSigned(attackBonus)}`;
       }
 
-      if (activity?.type === "save") {
-        const built = buildDamage(item, activity, 0);
-        if (!built.formula) continue;
-        const scaled = applySpellScaling(item, character, built);
+      const built = buildDeferred(entries);
+      let damageFormula: string | null = built.base ? evaluateFormula(built.base, rollData) : null;
+      let damageScalingPerLevel: string | null = null;
+      let spellBaseLevel: number | null = null;
 
-        actions.push({
-          itemId: item._id ?? activityId,
-          activityId,
-          itemName: item.name ?? "Sin nombre",
-          activityName:
-            (activity.name && activity.name !== "Attack" ? activity.name : null) ??
-            resolveSaveAbilityLabel(activity),
-          attackFormula: null,
-          ...scaled,
-        });
+      if (item.type === "spell" && built.base) {
+        const itemLevel = typeof item.system?.level === "number" ? item.system.level : null;
+        if (itemLevel === 0) {
+          const steps = cantripScalingSteps(character.level);
+          if (steps > 0) {
+            const scaledTerms = entries
+              .map((entry) => scaledFormulaText(entry, steps))
+              .filter((text) => text.length > 0);
+            if (scaledTerms.length > 0) {
+              damageFormula = evaluateFormula(scaledTerms.join(" + "), rollData);
+            }
+          }
+        } else if (itemLevel !== null && itemLevel >= 1 && built.scalingDice.length > 0) {
+          damageScalingPerLevel = built.scalingDice
+            .map((d) => `${d.count}d${d.denomination}`)
+            .join("+");
+          spellBaseLevel = itemLevel;
+        }
       }
+
+      // Sin tirada de ataque propia y sin nada que tirar ⇒ no hay botón que mostrar.
+      if (type !== "attack" && !damageFormula) continue;
+
+      actions.push({
+        itemId: item._id ?? activityId,
+        activityId,
+        itemName: item.name ?? "Sin nombre",
+        activityName:
+          (activity.name && activity.name !== "Attack" ? activity.name : null) ??
+          (type === "save" ? resolveSaveAbilityLabel(activity) : null),
+        kind,
+        attackFormula,
+        damageFormula,
+        damageScalingPerLevel,
+        spellBaseLevel,
+      });
     }
   }
 

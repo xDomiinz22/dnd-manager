@@ -24,7 +24,11 @@ import { useCreateRoll } from "../features/dice/hooks";
 import { useDiceOverlay } from "../features/dice/DiceOverlay";
 import { useChatSession } from "../features/chat/hooks";
 import { useGroupDetail } from "../features/groups/hooks";
-import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
+import {
+  damageActionLabels,
+  getRollableActions,
+  type RollableAction,
+} from "../features/characters/rollableActions";
 import { ScalableDamageButton } from "../features/characters/ScalableDamageButton";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
@@ -746,7 +750,7 @@ function RollButtons({
               </Button>
             )}
             <ScalableDamageButton
-              label={`Daño: ${label}`}
+              label={`${damageActionLabels(action.kind).prefix}: ${label}`}
               action={action}
               onRoll={onRoll}
               renderButton={(formula, onClick) => (
@@ -754,10 +758,10 @@ function RollButtons({
                   variant="ghost"
                   onClick={onClick}
                   disabled={!canRoll}
-                  title={`Tirar daño: ${formula}${rollTitleSuffix}`}
+                  title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${formula}${rollTitleSuffix}`}
                   className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
                 >
-                  🎲 Daño ({formula})
+                  🎲 {damageActionLabels(action.kind).verb} ({formula})
                 </Button>
               )}
             />

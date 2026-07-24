@@ -3,7 +3,11 @@ import type { AbilityKey, CharacterFull, CharacterRosterEntry } from "@dnd-manag
 import { useCharacter } from "../characters/hooks";
 import { useCreateRoll } from "../dice/hooks";
 import { useDiceOverlay } from "../dice/DiceOverlay";
-import { getRollableActions, type RollableAction } from "../characters/rollableActions";
+import {
+  damageActionLabels,
+  getRollableActions,
+  type RollableAction,
+} from "../characters/rollableActions";
 import { ScalableDamageButton } from "../characters/ScalableDamageButton";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
@@ -385,11 +389,14 @@ function SearchResults({
               />
             )}
             <ScalableDamageButton
-              label={`Daño: ${label}`}
+              label={`${damageActionLabels(action.kind).prefix}: ${label}`}
               action={action}
               onRoll={onRoll}
               renderButton={(formula, onClick) => (
-                <MoveButton text={`Daño (${formula})`} onClick={onClick} />
+                <MoveButton
+                  text={`${damageActionLabels(action.kind).verb} (${formula})`}
+                  onClick={onClick}
+                />
               )}
             />
           </div>
@@ -457,11 +464,14 @@ function ActionList({
                 />
               )}
               <ScalableDamageButton
-                label={`Daño: ${label}`}
+                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                 action={action}
                 onRoll={onRoll}
                 renderButton={(formula, onClick) => (
-                  <MoveButton text={`Daño (${formula})`} onClick={onClick} />
+                  <MoveButton
+                    text={`${damageActionLabels(action.kind).verb} (${formula})`}
+                    onClick={onClick}
+                  />
                 )}
               />
             </div>
