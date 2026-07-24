@@ -117,7 +117,8 @@ interface DiceEntry {
 interface FoundryActivity {
   type?: string;
   name?: string;
-  attack?: { ability?: string };
+  attack?: { ability?: string; type?: { classification?: string } };
+  attackMode?: string;
   save?: { ability?: string[]; dc?: { calculation?: string; formula?: string; bonus?: string } };
   damage?: { includeBase?: boolean; parts?: DiceEntry[] };
   healing?: DiceEntry;
@@ -215,14 +216,67 @@ function buildDeferred(entries: DiceEntry[]): BuiltFormula {
   return { base: terms.length > 0 ? terms.join(" + ") : null, scalingDice };
 }
 
-function collectDamageEntries(item: FoundryItem, activity: FoundryActivity): DiceEntry[] {
-  const entries: DiceEntry[] = [];
-  if (activity.damage?.includeBase !== false) {
-    const base = item.system?.damage?.base as DiceEntry | undefined;
-    if (base) entries.push(base);
+function collectDamageEntries(
+  item: FoundryItem,
+  activity: FoundryActivity,
+): { base: DiceEntry | null; parts: DiceEntry[] } {
+  const base =
+    activity.damage?.includeBase !== false
+      ? ((item.system?.damage?.base as DiceEntry | undefined) ?? null)
+      : null;
+  return { base, parts: activity.damage?.parts ?? [] };
+}
+
+/** Mano torpe con arma versátil/dos armas: nunca suma el mod si ya es ≥0 (regla 5e). */
+function isOffhandWithPositiveMod(activity: FoundryActivity, mod: number): boolean {
+  return !!activity.attackMode?.endsWith("offhand") && mod >= 0;
+}
+
+/** Ataques con conjuro clasificados como "natural" (garras/mordisco de un familiar transformado, p.ej.) no suman @mod aparte. */
+function isNaturalSpellWeapon(item: FoundryItem, activity: FoundryActivity): boolean {
+  return (
+    activity.attack?.type?.classification === "spell" && item.system?.type?.value === "natural"
+  );
+}
+
+/**
+ * `@mod` implícito de armas (A11, §6.3): el daño de un arma SIEMPRE suma el
+ * modificador de característica, no es algo que dependa de un flag por
+ * item — el `bonus` explícito en `damage.base.bonus` es la excepción rara
+ * (p.ej. armas con un bono ya escrito a mano), no la regla. Sin esto,
+ * cualquier arma "normal" (Longbow, Ice Monarch...) sale con el dado pelado
+ * sin el modificador.
+ *
+ * Caso especial: `custom.enabled` (Ataque sin armas: `formula:"1"`) ignora
+ * `bonus` por completo (ver `baseFormulaText`) — para esas, el `@mod` se
+ * añade directamente a `custom.formula`, no al `bonus` que nunca se lee.
+ */
+function applyImplicitWeaponMod(
+  item: FoundryItem,
+  activity: FoundryActivity,
+  base: DiceEntry,
+  mod: number,
+): DiceEntry {
+  if (item.type !== "weapon") return base;
+  if (isOffhandWithPositiveMod(activity, mod) || isNaturalSpellWeapon(item, activity)) return base;
+
+  if (base.custom?.enabled) {
+    const formula = base.custom.formula ?? "";
+    if (/@mod\b/.test(formula)) return base;
+    return { ...base, custom: { ...base.custom, formula: formula ? `${formula} + @mod` : "@mod" } };
   }
-  entries.push(...(activity.damage?.parts ?? []));
-  return entries;
+
+  const baseText = baseFormulaText(base);
+  const isFlat = baseText.length > 0 && !/\d*d\d+/.test(baseText);
+  if (isFlat || /@mod\b/.test(baseText)) return base;
+  return { ...base, bonus: base.bonus ? `${base.bonus} + @mod` : "@mod" };
+}
+
+/** `item.system.magicalBonus` (p.ej. un arma +1/+2/+3) — se suma tal cual cuando el ítem lo trae activo. */
+function magicalBonusText(item: FoundryItem): string | null {
+  if (!item.system?.magicAvailable) return null;
+  const bonus = item.system?.magicalBonus;
+  return typeof bonus === "number" && bonus !== 0 ? formatSigned(bonus) : null;
 }
 
 /**
@@ -423,14 +477,6 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
       const type = activity?.type;
       if (type !== "attack" && type !== "save" && type !== "damage" && type !== "heal") continue;
 
-      const kind: RollableActionKind = type === "heal" ? "heal" : "damage";
-      const entries =
-        kind === "heal"
-          ? activity.healing
-            ? [activity.healing]
-            : []
-          : collectDamageEntries(item, activity);
-
       // @mod para esta activity concreta: en un ataque, la característica
       // resuelta para el propio ataque; en una salvación, 0 (RAW: el daño
       // de una salvación no suma el mod del lanzador); en `damage`/`heal`
@@ -443,6 +489,20 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
             ? resolveAbilityMod(undefined, item, character)
             : 0;
 
+      const kind: RollableActionKind = type === "heal" ? "heal" : "damage";
+      let entries: DiceEntry[];
+      if (kind === "heal") {
+        entries = activity.healing ? [activity.healing] : [];
+      } else {
+        const { base, parts } = collectDamageEntries(item, activity);
+        // A11: el `@mod` de un arma es implícito — no depende de un `bonus`
+        // literal `"@mod"` en los datos (esa era la regla vieja, incorrecta).
+        // Solo se aplica a la entrada BASE del arma, nunca a `parts` extra.
+        const adjustedBase =
+          base && type === "attack" ? applyImplicitWeaponMod(item, activity, base, mod) : base;
+        entries = adjustedBase ? [adjustedBase, ...parts] : parts;
+      }
+
       const rollData: RollData = { ...rollDataBase, mod };
 
       let attackFormula: string | null = null;
@@ -454,6 +514,10 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
 
       const built = buildDeferred(entries);
       let damageFormula: string | null = built.base ? evaluateFormula(built.base, rollData) : null;
+      if (damageFormula && type === "attack") {
+        const magicalBonus = magicalBonusText(item);
+        if (magicalBonus) damageFormula = `${damageFormula} ${magicalBonus}`;
+      }
       let damageScalingPerLevel: string | null = null;
       let spellBaseLevel: number | null = null;
       let maxCastableLevel: number | null = null;
