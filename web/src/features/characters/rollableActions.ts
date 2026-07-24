@@ -2,6 +2,7 @@ import type { AbilityKey, CharacterFull } from "@dnd-manager/shared";
 import { ABILITY_FULL_LABELS, asFoundryItems, type FoundryItem } from "./foundryDisplay";
 import { evaluateFormula, multiplyFormulaTerms, type RollData } from "./formulaEval";
 import { formatIdentifier, resolveScaleValues } from "./scaleValues";
+import { canUpcastSpell, computeSpellSlots, maxCastableSpellLevel } from "./spellProgression";
 
 export type RollableActionKind = "damage" | "heal";
 
@@ -25,6 +26,16 @@ export interface RollableAction {
    */
   damageScalingPerLevel: string | null;
   spellBaseLevel: number | null;
+  /** Nivel de hueco más alto realmente disponible — acota el selector de nivel a huecos que el personaje de verdad tiene (A13). */
+  maxCastableLevel: number | null;
+  /**
+   * CD de la salvación (A12) — solo para activities `type: "save"`. Ya va
+   * incluida en `activityName` (p.ej. "Salvación de Constitución (CD 13)"),
+   * se expone aparte por si la UI la quiere mostrar de otra forma.
+   */
+  saveDc: number | null;
+  /** Texto "A niveles superiores" extraído de la descripción (A15) — red de seguridad para lo que el resto del algoritmo no llega a calcular. */
+  higherLevelText: string | null;
 }
 
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -107,7 +118,7 @@ interface FoundryActivity {
   type?: string;
   name?: string;
   attack?: { ability?: string };
-  save?: { ability?: string[] };
+  save?: { ability?: string[]; dc?: { calculation?: string; formula?: string; bonus?: string } };
   damage?: { includeBase?: boolean; parts?: DiceEntry[] };
   healing?: DiceEntry;
 }
@@ -243,6 +254,91 @@ function resolveSaveAbilityLabel(activity: FoundryActivity): string | null {
 }
 
 /**
+ * Característica de conjuro de UN ítem concreto (A12, §7.2): prioriza el
+ * override explícito del propio conjuro (`item.system.ability`, p.ej. Ola
+ * atronadora trae "wis" aunque el personaje lance con otra clase); si no,
+ * cae a la característica de conjuro global del personaje. La resolución
+ * completa por clase de origen (`sourceItem: "class:druid"`) es de A14
+ * (Active Effects) y queda para una fase posterior — este fallback ya es
+ * correcto para personajes con una sola clase lanzadora, que es el caso
+ * común.
+ */
+function resolveSpellcastingAbilityForItem(
+  item: FoundryItem,
+  character: CharacterFull,
+): AbilityKey | null {
+  const itemAbility = item.system?.ability;
+  if (typeof itemAbility === "string" && itemAbility in character.derived.abilityModifiers) {
+    return itemAbility as AbilityKey;
+  }
+  return character.derived.spellcastingAbility;
+}
+
+/**
+ * CD de una activity de salvación (A12, §7.1): `8 + prof + mod` de la
+ * característica resuelta, más cualquier bono de la propia activity
+ * (`save.dc.bonus`). `bonuses.spell.dc` (Active Effects globales) es de A14
+ * y todavía no se suma aquí. `calculation` puede ser: "" (CD ya fijada como
+ * fórmula plana en `save.dc.formula`), una característica concreta
+ * (forzada), o "spellcasting" (el caso normal).
+ */
+function resolveSaveDc(
+  item: FoundryItem,
+  activity: FoundryActivity,
+  character: CharacterFull,
+  rollData: RollData,
+): number | null {
+  const dcConfig = activity.save?.dc;
+  const calculation = dcConfig?.calculation;
+  let dc: number;
+
+  if (!calculation) {
+    if (!dcConfig?.formula) return null;
+    dc = evaluateFormula(dcConfig.formula, rollData, { deterministic: true });
+  } else {
+    let ability: AbilityKey | null;
+    if (calculation in character.derived.abilityModifiers) {
+      ability = calculation as AbilityKey;
+    } else if (calculation === "spellcasting") {
+      ability = resolveSpellcastingAbilityForItem(item, character);
+    } else {
+      ability = (activity.save?.ability?.[0] as AbilityKey | undefined) ?? null;
+    }
+    const mod = ability ? character.derived.abilityModifiers[ability] : 0;
+    dc = 8 + mod + character.derived.proficiencyBonus;
+  }
+
+  if (dcConfig?.bonus) {
+    dc += evaluateFormula(dcConfig.bonus, rollData, { deterministic: true });
+  }
+  return dc;
+}
+
+// "A niveles superiores"/"Using a Higher-Level Spell Slot" suele venir como
+// un <p> cuyo primer <span> es el propio título (no un heading aparte antes
+// del párrafo) — ver Ray of Sickness en Lilith.md. Se busca el <p> que
+// CONTIENE la frase, no que empieza por ella, y se devuelve su texto plano.
+const HIGHER_LEVEL_KEYWORDS = /niveles superiores|higher-level spell slot/i;
+
+/**
+ * A15 de la guía: red de seguridad frente a formas de escalado no
+ * modeladas (E7/E10/E12 y cualquier homebrew imprevisto) — mostrar el
+ * texto tal cual, siempre, cueste casi nada y cubre el 100% de los casos
+ * que el resto del algoritmo no llega a calcular.
+ */
+function extractHigherLevelText(descriptionHtml: unknown): string | null {
+  if (typeof descriptionHtml !== "string" || !descriptionHtml) return null;
+  const paragraphs = descriptionHtml.match(/<p>[\s\S]*?<\/p>/gi) ?? [];
+  const match = paragraphs.find((p) => HIGHER_LEVEL_KEYWORDS.test(p));
+  if (!match) return null;
+  const text = match
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text || null;
+}
+
+/**
  * Roll data (§2 de la guía) común a todo el personaje — se construye UNA
  * vez por ficha, no por activity. Cubre las rutas que necesitamos en esta
  * fase: `@abilities.*`, `@details.level`, `@classes.*.levels`,
@@ -311,6 +407,11 @@ function buildRollDataBase(character: CharacterFull): Omit<RollData, "mod" | "it
 export function getRollableActions(items: unknown, character: CharacterFull): RollableAction[] {
   const actions: RollableAction[] = [];
   const rollDataBase = buildRollDataBase(character);
+  // A13: una sola vez por personaje — el nivel de hueco más alto realmente
+  // disponible acota el selector de la UI a huecos que existen de verdad
+  // (antes ofrecía nv1-7 siempre, aunque el personaje solo tuviera nv1).
+  const spellSlots = computeSpellSlots(character.items);
+  const maxSlotLevel = maxCastableSpellLevel(spellSlots);
 
   for (const item of asFoundryItems(items)) {
     const activities = item.system?.activities;
@@ -355,6 +456,8 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
       let damageFormula: string | null = built.base ? evaluateFormula(built.base, rollData) : null;
       let damageScalingPerLevel: string | null = null;
       let spellBaseLevel: number | null = null;
+      let maxCastableLevel: number | null = null;
+      let higherLevelText: string | null = null;
 
       if (item.type === "spell" && built.base) {
         const itemLevel = typeof item.system?.level === "number" ? item.system.level : null;
@@ -368,13 +471,26 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
               damageFormula = evaluateFormula(scaledTerms.join(" + "), rollData);
             }
           }
-        } else if (itemLevel !== null && itemLevel >= 1 && built.scalingDice.length > 0) {
+        } else if (
+          itemLevel !== null &&
+          itemLevel >= 1 &&
+          built.scalingDice.length > 0 &&
+          canUpcastSpell(item.system?.method)
+        ) {
           damageScalingPerLevel = built.scalingDice
             .map((d) => `${d.count}d${d.denomination}`)
             .join("+");
           spellBaseLevel = itemLevel;
+          // Por si acaso el cálculo de huecos no llega al nivel base del
+          // propio conjuro (huecos "desincronizados" del `.md`, ver §14) —
+          // el selector nunca debe ofrecer MENOS que el nivel de serie.
+          maxCastableLevel = Math.max(itemLevel, maxSlotLevel);
+          higherLevelText = extractHigherLevelText(item.system?.description?.value);
         }
       }
+
+      const saveDc = type === "save" ? resolveSaveDc(item, activity, character, rollData) : null;
+      const saveLabel = type === "save" ? resolveSaveAbilityLabel(activity) : null;
 
       // Sin tirada de ataque propia y sin nada que tirar ⇒ no hay botón que mostrar.
       if (type !== "attack" && !damageFormula) continue;
@@ -385,12 +501,15 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
         itemName: item.name ?? "Sin nombre",
         activityName:
           (activity.name && activity.name !== "Attack" ? activity.name : null) ??
-          (type === "save" ? resolveSaveAbilityLabel(activity) : null),
+          (saveLabel && saveDc !== null ? `${saveLabel} (CD ${saveDc})` : saveLabel),
         kind,
         attackFormula,
         damageFormula,
         damageScalingPerLevel,
         spellBaseLevel,
+        maxCastableLevel,
+        saveDc,
+        higherLevelText,
       });
     }
   }

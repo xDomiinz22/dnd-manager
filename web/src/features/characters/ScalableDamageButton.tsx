@@ -13,6 +13,8 @@ export interface ScalableDamageAction {
   damageFormula: string | null;
   damageScalingPerLevel: string | null;
   spellBaseLevel: number | null;
+  maxCastableLevel?: number | null;
+  higherLevelText?: string | null;
 }
 
 /**
@@ -56,10 +58,22 @@ export function ScalableDamageButton({
           value={level}
           onChange={(e) => setLevel(Number(e.target.value))}
           aria-label="Nivel del hueco de conjuro"
-          title="Tirar como si se lanzara con un hueco de este nivel"
+          // A15: si el algoritmo no llegó a calcular el escalado exacto
+          // (formas de escalado no modeladas, homebrew...), el texto "A
+          // niveles superiores" de la propia descripción se cuela aquí como
+          // red de seguridad — cuesta casi nada y cubre lo que se escape.
+          title={
+            action.higherLevelText
+              ? action.higherLevelText
+              : "Tirar como si se lanzara con un hueco de este nivel"
+          }
           className="rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-xs text-ink outline-none focus:border-oxblood"
         >
-          {SPELL_SLOT_LEVELS.filter((l) => l >= baseLevel).map((l) => (
+          {/* A13: acotado a huecos que el personaje tiene de verdad — antes
+              siempre ofrecía nv1-7 aunque solo hubiera huecos hasta nv1. */}
+          {SPELL_SLOT_LEVELS.filter(
+            (l) => l >= baseLevel && l <= (action.maxCastableLevel ?? baseLevel),
+          ).map((l) => (
             <option key={l} value={l}>
               Nv {l}
             </option>
