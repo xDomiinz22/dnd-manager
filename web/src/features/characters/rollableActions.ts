@@ -45,6 +45,14 @@ export interface RollableAction {
    * cuánto gastar dentro de `[min, max]` y recalcular en el cliente.
    */
   resourceScaling: { formula: string; rollData: RollData; min: number; max: number } | null;
+  /**
+   * A7 (rebanada práctica): nº de objetivos cuando `system.target.affects.count`
+   * es una fórmula (típicamente `@item.level`, p.ej. Hechizar persona: "una
+   * bestia adicional por cada nivel por encima de 1") — calculado al nivel
+   * base del conjuro, no reactivo al hueco elegido (para eso haría falta un
+   * selector de nivel propio en conjuros sin daño, fuera de alcance por ahora).
+   */
+  targetCount: number | null;
 }
 
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -402,6 +410,27 @@ function resolveSpellcastingAbilityForItem(
 }
 
 /**
+ * A7 (rebanada práctica): `system.target.affects.count` — casi siempre un
+ * número fijo ("1", "3"...) pero a veces una fórmula real (`@item.level`,
+ * ver Hechizar persona/Fuego feérico/Heroísmo en las fichas de ejemplo).
+ * Se evalúa al nivel base declarado del conjuro (no al hueco elegido —
+ * estos conjuros no tienen daño, así que hoy no hay selector de nivel al
+ * que enganchar un recálculo reactivo).
+ */
+function resolveTargetCount(item: FoundryItem, rollData: RollData): number | null {
+  if (item.type !== "spell") return null;
+  const raw = item.system?.target?.affects?.count;
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const itemLevel = typeof item.system?.level === "number" ? item.system.level : 0;
+  const value = evaluateFormula(
+    raw,
+    { ...rollData, item: { level: itemLevel } },
+    { deterministic: true },
+  );
+  return Number.isFinite(value) ? value : null;
+}
+
+/**
  * CD de una activity de salvación (A12, §7.1): `8 + prof + mod` de la
  * característica resuelta, más cualquier bono de la propia activity
  * (`save.dc.bonus`). `bonuses.spell.dc` (Active Effects globales) es de A14
@@ -658,8 +687,14 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
       const saveDc = type === "save" ? resolveSaveDc(item, activity, character, rollData) : null;
       const saveLabel = type === "save" ? resolveSaveAbilityLabel(activity) : null;
 
-      // Sin tirada de ataque propia y sin nada que tirar ⇒ no hay botón que mostrar.
-      if (type !== "attack" && !damageFormula) continue;
+      // Antes se descartaban aquí las activities `save` sin daño (hechizos
+      // de control/utilidad puros como Hechizar persona) — su CD nunca
+      // llegaba a mostrarse en ningún sitio. Se conservan cuando al menos
+      // tienen una CD resuelta, aunque no haya nada que tirar como daño.
+      const isInfoOnlySave = type === "save" && saveDc !== null;
+      if (type !== "attack" && !damageFormula && !isInfoOnlySave) continue;
+
+      const targetCount = resolveTargetCount(item, rollData);
 
       actions.push({
         itemId: item._id ?? activityId,
@@ -677,6 +712,7 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
         saveDc,
         higherLevelText,
         resourceScaling,
+        targetCount,
       });
     }
   }

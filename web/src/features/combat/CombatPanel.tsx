@@ -401,6 +401,11 @@ function ActionButtons({
                   )}
                 />
               )}
+              {action.targetCount ? (
+                <span className="self-center text-xs text-ink-muted">
+                  Objetivos: {action.targetCount}
+                </span>
+              ) : null}
             </div>
           </li>
         );

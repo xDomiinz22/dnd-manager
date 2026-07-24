@@ -737,8 +737,21 @@ function RollButtons({
         const label = action.activityName
           ? `${action.itemName} (${action.activityName})`
           : action.itemName;
+        const targetSuffix = action.targetCount ? ` · Objetivos: ${action.targetCount}` : "";
+        if (!action.attackFormula && !action.damageFormula) {
+          // Salvación sin daño propio (Hechizar persona, Fuego feérico...):
+          // no hay nada que tirar, pero la CD (ya incluida en `label`) y el
+          // nº de objetivos siguen siendo información útil que antes no se
+          // mostraba en ningún sitio.
+          return (
+            <div key={action.activityId} className="text-xs text-ink/70">
+              {label}
+              {targetSuffix}
+            </div>
+          );
+        }
         return (
-          <div key={action.activityId} className="flex flex-wrap gap-1.5">
+          <div key={action.activityId} className="flex flex-wrap items-center gap-1.5">
             {action.attackFormula && (
               <Button
                 variant="ghost"
@@ -785,6 +798,7 @@ function RollButtons({
                 )}
               />
             )}
+            {targetSuffix && <span className="text-xs text-ink/70">{targetSuffix}</span>}
           </div>
         );
       })}
