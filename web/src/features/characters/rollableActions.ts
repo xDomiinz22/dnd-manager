@@ -117,11 +117,48 @@ interface DiceEntry {
 interface FoundryActivity {
   type?: string;
   name?: string;
-  attack?: { ability?: string; type?: { classification?: string } };
+  attack?: { ability?: string; type?: { value?: string; classification?: string } };
   attackMode?: string;
   save?: { ability?: string[]; dc?: { calculation?: string; formula?: string; bonus?: string } };
   damage?: { includeBase?: boolean; parts?: DiceEntry[] };
   healing?: DiceEntry;
+}
+
+interface ActorBonusFormulas {
+  attack?: string;
+  damage?: string;
+}
+
+/**
+ * `actor.system.bonuses.{mwak,rwak,msak,rsak}` (rebanada práctica de A14):
+ * bonos GLOBALES de ataque/daño que el jugador rellena a mano en la ficha
+ * (o que una Active Effect sobrescribe) — son fórmulas de texto ya
+ * presentes tal cual en el export, no hace falta recorrer `effects[]` para
+ * leerlas. La clasificación "unarmed" cuenta como arma a estos efectos
+ * (mismo actionType que un arma normal en dnd5e).
+ */
+function resolveActionTypeKey(activity: FoundryActivity): "mwak" | "rwak" | "msak" | "rsak" | null {
+  const range = activity.attack?.type?.value;
+  const classification = activity.attack?.type?.classification;
+  if (range !== "melee" && range !== "ranged") return null;
+  if (classification === "spell") return range === "melee" ? "msak" : "rsak";
+  if (classification === "weapon" || classification === "unarmed") {
+    return range === "melee" ? "mwak" : "rwak";
+  }
+  return null;
+}
+
+function resolveActorBonuses(
+  character: CharacterFull,
+  key: "mwak" | "rwak" | "msak" | "rsak",
+): ActorBonusFormulas {
+  const rawSystem = character.rawSystem as { bonuses?: Record<string, ActorBonusFormulas> } | null;
+  return rawSystem?.bonuses?.[key] ?? {};
+}
+
+function resolveSpellDcBonus(character: CharacterFull): string | undefined {
+  const rawSystem = character.rawSystem as { bonuses?: { spell?: { dc?: string } } } | null;
+  return rawSystem?.bonuses?.spell?.dc;
 }
 
 /**
@@ -365,6 +402,12 @@ function resolveSaveDc(
   if (dcConfig?.bonus) {
     dc += evaluateFormula(dcConfig.bonus, rollData, { deterministic: true });
   }
+  // A14: `system.bonuses.spell.dc` — bono global a CD de conjuro (el
+  // mismo mecanismo de bono manual/Active Effect que mwak/rwak/msak/rsak).
+  if (item.type === "spell") {
+    const spellDcBonus = resolveSpellDcBonus(character);
+    if (spellDcBonus) dc += evaluateFormula(spellDcBonus, rollData, { deterministic: true });
+  }
   return dc;
 }
 
@@ -504,11 +547,20 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
       }
 
       const rollData: RollData = { ...rollDataBase, mod };
+      // A14 (rebanada de bonos globales del actor): `system.bonuses.<actionType>.*`
+      // — un ataque cuerpo a cuerpo con arma también recibe el bono de
+      // `mwak`, uno de conjuro a distancia el de `rsak`, etc. Se suma
+      // aparte del `@mod` implícito (A11), no lo sustituye.
+      const actionTypeKey = type === "attack" ? resolveActionTypeKey(activity) : null;
+      const actorBonuses = actionTypeKey ? resolveActorBonuses(character, actionTypeKey) : {};
 
       let attackFormula: string | null = null;
       if (type === "attack") {
         const proficient = item.type === "weapon" ? isProficientWithWeapon(item, character) : true;
-        const attackBonus = mod + (proficient ? character.derived.proficiencyBonus : 0);
+        let attackBonus = mod + (proficient ? character.derived.proficiencyBonus : 0);
+        if (actorBonuses.attack) {
+          attackBonus += evaluateFormula(actorBonuses.attack, rollData, { deterministic: true });
+        }
         attackFormula = `1d20${formatSigned(attackBonus)}`;
       }
 
@@ -517,6 +569,10 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
       if (damageFormula && type === "attack") {
         const magicalBonus = magicalBonusText(item);
         if (magicalBonus) damageFormula = `${damageFormula} ${magicalBonus}`;
+        if (actorBonuses.damage) {
+          const bonusText = evaluateFormula(actorBonuses.damage, rollData);
+          if (bonusText) damageFormula = `${damageFormula} + ${bonusText}`;
+        }
       }
       let damageScalingPerLevel: string | null = null;
       let spellBaseLevel: number | null = null;
