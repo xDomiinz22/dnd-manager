@@ -11,8 +11,11 @@ import { useDiceOverlay } from "../dice/DiceOverlay";
 import {
   damageActionLabels,
   getRollableActions,
+  type ActionTypeKey,
+  type CombatBonuses,
   type RollableAction,
 } from "../characters/rollableActions";
+import type { DetectedItemEffect } from "../characters/detectItemEffect";
 import { ScalableDamageButton } from "../characters/ScalableDamageButton";
 import { ResourceAmountButton } from "../characters/ResourceAmountButton";
 import {
@@ -482,6 +485,42 @@ function EffectBadges({
   );
 }
 
+/**
+ * Fusiona los bonos de todos los efectos activos de un combatiente en el
+ * formato que espera `getRollableActions` — cuando hay varios efectos que
+ * tocan el mismo campo (p.ej. dos bonos a mwak.damage) se concatenan con
+ * "+", no se pisan.
+ */
+function mergeCombatBonuses(effects: CombatParticipantDto["effects"]): CombatBonuses {
+  const byActionType: Partial<Record<ActionTypeKey, { attack?: string; damage?: string }>> = {};
+  let spellDc: string | undefined;
+
+  for (const effect of effects) {
+    const bonuses = effect.bonuses;
+    if (!bonuses) continue;
+    (["mwak", "rwak", "msak", "rsak"] as const).forEach((key) => {
+      const entry = bonuses[key];
+      if (!entry) return;
+      const current = byActionType[key] ?? {};
+      byActionType[key] = {
+        attack:
+          current.attack && entry.attack
+            ? `${current.attack} + ${entry.attack}`
+            : (current.attack ?? entry.attack),
+        damage:
+          current.damage && entry.damage
+            ? `${current.damage} + ${entry.damage}`
+            : (current.damage ?? entry.damage),
+      };
+    });
+    if (bonuses.spellDc) {
+      spellDc = spellDc ? `${spellDc} + ${bonuses.spellDc}` : bonuses.spellDc;
+    }
+  }
+
+  return { byActionType, spellDc };
+}
+
 function MiniButton({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
     <button
@@ -497,9 +536,11 @@ function MiniButton({ children, onClick }: { children: ReactNode; onClick: () =>
 function ActionButtons({
   actions,
   onRoll,
+  onApplyDetectedEffect,
 }: {
   actions: RollableAction[];
   onRoll: (label: string, formula: string) => void;
+  onApplyDetectedEffect: (effect: DetectedItemEffect) => void;
 }) {
   if (actions.length === 0) return <p className="text-xs text-ink-muted">Sin ataques.</p>;
   return (
@@ -548,6 +589,11 @@ function ActionButtons({
                   Objetivos: {action.targetCount}
                 </span>
               ) : null}
+              {action.detectedEffect && (
+                <MiniButton onClick={() => onApplyDetectedEffect(action.detectedEffect!)}>
+                  + {action.detectedEffect.name} ({action.detectedEffect.roundsRemaining})
+                </MiniButton>
+              )}
             </div>
           </li>
         );
@@ -585,6 +631,7 @@ function CurrentTurnActions({
   const enemyQuery = useEnemy(groupId, isEnemyTurn ? (participant!.enemyId ?? "") : "");
   const characterQuery = useCharacter(isCharacterTurn ? (participant!.characterId ?? "") : "");
   const createRoll = useCreateRoll(groupId);
+  const applyEffect = useApplyEffect(groupId);
   const { rollPhysics } = useDiceOverlay();
   const toast = useToast();
 
@@ -602,6 +649,34 @@ function CurrentTurnActions({
       { onError: (err) => toast.error(toErrorMessage(err, "No se pudo tirar los dados.")) },
     );
   }
+
+  function handleApplyDetectedEffect(effect: DetectedItemEffect) {
+    applyEffect.mutate(
+      {
+        participantId: participant!.id,
+        input: {
+          name: effect.name,
+          roundsRemaining: effect.roundsRemaining,
+          bonuses: effect.bonuses,
+        },
+      },
+      {
+        onSuccess: () => {
+          const warning =
+            effect.unrecognizedChangeCount > 0
+              ? ` (además cambia ${effect.unrecognizedChangeCount} cosa${effect.unrecognizedChangeCount > 1 ? "s" : ""} más que no se aplica${effect.unrecognizedChangeCount > 1 ? "n" : ""} sola${effect.unrecognizedChangeCount > 1 ? "s" : ""} — revísalo a mano)`
+              : "";
+          toast.success(`${effect.name} aplicado${warning}`);
+        },
+        onError: (err) => toast.error(toErrorMessage(err, "No se pudo aplicar el efecto.")),
+      },
+    );
+  }
+
+  // Bonos de los efectos de combate activos de este combatiente (ver
+  // `mergeCombatBonuses`) — se suman a los bonos globales de la ficha (A14)
+  // solo mientras dure el combate, no tocan la ficha en sí.
+  const combatBonuses = mergeCombatBonuses(participant.effects);
 
   let content: ReactNode;
 
@@ -630,8 +705,18 @@ function CurrentTurnActions({
         </ul>
       );
     } else if (enemy.items && enemy.derived) {
-      const actions = getRollableActions(enemy.items, enemy as unknown as CharacterFull);
-      content = <ActionButtons actions={actions} onRoll={handleRoll} />;
+      const actions = getRollableActions(
+        enemy.items,
+        enemy as unknown as CharacterFull,
+        combatBonuses,
+      );
+      content = (
+        <ActionButtons
+          actions={actions}
+          onRoll={handleRoll}
+          onApplyDetectedEffect={handleApplyDetectedEffect}
+        />
+      );
     } else {
       content = <p className="text-xs text-ink-muted">Este enemigo no tiene ataques definidos.</p>;
     }
@@ -640,8 +725,14 @@ function CurrentTurnActions({
     if (!character) {
       content = <p className="text-xs text-ink-muted">Cargando ficha...</p>;
     } else {
-      const actions = getRollableActions(character.items, character);
-      content = <ActionButtons actions={actions} onRoll={handleRoll} />;
+      const actions = getRollableActions(character.items, character, combatBonuses);
+      content = (
+        <ActionButtons
+          actions={actions}
+          onRoll={handleRoll}
+          onApplyDetectedEffect={handleApplyDetectedEffect}
+        />
+      );
     }
   }
 

@@ -1,4 +1,5 @@
 import type { AbilityKey, CharacterFull } from "@dnd-manager/shared";
+import { detectItemEffect, type DetectedItemEffect } from "./detectItemEffect";
 import { ABILITY_FULL_LABELS, asFoundryItems, type FoundryItem } from "./foundryDisplay";
 import { evaluateFormula, multiplyFormulaTerms, type RollData } from "./formulaEval";
 import { formatIdentifier, resolveScaleValues } from "./scaleValues";
@@ -53,6 +54,13 @@ export interface RollableAction {
    * selector de nivel propio en conjuros sin daño, fuera de alcance por ahora).
    */
   targetCount: number | null;
+  /**
+   * Efecto de combate detectado en el propio ítem (buff/debuff con bono
+   * reconocible, ver detectItemEffect.ts) — permite ofrecer "aplicar" en un
+   * clic al usar esta acción en combate. `null` si el ítem no trae ningún
+   * `change` reconocible.
+   */
+  detectedEffect: DetectedItemEffect | null;
 }
 
 const ABILITY_KEYS: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
@@ -168,9 +176,22 @@ function resolveResourceMax(
   return 1;
 }
 
-interface ActorBonusFormulas {
+export interface ActorBonusFormulas {
   attack?: string;
   damage?: string;
+}
+
+export type ActionTypeKey = "mwak" | "rwak" | "msak" | "rsak";
+
+/**
+ * Bonos temporales de un combate en curso (efectos activos con duración por
+ * rondas, ver CombatPanel.tsx) — se pasan aparte de `character.rawSystem`
+ * porque no viven en la ficha, sino en el estado del combate, y solo deben
+ * aplicarse mientras dure el efecto.
+ */
+export interface CombatBonuses {
+  byActionType?: Partial<Record<ActionTypeKey, ActorBonusFormulas>>;
+  spellDc?: string;
 }
 
 /**
@@ -181,7 +202,7 @@ interface ActorBonusFormulas {
  * leerlas. La clasificación "unarmed" cuenta como arma a estos efectos
  * (mismo actionType que un arma normal en dnd5e).
  */
-function resolveActionTypeKey(activity: FoundryActivity): "mwak" | "rwak" | "msak" | "rsak" | null {
+function resolveActionTypeKey(activity: FoundryActivity): ActionTypeKey | null {
   const range = activity.attack?.type?.value;
   const classification = activity.attack?.type?.classification;
   if (range !== "melee" && range !== "ranged") return null;
@@ -192,10 +213,7 @@ function resolveActionTypeKey(activity: FoundryActivity): "mwak" | "rwak" | "msa
   return null;
 }
 
-function resolveActorBonuses(
-  character: CharacterFull,
-  key: "mwak" | "rwak" | "msak" | "rsak",
-): ActorBonusFormulas {
+function resolveActorBonuses(character: CharacterFull, key: ActionTypeKey): ActorBonusFormulas {
   const rawSystem = character.rawSystem as { bonuses?: Record<string, ActorBonusFormulas> } | null;
   return rawSystem?.bonuses?.[key] ?? {};
 }
@@ -203,6 +221,11 @@ function resolveActorBonuses(
 function resolveSpellDcBonus(character: CharacterFull): string | undefined {
   const rawSystem = character.rawSystem as { bonuses?: { spell?: { dc?: string } } } | null;
   return rawSystem?.bonuses?.spell?.dc;
+}
+
+function concatFormula(a: string | undefined, b: string | undefined): string | undefined {
+  if (a && b) return `${a} + ${b}`;
+  return a ?? b;
 }
 
 /**
@@ -443,6 +466,7 @@ function resolveSaveDc(
   activity: FoundryActivity,
   character: CharacterFull,
   rollData: RollData,
+  combatSpellDcBonus: string | undefined,
 ): number | null {
   const dcConfig = activity.save?.dc;
   const calculation = dcConfig?.calculation;
@@ -469,8 +493,9 @@ function resolveSaveDc(
   }
   // A14: `system.bonuses.spell.dc` — bono global a CD de conjuro (el
   // mismo mecanismo de bono manual/Active Effect que mwak/rwak/msak/rsak).
+  // Se suma también el bono temporal de un efecto de combate activo, si lo hay.
   if (item.type === "spell") {
-    const spellDcBonus = resolveSpellDcBonus(character);
+    const spellDcBonus = concatFormula(resolveSpellDcBonus(character), combatSpellDcBonus);
     if (spellDcBonus) dc += evaluateFormula(spellDcBonus, rollData, { deterministic: true });
   }
   return dc;
@@ -566,7 +591,11 @@ function buildRollDataBase(character: CharacterFull): Omit<RollData, "mod" | "it
  *   furtivo, Castigo Divino, Curar heridas...) — antes se ignoraban por
  *   completo (bug #1 del diagnóstico).
  */
-export function getRollableActions(items: unknown, character: CharacterFull): RollableAction[] {
+export function getRollableActions(
+  items: unknown,
+  character: CharacterFull,
+  combatBonuses?: CombatBonuses,
+): RollableAction[] {
   const actions: RollableAction[] = [];
   const rollDataBase = buildRollDataBase(character);
   // A13: una sola vez por personaje — el nivel de hueco más alto realmente
@@ -578,6 +607,8 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
   for (const item of asFoundryItems(items)) {
     const activities = item.system?.activities;
     if (!activities || typeof activities !== "object") continue;
+
+    const detectedEffect = detectItemEffect(item);
 
     for (const [activityId, activity] of Object.entries(
       activities as Record<string, FoundryActivity>,
@@ -617,7 +648,21 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
       // `mwak`, uno de conjuro a distancia el de `rsak`, etc. Se suma
       // aparte del `@mod` implícito (A11), no lo sustituye.
       const actionTypeKey = type === "attack" ? resolveActionTypeKey(activity) : null;
-      const actorBonuses = actionTypeKey ? resolveActorBonuses(character, actionTypeKey) : {};
+      const combatActionBonuses = actionTypeKey
+        ? combatBonuses?.byActionType?.[actionTypeKey]
+        : undefined;
+      const actorBonuses: ActorBonusFormulas = actionTypeKey
+        ? {
+            attack: concatFormula(
+              resolveActorBonuses(character, actionTypeKey).attack,
+              combatActionBonuses?.attack,
+            ),
+            damage: concatFormula(
+              resolveActorBonuses(character, actionTypeKey).damage,
+              combatActionBonuses?.damage,
+            ),
+          }
+        : {};
 
       let attackFormula: string | null = null;
       if (type === "attack") {
@@ -684,7 +729,10 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
         }
       }
 
-      const saveDc = type === "save" ? resolveSaveDc(item, activity, character, rollData) : null;
+      const saveDc =
+        type === "save"
+          ? resolveSaveDc(item, activity, character, rollData, combatBonuses?.spellDc)
+          : null;
       const saveLabel = type === "save" ? resolveSaveAbilityLabel(activity) : null;
 
       // Antes se descartaban aquí las activities `save` sin daño (hechizos
@@ -713,6 +761,7 @@ export function getRollableActions(items: unknown, character: CharacterFull): Ro
         higherLevelText,
         resourceScaling,
         targetCount,
+        detectedEffect,
       });
     }
   }

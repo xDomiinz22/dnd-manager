@@ -1,6 +1,7 @@
 import type {
   AddParticipantsInput,
   ApplyCombatEffectInput,
+  CombatEffectBonuses,
   CombatEncounterDto,
   CombatParticipantDto,
   RollInitiativeInput,
@@ -51,6 +52,7 @@ function toParticipantDto(p: ParticipantWithRelations): CombatParticipantDto {
       id: e.id,
       name: e.name,
       roundsRemaining: e.roundsRemaining,
+      bonuses: (e.bonuses as CombatEffectBonuses | null) ?? null,
     })),
   };
 }
@@ -379,6 +381,7 @@ export async function applyEffect(
       participantId,
       name: input.name,
       roundsRemaining: input.roundsRemaining,
+      bonuses: input.bonuses ? (input.bonuses as Prisma.InputJsonValue) : Prisma.JsonNull,
     },
   });
 

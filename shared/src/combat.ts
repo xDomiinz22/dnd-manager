@@ -29,19 +29,41 @@ export type RollInitiativeInput = z.infer<typeof rollInitiativeSchema>;
 export const combatParticipantKindSchema = z.enum(["CHARACTER", "ENEMY"]);
 export type CombatParticipantKind = z.infer<typeof combatParticipantKindSchema>;
 
+// Bonos que un efecto de combate suma a las tiradas mientras esté activo —
+// mismas claves que `character.rawSystem.bonuses` (A14): por tipo de acción
+// (mwak/rwak/msak/rsak) y CD de conjuro. Se rellenan solo cuando vienen de
+// un `change` reconocido con certeza (ver detectItemEffect.ts en web/) —
+// nunca a mano libre por el jugador salvo que sepa la sintaxis de fórmula.
+export const combatEffectBonusSchema = z.object({
+  attack: z.string().optional(),
+  damage: z.string().optional(),
+});
+export const combatEffectBonusesSchema = z.object({
+  mwak: combatEffectBonusSchema.optional(),
+  rwak: combatEffectBonusSchema.optional(),
+  msak: combatEffectBonusSchema.optional(),
+  rsak: combatEffectBonusSchema.optional(),
+  spellDc: z.string().optional(),
+});
+export type CombatEffectBonuses = z.infer<typeof combatEffectBonusesSchema>;
+
 export const combatEffectSchema = z.object({
   id: z.string(),
   name: z.string(),
   roundsRemaining: z.number(),
+  bonuses: combatEffectBonusesSchema.nullable(),
 });
 export type CombatEffectDto = z.infer<typeof combatEffectSchema>;
 
 // El nombre se aplica tal cual; la duración se manda ya convertida a rondas
 // (1 ronda = 6s en 5e) — el selector de unidad rondas/minutos/horas vive en
-// el cliente, el servidor solo guarda el número final.
+// el cliente, el servidor solo guarda el número final. `bonuses` es opcional:
+// solo viene relleno cuando el cliente detectó un bono reconocible en el
+// ítem usado (ver detectItemEffect.ts) — un efecto aplicado a mano no trae nada.
 export const applyCombatEffectSchema = z.object({
   name: z.string().min(1).max(60),
   roundsRemaining: z.number().int().min(1).max(9999),
+  bonuses: combatEffectBonusesSchema.optional(),
 });
 export type ApplyCombatEffectInput = z.infer<typeof applyCombatEffectSchema>;
 

@@ -50,6 +50,8 @@ export interface FoundryItem {
   type?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   system?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  effects?: any[];
 }
 
 export function asFoundryItems(items: unknown): FoundryItem[] {

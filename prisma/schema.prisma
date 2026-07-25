@@ -305,6 +305,10 @@ model CombatEffect {
 
   name            String
   roundsRemaining Int
+  // Bonos a tiradas mientras el efecto esté activo (mwak/rwak/msak/rsak +
+  // CD de conjuro) — solo se rellena cuando se detectó de forma fiable en
+  // el ítem usado (ver detectItemEffect.ts); null en efectos aplicados a mano.
+  bonuses Json?
 
   createdAt DateTime @default(now())
 
