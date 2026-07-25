@@ -3,10 +3,12 @@ import { requireAuth } from "../middlewares/requireAuth";
 import { requireGroupMaster, requireGroupMember } from "../middlewares/groupAuth";
 import {
   addParticipantsHandler,
+  applyEffectHandler,
   endCombatHandler,
   getCombatHandler,
   lockOrderHandler,
   nextTurnHandler,
+  removeEffectHandler,
   removeParticipantHandler,
   rollInitiativeHandler,
   startCombatHandler,
@@ -45,5 +47,17 @@ combatRouter.delete(
   requireAuth,
   requireGroupMaster,
   removeParticipantHandler,
+);
+combatRouter.post(
+  "/groups/:groupId/combat/participants/:participantId/effects",
+  requireAuth,
+  requireGroupMember,
+  applyEffectHandler,
+);
+combatRouter.delete(
+  "/groups/:groupId/combat/participants/:participantId/effects/:effectId",
+  requireAuth,
+  requireGroupMember,
+  removeEffectHandler,
 );
 combatRouter.delete("/groups/:groupId/combat", requireAuth, requireGroupMaster, endCombatHandler);

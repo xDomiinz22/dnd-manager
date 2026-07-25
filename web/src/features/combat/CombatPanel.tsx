@@ -16,10 +16,12 @@ import {
 import { ScalableDamageButton } from "../characters/ScalableDamageButton";
 import { ResourceAmountButton } from "../characters/ResourceAmountButton";
 import {
+  useApplyEffect,
   useCombatEncounter,
   useEndCombat,
   useLockOrder,
   useNextTurn,
+  useRemoveEffect,
   useRollInitiative,
   useStartCombat,
 } from "./hooks";
@@ -294,33 +296,39 @@ function CombatSidebar({
           const isCurrentTurn = orderLocked && currentTurnIndex === index;
           const canRoll =
             p.initiativeTotal === null && (isMaster || (p.ownerId && p.ownerId === currentUserId));
+          const canControl = isMaster || (!!p.ownerId && p.ownerId === currentUserId);
           return (
             <li
               key={p.id}
-              className={`flex items-center gap-2 rounded-sm border px-2 py-1.5 ${
+              className={`rounded-sm border px-2 py-1.5 ${
                 isCurrentTurn
                   ? "border-oxblood bg-oxblood/[0.08]"
                   : "border-rule bg-parchment-panel"
               }`}
             >
-              <PortraitCircle url={p.portraitUrl} name={p.displayName} size={24} />
-              <span className="min-w-0 flex-1 truncate text-sm text-ink">{p.displayName}</span>
-              {p.initiativeTotal !== null ? (
-                <span className="font-display text-sm font-semibold text-oxblood">
-                  {p.initiativeTotal}
-                </span>
-              ) : canRoll ? (
-                <Button
-                  variant="ghost"
-                  className="!px-2 !py-1 !text-xs !normal-case !tracking-normal"
-                  onClick={() => handleRollInitiative(p)}
-                  isLoading={rollInitiative.isPending}
-                  loadingText="..."
-                >
-                  🎲 Iniciativa
-                </Button>
-              ) : (
-                <span className="text-xs text-ink-muted">esperando</span>
+              <div className="flex items-center gap-2">
+                <PortraitCircle url={p.portraitUrl} name={p.displayName} size={24} />
+                <span className="min-w-0 flex-1 truncate text-sm text-ink">{p.displayName}</span>
+                {p.initiativeTotal !== null ? (
+                  <span className="font-display text-sm font-semibold text-oxblood">
+                    {p.initiativeTotal}
+                  </span>
+                ) : canRoll ? (
+                  <Button
+                    variant="ghost"
+                    className="!px-2 !py-1 !text-xs !normal-case !tracking-normal"
+                    onClick={() => handleRollInitiative(p)}
+                    isLoading={rollInitiative.isPending}
+                    loadingText="..."
+                  >
+                    🎲 Iniciativa
+                  </Button>
+                ) : (
+                  <span className="text-xs text-ink-muted">esperando</span>
+                )}
+              </div>
+              {(orderLocked || p.effects.length > 0) && (
+                <EffectBadges groupId={groupId} participant={p} canControl={canControl} />
               )}
             </li>
           );
@@ -336,6 +344,140 @@ function CombatSidebar({
           diceThemeColor={diceThemeColor}
         />
       )}
+    </div>
+  );
+}
+
+const EFFECT_UNIT_TO_ROUNDS: Record<"rounds" | "minutes" | "hours", number> = {
+  rounds: 1,
+  minutes: 10, // 1 ronda = 6s en 5e → 1 minuto = 10 rondas.
+  hours: 600,
+};
+
+/**
+ * Buffs/debuffs temporales aplicados a mano a un combatiente (Bendecido,
+ * Hechizado...), contados en rondas de combate reales — se descuentan solos
+ * en el servidor cada vez que se completa una ronda (ver
+ * `combatService.tickEffectsForNewRound`), así que aquí solo hace falta
+ * pintar lo que ya viene del polling, sin countdown en el cliente.
+ */
+function EffectBadges({
+  groupId,
+  participant,
+  canControl,
+}: {
+  groupId: string;
+  participant: CombatParticipantDto;
+  canControl: boolean;
+}) {
+  const applyEffect = useApplyEffect(groupId);
+  const removeEffect = useRemoveEffect(groupId);
+  const toast = useToast();
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState(1);
+  const [unit, setUnit] = useState<"rounds" | "minutes" | "hours">("rounds");
+
+  function handleApply() {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    applyEffect.mutate(
+      {
+        participantId: participant.id,
+        input: { name: trimmed, roundsRemaining: amount * EFFECT_UNIT_TO_ROUNDS[unit] },
+      },
+      {
+        onSuccess: () => {
+          setName("");
+          setAmount(1);
+          setUnit("rounds");
+          setAdding(false);
+        },
+        onError: (err) => toast.error(toErrorMessage(err, "No se pudo aplicar el efecto.")),
+      },
+    );
+  }
+
+  function handleRemove(effectId: string) {
+    removeEffect.mutate(
+      { participantId: participant.id, effectId },
+      { onError: (err) => toast.error(toErrorMessage(err, "No se pudo quitar el efecto.")) },
+    );
+  }
+
+  if (!canControl && participant.effects.length === 0) return null;
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1">
+      {participant.effects.map((effect) => (
+        <span
+          key={effect.id}
+          className="inline-flex items-center gap-1 rounded-full border border-rule-strong bg-parchment px-1.5 py-0.5 text-[0.65rem] text-ink"
+        >
+          {effect.name} · {effect.roundsRemaining}
+          {canControl && (
+            <button
+              type="button"
+              onClick={() => handleRemove(effect.id)}
+              className="text-ink-muted hover:text-oxblood"
+              aria-label={`Quitar ${effect.name}`}
+            >
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+      {canControl &&
+        (adding ? (
+          <span className="inline-flex items-center gap-1">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Efecto"
+              className="w-20 rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-[0.65rem] text-ink outline-none focus:border-oxblood"
+            />
+            <input
+              type="number"
+              min={1}
+              value={amount}
+              onChange={(e) => setAmount(Math.max(1, Number(e.target.value) || 1))}
+              className="w-10 rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-[0.65rem] text-ink outline-none focus:border-oxblood"
+            />
+            <select
+              value={unit}
+              onChange={(e) => setUnit(e.target.value as "rounds" | "minutes" | "hours")}
+              className="rounded-sm border border-rule-strong bg-parchment px-1 py-0.5 text-[0.65rem] text-ink outline-none focus:border-oxblood"
+            >
+              <option value="rounds">rondas</option>
+              <option value="minutes">min</option>
+              <option value="hours">horas</option>
+            </select>
+            <button
+              type="button"
+              onClick={handleApply}
+              disabled={applyEffect.isPending}
+              className="text-[0.65rem] text-oxblood hover:underline"
+            >
+              Aplicar
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdding(false)}
+              className="text-[0.65rem] text-ink-muted hover:underline"
+            >
+              Cancelar
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="text-[0.65rem] text-ink-muted hover:text-oxblood"
+          >
+            + efecto
+          </button>
+        ))}
     </div>
   );
 }

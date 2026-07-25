@@ -1,5 +1,6 @@
 import type {
   AddParticipantsInput,
+  ApplyCombatEffectInput,
   CombatEncounterDto,
   CombatParticipantDto,
   RollInitiativeInput,
@@ -19,6 +20,7 @@ import { AppError } from "../errors/AppError";
 const PARTICIPANT_INCLUDE = {
   character: { select: { ownerId: true, portraitAsset: true } },
   enemy: { select: { portraitAsset: true } },
+  effects: { orderBy: { createdAt: "asc" } },
 } as const;
 
 const ENCOUNTER_INCLUDE = {
@@ -45,6 +47,11 @@ function toParticipantDto(p: ParticipantWithRelations): CombatParticipantDto {
     initiativeTotal: p.initiativeTotal,
     initiativeBonus: p.initiativeBonus,
     turnOrder: p.turnOrder,
+    effects: p.effects.map((e) => ({
+      id: e.id,
+      name: e.name,
+      roundsRemaining: e.roundsRemaining,
+    })),
   };
 }
 
@@ -240,11 +247,29 @@ function initiativeFormula(bonus: number): string {
 
 /**
  * Solo el Master (siempre) o el dueño del personaje del combatiente puede
- * tirar su iniciativa; los enemigos son siempre cosa del Master. Es la nueva
- * regla de permisos que no encaja en middleware normal porque depende del
- * combate/combatiente en vivo, así que vive aquí (mismo criterio que el
- * chequeo de dueño ya existente en diceService.createGroupRoll).
+ * actuar sobre él (tirar iniciativa, aplicar/quitar efectos...); los
+ * enemigos son siempre cosa del Master. Es la regla de permisos que no
+ * encaja en middleware normal porque depende del combatiente en vivo.
  */
+async function assertCanControlParticipant(
+  groupId: string,
+  userId: string,
+  participant: ParticipantWithRelations,
+): Promise<void> {
+  const membership = await getMembership(groupId, userId);
+  if (membership?.role === "MASTER") return;
+  if (participant.enemyId) {
+    throw new AppError(403, "NOT_ALLOWED", "Solo el Master maneja a los enemigos");
+  }
+  if (participant.character?.ownerId !== userId) {
+    throw new AppError(
+      403,
+      "NOT_ALLOWED",
+      "Solo el Master del grupo o el dueño del personaje pueden actuar por él",
+    );
+  }
+}
+
 export async function rollInitiative(
   groupId: string,
   userId: string,
@@ -258,21 +283,7 @@ export async function rollInitiative(
   if (participant.initiativeTotal !== null) {
     throw new AppError(409, "ALREADY_ROLLED", "Ese combatiente ya tiró su iniciativa");
   }
-
-  const membership = await getMembership(groupId, userId);
-  const isMaster = membership?.role === "MASTER";
-  if (!isMaster) {
-    if (participant.enemyId) {
-      throw new AppError(403, "NOT_ALLOWED", "Solo el Master maneja a los enemigos");
-    }
-    if (participant.character?.ownerId !== userId) {
-      throw new AppError(
-        403,
-        "NOT_ALLOWED",
-        "Solo el Master del grupo o el dueño del personaje pueden tirar por él",
-      );
-    }
-  }
+  await assertCanControlParticipant(groupId, userId, participant);
 
   const formula = initiativeFormula(participant.initiativeBonus);
   let result;
@@ -350,6 +361,99 @@ export async function lockOrder(groupId: string, userId: string): Promise<Combat
   return toEncounterDto(updated);
 }
 
+export async function applyEffect(
+  groupId: string,
+  userId: string,
+  participantId: string,
+  input: ApplyCombatEffectInput,
+): Promise<CombatEncounterDto> {
+  const encounter = await getEncounterOrThrow(groupId);
+  const participant = encounter.participants.find((p) => p.id === participantId);
+  if (!participant) {
+    throw new AppError(404, "PARTICIPANT_NOT_FOUND", "Ese combatiente no está en este combate");
+  }
+  await assertCanControlParticipant(groupId, userId, participant);
+
+  await prisma.combatEffect.create({
+    data: {
+      participantId,
+      name: input.name,
+      roundsRemaining: input.roundsRemaining,
+    },
+  });
+
+  const updated = await prisma.combatEncounter.findUniqueOrThrow({
+    where: { groupId },
+    include: ENCOUNTER_INCLUDE,
+  });
+  return toEncounterDto(updated);
+}
+
+export async function removeEffect(
+  groupId: string,
+  userId: string,
+  participantId: string,
+  effectId: string,
+): Promise<CombatEncounterDto> {
+  const encounter = await getEncounterOrThrow(groupId);
+  const participant = encounter.participants.find((p) => p.id === participantId);
+  if (!participant) {
+    throw new AppError(404, "PARTICIPANT_NOT_FOUND", "Ese combatiente no está en este combate");
+  }
+  await assertCanControlParticipant(groupId, userId, participant);
+
+  const effect = participant.effects.find((e) => e.id === effectId);
+  if (!effect) {
+    throw new AppError(404, "EFFECT_NOT_FOUND", "Ese efecto ya no está activo");
+  }
+  await prisma.combatEffect.delete({ where: { id: effectId } });
+
+  const updated = await prisma.combatEncounter.findUniqueOrThrow({
+    where: { groupId },
+    include: ENCOUNTER_INCLUDE,
+  });
+  return toEncounterDto(updated);
+}
+
+/**
+ * Descuenta 1 ronda a cada CombatEffect del encuentro y borra los que
+ * lleguen a 0 — se llama solo cuando `advanceTurn` completa una ronda
+ * entera (1 ronda = 6s en 5e, así es como el propio juego describe la
+ * duración de un efecto, no "hasta que te vuelva a tocar").
+ */
+async function tickEffectsForNewRound(groupId: string, userId: string): Promise<void> {
+  const effects = await prisma.combatEffect.findMany({
+    where: { participant: { encounter: { groupId } } },
+    include: { participant: { select: { displayName: true } } },
+  });
+  if (effects.length === 0) return;
+
+  const expiring = effects.filter((e) => e.roundsRemaining <= 1);
+  const surviving = effects.filter((e) => e.roundsRemaining > 1);
+
+  await prisma.$transaction([
+    ...surviving.map((e) =>
+      prisma.combatEffect.update({
+        where: { id: e.id },
+        data: { roundsRemaining: { decrement: 1 } },
+      }),
+    ),
+    ...(expiring.length > 0
+      ? [prisma.combatEffect.deleteMany({ where: { id: { in: expiring.map((e) => e.id) } } })]
+      : []),
+  ]);
+
+  if (expiring.length > 0) {
+    const summary = expiring.map((e) => `${e.name} (${e.participant.displayName})`).join(", ");
+    await mentionCombatEvent(
+      groupId,
+      userId,
+      "EFFECTS_EXPIRED",
+      `⏳ Efectos terminados: ${summary}`,
+    );
+  }
+}
+
 export async function advanceTurn(groupId: string, userId: string): Promise<CombatEncounterDto> {
   const encounter = await getEncounterOrThrow(groupId);
   if (encounter.currentTurnIndex === null) {
@@ -369,6 +473,10 @@ export async function advanceTurn(groupId: string, userId: string): Promise<Comb
       round: wrapped ? encounter.round + 1 : encounter.round,
     },
   });
+
+  if (wrapped) {
+    await tickEffectsForNewRound(groupId, userId);
+  }
 
   const next = ordered[nextIndex]!;
   const roundLabel = wrapped ? ` (ronda ${encounter.round + 1})` : "";

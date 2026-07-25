@@ -1,5 +1,9 @@
 import type { RequestHandler } from "express";
-import { addParticipantsSchema, rollInitiativeSchema } from "@dnd-manager/shared";
+import {
+  addParticipantsSchema,
+  applyCombatEffectSchema,
+  rollInitiativeSchema,
+} from "@dnd-manager/shared";
 import * as combatService from "../services/combatService";
 
 export const getCombatHandler: RequestHandler = async (req, res, next) => {
@@ -72,6 +76,35 @@ export const removeParticipantHandler: RequestHandler = async (req, res, next) =
     const encounter = await combatService.removeParticipant(
       req.params.groupId as string,
       req.params.participantId as string,
+    );
+    res.json(encounter);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const applyEffectHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = applyCombatEffectSchema.parse(req.body);
+    const encounter = await combatService.applyEffect(
+      req.params.groupId as string,
+      req.userId!,
+      req.params.participantId as string,
+      input,
+    );
+    res.status(201).json(encounter);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const removeEffectHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const encounter = await combatService.removeEffect(
+      req.params.groupId as string,
+      req.userId!,
+      req.params.participantId as string,
+      req.params.effectId as string,
     );
     res.json(encounter);
   } catch (err) {

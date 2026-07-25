@@ -1,5 +1,6 @@
 import type {
   AddParticipantsInput,
+  ApplyCombatEffectInput,
   CombatEncounterView,
   RollInitiativeInput,
 } from "@dnd-manager/shared";
@@ -31,4 +32,14 @@ export const combatApi = {
       method: "DELETE",
     }),
   end: (groupId: string) => apiFetch<void>(`/groups/${groupId}/combat`, { method: "DELETE" }),
+  applyEffect: (groupId: string, participantId: string, input: ApplyCombatEffectInput) =>
+    apiFetch<CombatEncounterView>(
+      `/groups/${groupId}/combat/participants/${participantId}/effects`,
+      { method: "POST", body: JSON.stringify(input) },
+    ),
+  removeEffect: (groupId: string, participantId: string, effectId: string) =>
+    apiFetch<CombatEncounterView>(
+      `/groups/${groupId}/combat/participants/${participantId}/effects/${effectId}`,
+      { method: "DELETE" },
+    ),
 };

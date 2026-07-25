@@ -290,7 +290,25 @@ model CombatParticipant {
 
   createdAt DateTime @default(now())
 
+  effects CombatEffect[]
+
   @@index([encounterId])
+}
+
+// Buff/debuff temporal aplicado a mano a un combatiente, contado en rondas
+// (1 ronda = 6s en 5e) — se descuenta en `combatService.advanceTurn` cada
+// vez que se completa una ronda entera, y se borra al llegar a 0.
+model CombatEffect {
+  id            String            @id @default(cuid())
+  participantId String
+  participant   CombatParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  name            String
+  roundsRemaining Int
+
+  createdAt DateTime @default(now())
+
+  @@index([participantId])
 }
 
 enum JournalScope {

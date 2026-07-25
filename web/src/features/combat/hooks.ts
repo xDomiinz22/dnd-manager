@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { AddParticipantsInput, RollInitiativeInput } from "@dnd-manager/shared";
+import type {
+  AddParticipantsInput,
+  ApplyCombatEffectInput,
+  RollInitiativeInput,
+} from "@dnd-manager/shared";
 import { combatApi } from "./api";
 
 const combatKey = (groupId: string) => ["groups", groupId, "combat"] as const;
@@ -69,6 +73,29 @@ export function useRemoveCombatParticipant(groupId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (participantId: string) => combatApi.removeParticipant(groupId, participantId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: combatKey(groupId) }),
+  });
+}
+
+export function useApplyEffect(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      participantId,
+      input,
+    }: {
+      participantId: string;
+      input: ApplyCombatEffectInput;
+    }) => combatApi.applyEffect(groupId, participantId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: combatKey(groupId) }),
+  });
+}
+
+export function useRemoveEffect(groupId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ participantId, effectId }: { participantId: string; effectId: string }) =>
+      combatApi.removeEffect(groupId, participantId, effectId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: combatKey(groupId) }),
   });
 }

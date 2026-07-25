@@ -29,6 +29,22 @@ export type RollInitiativeInput = z.infer<typeof rollInitiativeSchema>;
 export const combatParticipantKindSchema = z.enum(["CHARACTER", "ENEMY"]);
 export type CombatParticipantKind = z.infer<typeof combatParticipantKindSchema>;
 
+export const combatEffectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  roundsRemaining: z.number(),
+});
+export type CombatEffectDto = z.infer<typeof combatEffectSchema>;
+
+// El nombre se aplica tal cual; la duración se manda ya convertida a rondas
+// (1 ronda = 6s en 5e) — el selector de unidad rondas/minutos/horas vive en
+// el cliente, el servidor solo guarda el número final.
+export const applyCombatEffectSchema = z.object({
+  name: z.string().min(1).max(60),
+  roundsRemaining: z.number().int().min(1).max(9999),
+});
+export type ApplyCombatEffectInput = z.infer<typeof applyCombatEffectSchema>;
+
 export const combatParticipantSchema = z.object({
   id: z.string(),
   kind: combatParticipantKindSchema,
@@ -42,6 +58,7 @@ export const combatParticipantSchema = z.object({
   initiativeTotal: z.number().nullable(),
   initiativeBonus: z.number(),
   turnOrder: z.number().nullable(),
+  effects: z.array(combatEffectSchema),
 });
 export type CombatParticipantDto = z.infer<typeof combatParticipantSchema>;
 
