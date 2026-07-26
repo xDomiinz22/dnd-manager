@@ -6,8 +6,10 @@ import { useDiceOverlay } from "../dice/DiceOverlay";
 import {
   damageActionLabels,
   getRollableActions,
+  type CombatBonuses,
   type RollableAction,
 } from "../characters/rollableActions";
+import type { DetectedItemEffect } from "../characters/detectItemEffect";
 import { ScalableDamageButton } from "../characters/ScalableDamageButton";
 import { ResourceAmountButton } from "../characters/ResourceAmountButton";
 import { EditableRollButton } from "../characters/EditableRollButton";
@@ -133,9 +135,6 @@ function CharacterRollPicker({
   const toast = useToast();
   const createRoll = useCreateRoll(data?.access === "FULL" ? data.character.groupId : "");
   const { rollPhysics } = useDiceOverlay();
-  const [category, setCategory] = useState<Category>(initialCategory ?? "attacks");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
 
   if (isLoading || !data) {
     return <p className="text-sm text-ink-muted">Cargando personaje...</p>;
@@ -165,18 +164,6 @@ function CharacterRollPicker({
     onRolled?.();
   }
 
-  const actions = getRollableActions(character.items, character);
-  const itemTypeById = new Map<string, string>();
-  for (const item of asFoundryItems(character.items)) {
-    if (item._id) itemTypeById.set(item._id, item.type ?? "");
-  }
-  const attackActions = actions.filter((a) =>
-    ["weapon", "spell"].includes(itemTypeById.get(a.itemId) ?? ""),
-  );
-  const itemActions = actions.filter(
-    (a) => !["weapon", "spell"].includes(itemTypeById.get(a.itemId) ?? ""),
-  );
-
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -193,7 +180,58 @@ function CharacterRollPicker({
           </button>
         </div>
       </div>
+      <CharacterActionsPanel
+        character={character}
+        onRoll={handleRoll}
+        initialCategory={initialCategory}
+      />
+    </div>
+  );
+}
 
+/**
+ * Categorías (ataques/objetos/salvación/habilidad) + búsqueda + lista con
+ * scroll propio acotado — el cuerpo del menú "estilo Pokémon", reutilizado
+ * tal cual dentro del combate (ver CombatPanel.tsx) para que el turno de un
+ * personaje con muchos hechizos no sea una lista larga sin scroll: aquí
+ * mismo se limita la altura en vez de dejar que crezca sin límite.
+ */
+export function CharacterActionsPanel({
+  character,
+  onRoll,
+  initialCategory,
+  combatBonuses,
+  onApplyDetectedEffect,
+  scrollClassName = "flex-1 overflow-y-auto",
+}: {
+  character: CharacterFull;
+  onRoll: (label: string, formula: string) => void;
+  initialCategory?: Category;
+  combatBonuses?: CombatBonuses;
+  onApplyDetectedEffect?: (effect: DetectedItemEffect) => void;
+  /** Clase Tailwind del contenedor con scroll — `flex-1 overflow-y-auto` (por
+   * defecto, sigue el alto disponible del cajón de chat) o un `max-h-*
+   * overflow-y-auto` cuando el padre no tiene una altura fija (combate). */
+  scrollClassName?: string;
+}) {
+  const [category, setCategory] = useState<Category>(initialCategory ?? "attacks");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const actions = getRollableActions(character.items, character, combatBonuses);
+  const itemTypeById = new Map<string, string>();
+  for (const item of asFoundryItems(character.items)) {
+    if (item._id) itemTypeById.set(item._id, item.type ?? "");
+  }
+  const attackActions = actions.filter((a) =>
+    ["weapon", "spell"].includes(itemTypeById.get(a.itemId) ?? ""),
+  );
+  const itemActions = actions.filter(
+    (a) => !["weapon", "spell"].includes(itemTypeById.get(a.itemId) ?? ""),
+  );
+
+  return (
+    <>
       <div className="mb-2 flex flex-wrap items-center gap-1 border-b border-rule pb-2">
         <div role="tablist" className="flex flex-1 flex-wrap gap-1">
           {(Object.keys(CATEGORY_LABELS) as Category[]).map((cat) => (
@@ -246,22 +284,33 @@ function CharacterRollPicker({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className={scrollClassName}>
         {query.trim() ? (
           <SearchResults
             query={query}
             actions={actions}
             itemTypeById={itemTypeById}
             character={character}
-            onRoll={handleRoll}
+            onRoll={onRoll}
+            onApplyDetectedEffect={onApplyDetectedEffect}
           />
         ) : (
           <>
             {category === "attacks" && (
-              <ActionList actions={attackActions} onRoll={handleRoll} empty="Sin ataques." />
+              <ActionList
+                actions={attackActions}
+                onRoll={onRoll}
+                empty="Sin ataques."
+                onApplyDetectedEffect={onApplyDetectedEffect}
+              />
             )}
             {category === "items" && (
-              <ActionList actions={itemActions} onRoll={handleRoll} empty="Sin objetos tirables." />
+              <ActionList
+                actions={itemActions}
+                onRoll={onRoll}
+                empty="Sin objetos tirables."
+                onApplyDetectedEffect={onApplyDetectedEffect}
+              />
             )}
             {category === "saves" && (
               <ul className="space-y-1.5">
@@ -272,9 +321,7 @@ function CharacterRollPicker({
                     <li key={key}>
                       <MoveButton
                         text={`${ABILITY_FULL_LABELS[key]} (${formula})`}
-                        onClick={() =>
-                          handleRoll(`Salvación de ${ABILITY_FULL_LABELS[key]}`, formula)
-                        }
+                        onClick={() => onRoll(`Salvación de ${ABILITY_FULL_LABELS[key]}`, formula)}
                       />
                     </li>
                   );
@@ -290,7 +337,7 @@ function CharacterRollPicker({
                     <li key={code}>
                       <MoveButton
                         text={`${label} (${ABILITY_LABELS[skill.ability]}) — ${formula}`}
-                        onClick={() => handleRoll(label, formula)}
+                        onClick={() => onRoll(label, formula)}
                       />
                     </li>
                   );
@@ -300,7 +347,7 @@ function CharacterRollPicker({
           </>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -338,12 +385,14 @@ function SearchResults({
   itemTypeById,
   character,
   onRoll,
+  onApplyDetectedEffect,
 }: {
   query: string;
   actions: RollableAction[];
   itemTypeById: Map<string, string>;
   character: CharacterFull;
   onRoll: (label: string, formula: string) => void;
+  onApplyDetectedEffect?: (effect: DetectedItemEffect) => void;
 }) {
   const normalizedQuery = normalizeSearch(query.trim());
 
@@ -435,6 +484,12 @@ function SearchResults({
                 Objetivos: {action.targetCount}
               </span>
             ) : null}
+            {action.detectedEffect && onApplyDetectedEffect && (
+              <MoveButton
+                text={`+ ${action.detectedEffect.name} (${action.detectedEffect.roundsRemaining})`}
+                onClick={() => onApplyDetectedEffect(action.detectedEffect!)}
+              />
+            )}
           </div>
         </li>
       ))}
@@ -470,10 +525,12 @@ function ActionList({
   actions,
   onRoll,
   empty,
+  onApplyDetectedEffect,
 }: {
   actions: RollableAction[];
   onRoll: (label: string, formula: string) => void;
   empty: string;
+  onApplyDetectedEffect?: (effect: DetectedItemEffect) => void;
 }) {
   if (actions.length === 0) return <p className="text-sm text-ink-muted">{empty}</p>;
   return (
@@ -548,6 +605,12 @@ function ActionList({
                   Objetivos: {action.targetCount}
                 </span>
               ) : null}
+              {action.detectedEffect && onApplyDetectedEffect && (
+                <MoveButton
+                  text={`+ ${action.detectedEffect.name} (${action.detectedEffect.roundsRemaining})`}
+                  onClick={() => onApplyDetectedEffect(action.detectedEffect!)}
+                />
+              )}
             </div>
           </li>
         );

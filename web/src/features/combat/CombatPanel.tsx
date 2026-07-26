@@ -8,17 +8,10 @@ import { useEnemies, useEnemy } from "../enemies/hooks";
 import { useCharacter } from "../characters/hooks";
 import { useCreateRoll } from "../dice/hooks";
 import { useDiceOverlay } from "../dice/DiceOverlay";
-import {
-  damageActionLabels,
-  getRollableActions,
-  type ActionTypeKey,
-  type CombatBonuses,
-  type RollableAction,
-} from "../characters/rollableActions";
+import { type ActionTypeKey, type CombatBonuses } from "../characters/rollableActions";
 import type { DetectedItemEffect } from "../characters/detectItemEffect";
-import { ScalableDamageButton } from "../characters/ScalableDamageButton";
-import { ResourceAmountButton } from "../characters/ResourceAmountButton";
 import { EditableRollButton } from "../characters/EditableRollButton";
+import { CharacterActionsPanel } from "../chat/CharacterRollMenu";
 import {
   useApplyEffect,
   useCombatEncounter,
@@ -534,95 +527,6 @@ function MiniButton({ children, onClick }: { children: ReactNode; onClick: () =>
   );
 }
 
-function ActionButtons({
-  actions,
-  onRoll,
-  onApplyDetectedEffect,
-}: {
-  actions: RollableAction[];
-  onRoll: (label: string, formula: string) => void;
-  onApplyDetectedEffect: (effect: DetectedItemEffect) => void;
-}) {
-  if (actions.length === 0) return <p className="text-xs text-ink-muted">Sin ataques.</p>;
-  return (
-    <ul className="space-y-1.5">
-      {actions.map((action, index) => {
-        const label = action.activityName
-          ? `${action.itemName} (${action.activityName})`
-          : action.itemName;
-        return (
-          <li
-            key={`${action.itemId}-${action.activityId}-${index}`}
-            className="rounded-sm border border-rule bg-parchment px-2 py-1.5"
-          >
-            <div className="mb-1 truncate text-xs text-ink">{label}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {action.attackFormula && (
-                <EditableRollButton
-                  formula={action.attackFormula}
-                  onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
-                  renderButton={(formula, onClick) => (
-                    <MiniButton onClick={onClick}>🎲 Atacar ({formula})</MiniButton>
-                  )}
-                />
-              )}
-              {action.resourceScaling ? (
-                <ResourceAmountButton
-                  label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                  action={action.resourceScaling}
-                  onRoll={onRoll}
-                  renderButton={(formula) => (
-                    <EditableRollButton
-                      formula={formula}
-                      onRoll={(f) =>
-                        onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)
-                      }
-                      renderButton={(f, editClick) => (
-                        <MiniButton onClick={editClick}>
-                          🎲 {damageActionLabels(action.kind).verb} ({f})
-                        </MiniButton>
-                      )}
-                    />
-                  )}
-                />
-              ) : (
-                <ScalableDamageButton
-                  label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                  action={action}
-                  onRoll={onRoll}
-                  renderButton={(formula) => (
-                    <EditableRollButton
-                      formula={formula}
-                      onRoll={(f) =>
-                        onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)
-                      }
-                      renderButton={(f, editClick) => (
-                        <MiniButton onClick={editClick}>
-                          🎲 {damageActionLabels(action.kind).verb} ({f})
-                        </MiniButton>
-                      )}
-                    />
-                  )}
-                />
-              )}
-              {action.targetCount ? (
-                <span className="self-center text-xs text-ink-muted">
-                  Objetivos: {action.targetCount}
-                </span>
-              ) : null}
-              {action.detectedEffect && (
-                <MiniButton onClick={() => onApplyDetectedEffect(action.detectedEffect!)}>
-                  + {action.detectedEffect.name} ({action.detectedEffect.roundsRemaining})
-                </MiniButton>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
 /**
  * Botones de ataque para el combatiente en turno: enemigos siempre los
  * maneja el Master (ficha rápida → quickAttacks como texto libre; ficha
@@ -707,7 +611,7 @@ function CurrentTurnActions({
       content = <p className="text-xs text-ink-muted">Cargando ficha...</p>;
     } else if (enemy.quickAttacks && enemy.quickAttacks.length > 0) {
       content = (
-        <ul className="space-y-1.5">
+        <ul className="max-h-72 space-y-1.5 overflow-y-auto">
           {enemy.quickAttacks.map((a, i) => (
             <li key={i} className="rounded-sm border border-rule bg-parchment px-2 py-1.5">
               <div className="mb-1 truncate text-xs text-ink">{a.name}</div>
@@ -734,16 +638,13 @@ function CurrentTurnActions({
         </ul>
       );
     } else if (enemy.items && enemy.derived) {
-      const actions = getRollableActions(
-        enemy.items,
-        enemy as unknown as CharacterFull,
-        combatBonuses,
-      );
       content = (
-        <ActionButtons
-          actions={actions}
+        <CharacterActionsPanel
+          character={enemy as unknown as CharacterFull}
           onRoll={handleRoll}
+          combatBonuses={combatBonuses}
           onApplyDetectedEffect={handleApplyDetectedEffect}
+          scrollClassName="max-h-72 overflow-y-auto"
         />
       );
     } else {
@@ -754,12 +655,13 @@ function CurrentTurnActions({
     if (!character) {
       content = <p className="text-xs text-ink-muted">Cargando ficha...</p>;
     } else {
-      const actions = getRollableActions(character.items, character, combatBonuses);
       content = (
-        <ActionButtons
-          actions={actions}
+        <CharacterActionsPanel
+          character={character}
           onRoll={handleRoll}
+          combatBonuses={combatBonuses}
           onApplyDetectedEffect={handleApplyDetectedEffect}
+          scrollClassName="max-h-72 overflow-y-auto"
         />
       );
     }
