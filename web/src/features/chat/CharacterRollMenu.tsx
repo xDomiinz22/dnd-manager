@@ -223,12 +223,8 @@ export function CharacterActionsPanel({
   for (const item of asFoundryItems(character.items)) {
     if (item._id) itemTypeById.set(item._id, item.type ?? "");
   }
-  const attackActions = actions.filter((a) =>
-    ["weapon", "spell"].includes(itemTypeById.get(a.itemId) ?? ""),
-  );
-  const itemActions = actions.filter(
-    (a) => !["weapon", "spell"].includes(itemTypeById.get(a.itemId) ?? ""),
-  );
+  const attackActions = actions.filter((a) => isAttackCategory(a, itemTypeById));
+  const itemActions = actions.filter((a) => !isAttackCategory(a, itemTypeById));
 
   return (
     <>
@@ -374,6 +370,20 @@ function normalizeSearch(text: string): string {
 }
 
 /**
+ * "Ataques" = armas/conjuros (por tipo de ítem) O cualquier acción que
+ * reparte daño de verdad (kind "damage" con una fórmula real, o con tirada
+ * de ataque propia) — dotes de clase como Ataque Furtivo son `type: "feat"`,
+ * no `weapon`/`spell`, pero sí que reparten daño en combate, así que antes
+ * acababan en "Objetos" solo por el tipo de ítem.
+ */
+function isAttackCategory(action: RollableAction, itemTypeById: Map<string, string>): boolean {
+  if (["weapon", "spell"].includes(itemTypeById.get(action.itemId) ?? "")) return true;
+  return (
+    action.attackFormula !== null || (action.kind === "damage" && action.damageFormula !== null)
+  );
+}
+
+/**
  * Búsqueda unificada: mezcla ataques, objetos, salvaciones y habilidades en
  * una sola lista (a diferencia de las pestañas, separadas por categoría) —
  * para no obligar a saber de antemano si "bola de fuego" es un ataque o un
@@ -401,9 +411,7 @@ function SearchResults({
       action,
       index,
       label: action.activityName ? `${action.itemName} (${action.activityName})` : action.itemName,
-      category: ["weapon", "spell"].includes(itemTypeById.get(action.itemId) ?? "")
-        ? "Ataque"
-        : "Objeto",
+      category: isAttackCategory(action, itemTypeById) ? "Ataque" : "Objeto",
     }))
     .filter(({ label }) => normalizeSearch(label).includes(normalizedQuery));
 
