@@ -10,6 +10,7 @@ import {
 } from "../characters/rollableActions";
 import { ScalableDamageButton } from "../characters/ScalableDamageButton";
 import { ResourceAmountButton } from "../characters/ResourceAmountButton";
+import { EditableRollButton } from "../characters/EditableRollButton";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
 import {
@@ -384,9 +385,12 @@ function SearchResults({
           </div>
           <div className="flex flex-wrap gap-1.5">
             {action.attackFormula && (
-              <MoveButton
-                text={`Atacar (${action.attackFormula})`}
-                onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
+              <EditableRollButton
+                formula={action.attackFormula}
+                onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
+                renderButton={(formula, onClick) => (
+                  <MoveButton text={`Atacar (${formula})`} onClick={onClick} />
+                )}
               />
             )}
             {action.resourceScaling ? (
@@ -394,10 +398,16 @@ function SearchResults({
                 label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                 action={action.resourceScaling}
                 onRoll={onRoll}
-                renderButton={(formula, onClick) => (
-                  <MoveButton
-                    text={`${damageActionLabels(action.kind).verb} (${formula})`}
-                    onClick={onClick}
+                renderButton={(formula) => (
+                  <EditableRollButton
+                    formula={formula}
+                    onRoll={(f) => onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)}
+                    renderButton={(f, editClick) => (
+                      <MoveButton
+                        text={`${damageActionLabels(action.kind).verb} (${f})`}
+                        onClick={editClick}
+                      />
+                    )}
                   />
                 )}
               />
@@ -406,10 +416,16 @@ function SearchResults({
                 label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                 action={action}
                 onRoll={onRoll}
-                renderButton={(formula, onClick) => (
-                  <MoveButton
-                    text={`${damageActionLabels(action.kind).verb} (${formula})`}
-                    onClick={onClick}
+                renderButton={(formula) => (
+                  <EditableRollButton
+                    formula={formula}
+                    onRoll={(f) => onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)}
+                    renderButton={(f, editClick) => (
+                      <MoveButton
+                        text={`${damageActionLabels(action.kind).verb} (${f})`}
+                        onClick={editClick}
+                      />
+                    )}
                   />
                 )}
               />
@@ -478,9 +494,12 @@ function ActionList({
             <div className="mb-1 truncate text-sm text-ink">{label}</div>
             <div className="flex flex-wrap gap-1.5">
               {action.attackFormula && (
-                <MoveButton
-                  text={`Atacar (${action.attackFormula})`}
-                  onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
+                <EditableRollButton
+                  formula={action.attackFormula}
+                  onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
+                  renderButton={(formula, onClick) => (
+                    <MoveButton text={`Atacar (${formula})`} onClick={onClick} />
+                  )}
                 />
               )}
               {action.resourceScaling ? (
@@ -488,10 +507,18 @@ function ActionList({
                   label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                   action={action.resourceScaling}
                   onRoll={onRoll}
-                  renderButton={(formula, onClick) => (
-                    <MoveButton
-                      text={`${damageActionLabels(action.kind).verb} (${formula})`}
-                      onClick={onClick}
+                  renderButton={(formula) => (
+                    <EditableRollButton
+                      formula={formula}
+                      onRoll={(f) =>
+                        onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)
+                      }
+                      renderButton={(f, editClick) => (
+                        <MoveButton
+                          text={`${damageActionLabels(action.kind).verb} (${f})`}
+                          onClick={editClick}
+                        />
+                      )}
                     />
                   )}
                 />
@@ -500,10 +527,18 @@ function ActionList({
                   label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                   action={action}
                   onRoll={onRoll}
-                  renderButton={(formula, onClick) => (
-                    <MoveButton
-                      text={`${damageActionLabels(action.kind).verb} (${formula})`}
-                      onClick={onClick}
+                  renderButton={(formula) => (
+                    <EditableRollButton
+                      formula={formula}
+                      onRoll={(f) =>
+                        onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)
+                      }
+                      renderButton={(f, editClick) => (
+                        <MoveButton
+                          text={`${damageActionLabels(action.kind).verb} (${f})`}
+                          onClick={editClick}
+                        />
+                      )}
                     />
                   )}
                 />

@@ -31,6 +31,7 @@ import {
 } from "../features/characters/rollableActions";
 import { ScalableDamageButton } from "../features/characters/ScalableDamageButton";
 import { ResourceAmountButton } from "../features/characters/ResourceAmountButton";
+import { EditableRollButton } from "../features/characters/EditableRollButton";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
 import { PortraitCircle } from "../components/character/PortraitCircle";
@@ -753,31 +754,43 @@ function RollButtons({
         return (
           <div key={action.activityId} className="flex flex-wrap items-center gap-1.5">
             {action.attackFormula && (
-              <Button
-                variant="ghost"
-                onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}
-                disabled={!canRoll}
-                title={`Tirar ataque: ${action.attackFormula}${rollTitleSuffix}`}
-                className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
-              >
-                🎲 Atacar ({action.attackFormula})
-              </Button>
+              <EditableRollButton
+                formula={action.attackFormula}
+                onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
+                renderButton={(formula, onClick) => (
+                  <Button
+                    variant="ghost"
+                    onClick={onClick}
+                    disabled={!canRoll}
+                    title={`Tirar ataque: ${formula}${rollTitleSuffix}`}
+                    className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+                  >
+                    🎲 Atacar ({formula})
+                  </Button>
+                )}
+              />
             )}
             {action.resourceScaling ? (
               <ResourceAmountButton
                 label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                 action={action.resourceScaling}
                 onRoll={onRoll}
-                renderButton={(formula, onClick) => (
-                  <Button
-                    variant="ghost"
-                    onClick={onClick}
-                    disabled={!canRoll}
-                    title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${formula}${rollTitleSuffix}`}
-                    className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
-                  >
-                    🎲 {damageActionLabels(action.kind).verb} ({formula})
-                  </Button>
+                renderButton={(formula) => (
+                  <EditableRollButton
+                    formula={formula}
+                    onRoll={(f) => onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)}
+                    renderButton={(f, editClick) => (
+                      <Button
+                        variant="ghost"
+                        onClick={editClick}
+                        disabled={!canRoll}
+                        title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${f}${rollTitleSuffix}`}
+                        className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+                      >
+                        🎲 {damageActionLabels(action.kind).verb} ({f})
+                      </Button>
+                    )}
+                  />
                 )}
               />
             ) : (
@@ -785,16 +798,22 @@ function RollButtons({
                 label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                 action={action}
                 onRoll={onRoll}
-                renderButton={(formula, onClick) => (
-                  <Button
-                    variant="ghost"
-                    onClick={onClick}
-                    disabled={!canRoll}
-                    title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${formula}${rollTitleSuffix}`}
-                    className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
-                  >
-                    🎲 {damageActionLabels(action.kind).verb} ({formula})
-                  </Button>
+                renderButton={(formula) => (
+                  <EditableRollButton
+                    formula={formula}
+                    onRoll={(f) => onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)}
+                    renderButton={(f, editClick) => (
+                      <Button
+                        variant="ghost"
+                        onClick={editClick}
+                        disabled={!canRoll}
+                        title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${f}${rollTitleSuffix}`}
+                        className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+                      >
+                        🎲 {damageActionLabels(action.kind).verb} ({f})
+                      </Button>
+                    )}
+                  />
                 )}
               />
             )}

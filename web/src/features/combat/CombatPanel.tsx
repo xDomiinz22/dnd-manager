@@ -18,6 +18,7 @@ import {
 import type { DetectedItemEffect } from "../characters/detectItemEffect";
 import { ScalableDamageButton } from "../characters/ScalableDamageButton";
 import { ResourceAmountButton } from "../characters/ResourceAmountButton";
+import { EditableRollButton } from "../characters/EditableRollButton";
 import {
   useApplyEffect,
   useCombatEncounter,
@@ -557,19 +558,31 @@ function ActionButtons({
             <div className="mb-1 truncate text-xs text-ink">{label}</div>
             <div className="flex flex-wrap gap-1.5">
               {action.attackFormula && (
-                <MiniButton onClick={() => onRoll(`Ataque: ${label}`, action.attackFormula!)}>
-                  🎲 Atacar ({action.attackFormula})
-                </MiniButton>
+                <EditableRollButton
+                  formula={action.attackFormula}
+                  onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
+                  renderButton={(formula, onClick) => (
+                    <MiniButton onClick={onClick}>🎲 Atacar ({formula})</MiniButton>
+                  )}
+                />
               )}
               {action.resourceScaling ? (
                 <ResourceAmountButton
                   label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                   action={action.resourceScaling}
                   onRoll={onRoll}
-                  renderButton={(formula, onClick) => (
-                    <MiniButton onClick={onClick}>
-                      🎲 {damageActionLabels(action.kind).verb} ({formula})
-                    </MiniButton>
+                  renderButton={(formula) => (
+                    <EditableRollButton
+                      formula={formula}
+                      onRoll={(f) =>
+                        onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)
+                      }
+                      renderButton={(f, editClick) => (
+                        <MiniButton onClick={editClick}>
+                          🎲 {damageActionLabels(action.kind).verb} ({f})
+                        </MiniButton>
+                      )}
+                    />
                   )}
                 />
               ) : (
@@ -577,10 +590,18 @@ function ActionButtons({
                   label={`${damageActionLabels(action.kind).prefix}: ${label}`}
                   action={action}
                   onRoll={onRoll}
-                  renderButton={(formula, onClick) => (
-                    <MiniButton onClick={onClick}>
-                      🎲 {damageActionLabels(action.kind).verb} ({formula})
-                    </MiniButton>
+                  renderButton={(formula) => (
+                    <EditableRollButton
+                      formula={formula}
+                      onRoll={(f) =>
+                        onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)
+                      }
+                      renderButton={(f, editClick) => (
+                        <MiniButton onClick={editClick}>
+                          🎲 {damageActionLabels(action.kind).verb} ({f})
+                        </MiniButton>
+                      )}
+                    />
                   )}
                 />
               )}
@@ -691,13 +712,21 @@ function CurrentTurnActions({
             <li key={i} className="rounded-sm border border-rule bg-parchment px-2 py-1.5">
               <div className="mb-1 truncate text-xs text-ink">{a.name}</div>
               <div className="flex flex-wrap gap-1.5">
-                <MiniButton onClick={() => handleRoll(`Ataque: ${a.name}`, a.attackFormula)}>
-                  🎲 Atacar ({a.attackFormula})
-                </MiniButton>
+                <EditableRollButton
+                  formula={a.attackFormula}
+                  onRoll={(formula) => handleRoll(`Ataque: ${a.name}`, formula)}
+                  renderButton={(formula, onClick) => (
+                    <MiniButton onClick={onClick}>🎲 Atacar ({formula})</MiniButton>
+                  )}
+                />
                 {a.damageFormula && (
-                  <MiniButton onClick={() => handleRoll(`Daño: ${a.name}`, a.damageFormula!)}>
-                    🎲 Daño ({a.damageFormula})
-                  </MiniButton>
+                  <EditableRollButton
+                    formula={a.damageFormula}
+                    onRoll={(formula) => handleRoll(`Daño: ${a.name}`, formula)}
+                    renderButton={(formula, onClick) => (
+                      <MiniButton onClick={onClick}>🎲 Daño ({formula})</MiniButton>
+                    )}
+                  />
                 )}
               </div>
             </li>
