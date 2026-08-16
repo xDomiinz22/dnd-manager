@@ -644,6 +644,7 @@ function CurrentTurnActions({
           onRoll={handleRoll}
           combatBonuses={combatBonuses}
           onApplyDetectedEffect={handleApplyDetectedEffect}
+          canPersistOverrides={false}
           scrollClassName="max-h-72 overflow-y-auto"
         />
       );

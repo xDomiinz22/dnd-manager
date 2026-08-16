@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { AbilityKey, CharacterFull, CharacterRosterEntry } from "@dnd-manager/shared";
-import { useCharacter } from "../characters/hooks";
+import { useCharacter, useSetRollOverride } from "../characters/hooks";
 import { useCreateRoll } from "../dice/hooks";
 import { useDiceOverlay } from "../dice/DiceOverlay";
 import {
   damageActionLabels,
   getRollableActions,
+  rollOverrideKey,
   type CombatBonuses,
   type RollableAction,
 } from "../characters/rollableActions";
@@ -202,6 +203,7 @@ export function CharacterActionsPanel({
   initialCategory,
   combatBonuses,
   onApplyDetectedEffect,
+  canPersistOverrides = true,
   scrollClassName = "flex-1 overflow-y-auto",
 }: {
   character: CharacterFull;
@@ -209,6 +211,10 @@ export function CharacterActionsPanel({
   initialCategory?: Category;
   combatBonuses?: CombatBonuses;
   onApplyDetectedEffect?: (effect: DetectedItemEffect) => void;
+  /** `false` cuando `character` en realidad es un enemigo disfrazado de
+   * `CharacterFull` (ver CombatPanel.tsx) — no hay fila de personaje real
+   * donde guardar un override, así que se omiten los iconos 💾/↺. */
+  canPersistOverrides?: boolean;
   /** Clase Tailwind del contenedor con scroll — `flex-1 overflow-y-auto` (por
    * defecto, sigue el alto disponible del cajón de chat) o un `max-h-*
    * overflow-y-auto` cuando el padre no tiene una altura fija (combate). */
@@ -217,6 +223,14 @@ export function CharacterActionsPanel({
   const [category, setCategory] = useState<Category>(initialCategory ?? "attacks");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const setRollOverride = useSetRollOverride(character.id);
+
+  const onSaveOverride = canPersistOverrides
+    ? (key: string, formula: string) => setRollOverride.mutate({ key, formula })
+    : undefined;
+  const onClearOverride = canPersistOverrides
+    ? (key: string) => setRollOverride.mutate({ key, formula: null })
+    : undefined;
 
   const actions = getRollableActions(character.items, character, combatBonuses);
   const itemTypeById = new Map<string, string>();
@@ -289,6 +303,8 @@ export function CharacterActionsPanel({
             character={character}
             onRoll={onRoll}
             onApplyDetectedEffect={onApplyDetectedEffect}
+            onSaveOverride={onSaveOverride}
+            onClearOverride={onClearOverride}
           />
         ) : (
           <>
@@ -298,6 +314,8 @@ export function CharacterActionsPanel({
                 onRoll={onRoll}
                 empty="Sin ataques."
                 onApplyDetectedEffect={onApplyDetectedEffect}
+                onSaveOverride={onSaveOverride}
+                onClearOverride={onClearOverride}
               />
             )}
             {category === "items" && (
@@ -306,6 +324,8 @@ export function CharacterActionsPanel({
                 onRoll={onRoll}
                 empty="Sin objetos tirables."
                 onApplyDetectedEffect={onApplyDetectedEffect}
+                onSaveOverride={onSaveOverride}
+                onClearOverride={onClearOverride}
               />
             )}
             {category === "saves" && (
@@ -383,6 +403,98 @@ function isAttackCategory(action: RollableAction, itemTypeById: Map<string, stri
   );
 }
 
+interface RollOverrideCallbacks {
+  onSaveOverride?: (key: string, formula: string) => void;
+  onClearOverride?: (key: string) => void;
+}
+
+/** Botón de ataque de una RollableAction — editable y (si se pasan los
+ * callbacks) guardable. `renderButton` deja que cada superficie (chat,
+ * ficha, combate) pinte su propio estilo de botón. */
+export function AttackRollButton({
+  action,
+  label,
+  onRoll,
+  onSaveOverride,
+  onClearOverride,
+  renderButton,
+}: RollOverrideCallbacks & {
+  action: RollableAction;
+  label: string;
+  onRoll: (label: string, formula: string) => void;
+  renderButton: (text: string, onClick: () => void) => ReactNode;
+}) {
+  if (!action.attackFormula) return null;
+  const key = rollOverrideKey(action, "attack");
+  return (
+    <EditableRollButton
+      formula={action.attackFormula}
+      onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
+      onSave={onSaveOverride ? (f) => onSaveOverride(key, f) : undefined}
+      onClearSaved={onClearOverride ? () => onClearOverride(key) : undefined}
+      renderButton={(formula, onClick) => renderButton(`Atacar (${formula})`, onClick)}
+    />
+  );
+}
+
+/** Botón de daño/curación de una RollableAction — cubre tanto el caso
+ * escalable por hueco (ScalableDamageButton) como el de recurso gastable
+ * (ResourceAmountButton), editable y guardable igual que `AttackRollButton`. */
+export function DamageRollButton({
+  action,
+  label,
+  onRoll,
+  onSaveOverride,
+  onClearOverride,
+  renderButton,
+}: RollOverrideCallbacks & {
+  action: RollableAction;
+  label: string;
+  onRoll: (label: string, formula: string) => void;
+  renderButton: (text: string, onClick: () => void) => ReactNode;
+}) {
+  const key = rollOverrideKey(action, action.kind === "heal" ? "heal" : "damage");
+  const onSave = onSaveOverride ? (f: string) => onSaveOverride(key, f) : undefined;
+  const onClearSaved = onClearOverride ? () => onClearOverride(key) : undefined;
+  const rollLabel = `${damageActionLabels(action.kind).prefix}: ${label}`;
+  const verb = damageActionLabels(action.kind).verb;
+
+  if (action.resourceScaling) {
+    return (
+      <ResourceAmountButton
+        label={rollLabel}
+        action={action.resourceScaling}
+        onRoll={onRoll}
+        renderButton={(formula) => (
+          <EditableRollButton
+            formula={formula}
+            onRoll={(f) => onRoll(rollLabel, f)}
+            onSave={onSave}
+            onClearSaved={onClearSaved}
+            renderButton={(f, editClick) => renderButton(`${verb} (${f})`, editClick)}
+          />
+        )}
+      />
+    );
+  }
+  return (
+    <ScalableDamageButton
+      label={rollLabel}
+      action={action}
+      onRoll={onRoll}
+      renderButton={(formula) => (
+        <EditableRollButton
+          formula={formula}
+          onRoll={(f) => onRoll(rollLabel, f)}
+          onSave={onSave}
+          onClearSaved={onClearSaved}
+          renderButton={(f, editClick) => renderButton(`${verb} (${f})`, editClick)}
+        />
+      )}
+    />
+  );
+}
+
 /**
  * Búsqueda unificada: mezcla ataques, objetos, salvaciones y habilidades en
  * una sola lista (a diferencia de las pestañas, separadas por categoría) —
@@ -396,6 +508,8 @@ function SearchResults({
   character,
   onRoll,
   onApplyDetectedEffect,
+  onSaveOverride,
+  onClearOverride,
 }: {
   query: string;
   actions: RollableAction[];
@@ -403,6 +517,8 @@ function SearchResults({
   character: CharacterFull;
   onRoll: (label: string, formula: string) => void;
   onApplyDetectedEffect?: (effect: DetectedItemEffect) => void;
+  onSaveOverride?: (key: string, formula: string) => void;
+  onClearOverride?: (key: string) => void;
 }) {
   const normalizedQuery = normalizeSearch(query.trim());
 
@@ -441,52 +557,22 @@ function SearchResults({
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {action.attackFormula && (
-              <EditableRollButton
-                formula={action.attackFormula}
-                onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
-                renderButton={(formula, onClick) => (
-                  <MoveButton text={`Atacar (${formula})`} onClick={onClick} />
-                )}
-              />
-            )}
-            {action.resourceScaling ? (
-              <ResourceAmountButton
-                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                action={action.resourceScaling}
-                onRoll={onRoll}
-                renderButton={(formula) => (
-                  <EditableRollButton
-                    formula={formula}
-                    onRoll={(f) => onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)}
-                    renderButton={(f, editClick) => (
-                      <MoveButton
-                        text={`${damageActionLabels(action.kind).verb} (${f})`}
-                        onClick={editClick}
-                      />
-                    )}
-                  />
-                )}
-              />
-            ) : (
-              <ScalableDamageButton
-                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                action={action}
-                onRoll={onRoll}
-                renderButton={(formula) => (
-                  <EditableRollButton
-                    formula={formula}
-                    onRoll={(f) => onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)}
-                    renderButton={(f, editClick) => (
-                      <MoveButton
-                        text={`${damageActionLabels(action.kind).verb} (${f})`}
-                        onClick={editClick}
-                      />
-                    )}
-                  />
-                )}
-              />
-            )}
+            <AttackRollButton
+              action={action}
+              label={label}
+              onRoll={onRoll}
+              onSaveOverride={onSaveOverride}
+              onClearOverride={onClearOverride}
+              renderButton={(text, onClick) => <MoveButton text={text} onClick={onClick} />}
+            />
+            <DamageRollButton
+              action={action}
+              label={label}
+              onRoll={onRoll}
+              onSaveOverride={onSaveOverride}
+              onClearOverride={onClearOverride}
+              renderButton={(text, onClick) => <MoveButton text={text} onClick={onClick} />}
+            />
             {action.targetCount ? (
               <span className="self-center text-xs text-ink-muted">
                 Objetivos: {action.targetCount}
@@ -534,11 +620,15 @@ function ActionList({
   onRoll,
   empty,
   onApplyDetectedEffect,
+  onSaveOverride,
+  onClearOverride,
 }: {
   actions: RollableAction[];
   onRoll: (label: string, formula: string) => void;
   empty: string;
   onApplyDetectedEffect?: (effect: DetectedItemEffect) => void;
+  onSaveOverride?: (key: string, formula: string) => void;
+  onClearOverride?: (key: string) => void;
 }) {
   if (actions.length === 0) return <p className="text-sm text-ink-muted">{empty}</p>;
   return (
@@ -558,56 +648,22 @@ function ActionList({
           >
             <div className="mb-1 truncate text-sm text-ink">{label}</div>
             <div className="flex flex-wrap gap-1.5">
-              {action.attackFormula && (
-                <EditableRollButton
-                  formula={action.attackFormula}
-                  onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
-                  renderButton={(formula, onClick) => (
-                    <MoveButton text={`Atacar (${formula})`} onClick={onClick} />
-                  )}
-                />
-              )}
-              {action.resourceScaling ? (
-                <ResourceAmountButton
-                  label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                  action={action.resourceScaling}
-                  onRoll={onRoll}
-                  renderButton={(formula) => (
-                    <EditableRollButton
-                      formula={formula}
-                      onRoll={(f) =>
-                        onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)
-                      }
-                      renderButton={(f, editClick) => (
-                        <MoveButton
-                          text={`${damageActionLabels(action.kind).verb} (${f})`}
-                          onClick={editClick}
-                        />
-                      )}
-                    />
-                  )}
-                />
-              ) : (
-                <ScalableDamageButton
-                  label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                  action={action}
-                  onRoll={onRoll}
-                  renderButton={(formula) => (
-                    <EditableRollButton
-                      formula={formula}
-                      onRoll={(f) =>
-                        onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)
-                      }
-                      renderButton={(f, editClick) => (
-                        <MoveButton
-                          text={`${damageActionLabels(action.kind).verb} (${f})`}
-                          onClick={editClick}
-                        />
-                      )}
-                    />
-                  )}
-                />
-              )}
+              <AttackRollButton
+                action={action}
+                label={label}
+                onRoll={onRoll}
+                onSaveOverride={onSaveOverride}
+                onClearOverride={onClearOverride}
+                renderButton={(text, onClick) => <MoveButton text={text} onClick={onClick} />}
+              />
+              <DamageRollButton
+                action={action}
+                label={label}
+                onRoll={onRoll}
+                onSaveOverride={onSaveOverride}
+                onClearOverride={onClearOverride}
+                renderButton={(text, onClick) => <MoveButton text={text} onClick={onClick} />}
+              />
               {action.targetCount ? (
                 <span className="self-center text-xs text-ink-muted">
                   Objetivos: {action.targetCount}

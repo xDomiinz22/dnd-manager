@@ -189,6 +189,14 @@ model CharacterSheet {
   // máximo) porque el .md de Foundry no trae el máximo real de forma fiable.
   spellSlots Json?
 
+  // Fórmulas de tirada corregidas/guardadas a mano por el jugador —
+  // `Record<"<itemId>:<activityId>:<attack|damage|heal>", string>`. El
+  // motor de escalado (rollableActions.ts) calcula bien lo verificable
+  // contra datos reales, pero no todo caso homebrew o mal etiquetado; una
+  // vez el jugador revisa y corrige una tirada, esta fórmula guardada gana
+  // siempre sobre el cálculo automático hasta que la borre.
+  rollOverrides Json?
+
   // Datos crudos y derivados:
   rawSystem    Json
   items        Json

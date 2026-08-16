@@ -5,6 +5,7 @@ import {
   importCharacterMdSchema,
   importCharacterSchema,
   reassignOwnerSchema,
+  setRollOverrideSchema,
   updateHpSchema,
   updateSpellSlotSchema,
 } from "@dnd-manager/shared";
@@ -96,6 +97,16 @@ export const updateSpellSlotHandler: RequestHandler = async (req, res, next) => 
       input.used,
       input.max,
     );
+    res.json(character);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const setRollOverrideHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const input = setRollOverrideSchema.parse(req.body);
+    const character = await characterService.setRollOverride(req.params.id as string, input);
     res.json(character);
   } catch (err) {
     next(err);

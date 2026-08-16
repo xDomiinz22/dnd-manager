@@ -8,6 +8,7 @@ import type {
   ImportCharacterInput,
   ImportCharacterMdInput,
   ResetGroupHpResponse,
+  SetRollOverrideInput,
   UpdateHpInput,
   UpdateSpellSlotInput,
   UploadCharacterImageResponse,
@@ -50,6 +51,11 @@ export const charactersApi = {
     }),
   updateSpellSlot: (id: string, input: UpdateSpellSlotInput) =>
     apiFetch<CharacterFull>(`/characters/${id}/spell-slots`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    }),
+  setRollOverride: (id: string, input: SetRollOverrideInput) =>
+    apiFetch<CharacterFull>(`/characters/${id}/roll-overrides`, {
       method: "PATCH",
       body: JSON.stringify(input),
     }),

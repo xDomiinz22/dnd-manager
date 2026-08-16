@@ -17,6 +17,7 @@ import {
 import {
   useCharacter,
   useResetHp,
+  useSetRollOverride,
   useUpdateHp,
   useUpdateSpellSlot,
 } from "../features/characters/hooks";
@@ -24,14 +25,8 @@ import { useCreateRoll } from "../features/dice/hooks";
 import { useDiceOverlay } from "../features/dice/DiceOverlay";
 import { useChatSession } from "../features/chat/hooks";
 import { useGroupDetail } from "../features/groups/hooks";
-import {
-  damageActionLabels,
-  getRollableActions,
-  type RollableAction,
-} from "../features/characters/rollableActions";
-import { ScalableDamageButton } from "../features/characters/ScalableDamageButton";
-import { ResourceAmountButton } from "../features/characters/ResourceAmountButton";
-import { EditableRollButton } from "../features/characters/EditableRollButton";
+import { getRollableActions, type RollableAction } from "../features/characters/rollableActions";
+import { AttackRollButton, DamageRollButton } from "../features/chat/CharacterRollMenu";
 import { Button } from "../components/ui/Button";
 import { TextField } from "../components/ui/TextField";
 import { PortraitCircle } from "../components/character/PortraitCircle";
@@ -145,6 +140,10 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
   const { data: session } = useChatSession(character.groupId);
   const { data: groupDetail } = useGroupDetail(character.groupId);
   const canRoll = !!session;
+  const setRollOverride = useSetRollOverride(character.id);
+  const handleSaveOverride = (key: string, formula: string) =>
+    setRollOverride.mutate({ key, formula });
+  const handleClearOverride = (key: string) => setRollOverride.mutate({ key, formula: null });
 
   const actionsByItem = new Map<string, RollableAction[]>();
   for (const action of getRollableActions(character.items, character)) {
@@ -311,6 +310,8 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
             actionsByItem={actionsByItem}
             onRoll={handleRoll}
             canRoll={canRoll}
+            onSaveOverride={handleSaveOverride}
+            onClearOverride={handleClearOverride}
           />
         ) : (
           <>
@@ -329,6 +330,8 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
                 actionsByItem={actionsByItem}
                 onRoll={handleRoll}
                 canRoll={canRoll}
+                onSaveOverride={handleSaveOverride}
+                onClearOverride={handleClearOverride}
               />
             )}
             {tab === "Features" && (
@@ -337,6 +340,8 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
                 actionsByItem={actionsByItem}
                 onRoll={handleRoll}
                 canRoll={canRoll}
+                onSaveOverride={handleSaveOverride}
+                onClearOverride={handleClearOverride}
               />
             )}
             {tab === "Spellbook" && (
@@ -347,6 +352,8 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
                 actionsByItem={actionsByItem}
                 onRoll={handleRoll}
                 canRoll={canRoll}
+                onSaveOverride={handleSaveOverride}
+                onClearOverride={handleClearOverride}
               />
             )}
             {tab === "Biography" && <BiographyTab details={details} />}
@@ -612,6 +619,8 @@ interface RollTabProps {
   actionsByItem: Map<string, RollableAction[]>;
   onRoll: (label: string, formula: string) => void;
   canRoll: boolean;
+  onSaveOverride: (key: string, formula: string) => void;
+  onClearOverride: (key: string) => void;
 }
 
 function InventoryTab({
@@ -619,6 +628,8 @@ function InventoryTab({
   actionsByItem,
   onRoll,
   canRoll,
+  onSaveOverride,
+  onClearOverride,
 }: { items: unknown } & RollTabProps) {
   const inventory = itemsOfType(items, ["weapon", "equipment", "consumable", "container", "loot"]);
   const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
@@ -656,6 +667,8 @@ function InventoryTab({
                 actions={actionsByItem.get(item._id ?? "")}
                 onRoll={onRoll}
                 canRoll={canRoll}
+                onSaveOverride={onSaveOverride}
+                onClearOverride={onClearOverride}
               />
             </li>
           );
@@ -672,7 +685,14 @@ function InventoryTab({
   );
 }
 
-function FeaturesTab({ items, actionsByItem, onRoll, canRoll }: { items: unknown } & RollTabProps) {
+function FeaturesTab({
+  items,
+  actionsByItem,
+  onRoll,
+  canRoll,
+  onSaveOverride,
+  onClearOverride,
+}: { items: unknown } & RollTabProps) {
   const features = itemsOfType(items, ["feat", "class", "subclass", "race", "background"]);
   const [openItem, setOpenItem] = useState<{ title: string; html: string } | null>(null);
   if (features.length === 0) {
@@ -704,6 +724,8 @@ function FeaturesTab({ items, actionsByItem, onRoll, canRoll }: { items: unknown
                 actions={actionsByItem.get(item._id ?? "")}
                 onRoll={onRoll}
                 canRoll={canRoll}
+                onSaveOverride={onSaveOverride}
+                onClearOverride={onClearOverride}
               />
             </li>
           );
@@ -725,10 +747,14 @@ function RollButtons({
   actions,
   onRoll,
   canRoll,
+  onSaveOverride,
+  onClearOverride,
 }: {
   actions: RollableAction[] | undefined;
   onRoll: (label: string, formula: string) => void;
   canRoll: boolean;
+  onSaveOverride: (key: string, formula: string) => void;
+  onClearOverride: (key: string) => void;
 }) {
   if (!actions || actions.length === 0) return null;
   const rollTitleSuffix = canRoll ? "" : " (inicia una sesión de chat para poder tirar)";
@@ -753,70 +779,42 @@ function RollButtons({
         }
         return (
           <div key={action.activityId} className="flex flex-wrap items-center gap-1.5">
-            {action.attackFormula && (
-              <EditableRollButton
-                formula={action.attackFormula}
-                onRoll={(formula) => onRoll(`Ataque: ${label}`, formula)}
-                renderButton={(formula, onClick) => (
-                  <Button
-                    variant="ghost"
-                    onClick={onClick}
-                    disabled={!canRoll}
-                    title={`Tirar ataque: ${formula}${rollTitleSuffix}`}
-                    className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
-                  >
-                    🎲 Atacar ({formula})
-                  </Button>
-                )}
-              />
-            )}
-            {action.resourceScaling ? (
-              <ResourceAmountButton
-                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                action={action.resourceScaling}
-                onRoll={onRoll}
-                renderButton={(formula) => (
-                  <EditableRollButton
-                    formula={formula}
-                    onRoll={(f) => onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)}
-                    renderButton={(f, editClick) => (
-                      <Button
-                        variant="ghost"
-                        onClick={editClick}
-                        disabled={!canRoll}
-                        title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${f}${rollTitleSuffix}`}
-                        className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
-                      >
-                        🎲 {damageActionLabels(action.kind).verb} ({f})
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-            ) : (
-              <ScalableDamageButton
-                label={`${damageActionLabels(action.kind).prefix}: ${label}`}
-                action={action}
-                onRoll={onRoll}
-                renderButton={(formula) => (
-                  <EditableRollButton
-                    formula={formula}
-                    onRoll={(f) => onRoll(`${damageActionLabels(action.kind).prefix}: ${label}`, f)}
-                    renderButton={(f, editClick) => (
-                      <Button
-                        variant="ghost"
-                        onClick={editClick}
-                        disabled={!canRoll}
-                        title={`Tirar ${damageActionLabels(action.kind).verb.toLowerCase()}: ${f}${rollTitleSuffix}`}
-                        className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
-                      >
-                        🎲 {damageActionLabels(action.kind).verb} ({f})
-                      </Button>
-                    )}
-                  />
-                )}
-              />
-            )}
+            <AttackRollButton
+              action={action}
+              label={label}
+              onRoll={onRoll}
+              onSaveOverride={onSaveOverride}
+              onClearOverride={onClearOverride}
+              renderButton={(text, onClick) => (
+                <Button
+                  variant="ghost"
+                  onClick={onClick}
+                  disabled={!canRoll}
+                  title={`Tirar: ${text}${rollTitleSuffix}`}
+                  className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+                >
+                  🎲 {text}
+                </Button>
+              )}
+            />
+            <DamageRollButton
+              action={action}
+              label={label}
+              onRoll={onRoll}
+              onSaveOverride={onSaveOverride}
+              onClearOverride={onClearOverride}
+              renderButton={(text, onClick) => (
+                <Button
+                  variant="ghost"
+                  onClick={onClick}
+                  disabled={!canRoll}
+                  title={`Tirar: ${text}${rollTitleSuffix}`}
+                  className="!px-2 !py-0.5 !text-xs !normal-case !tracking-normal"
+                >
+                  🎲 {text}
+                </Button>
+              )}
+            />
             {targetSuffix && <span className="text-xs text-ink/70">{targetSuffix}</span>}
           </div>
         );
@@ -852,6 +850,8 @@ function SearchResultsTab({
   actionsByItem,
   onRoll,
   canRoll,
+  onSaveOverride,
+  onClearOverride,
 }: { items: unknown; query: string } & RollTabProps) {
   const normalizedQuery = normalizeSearch(query.trim());
   const matches = itemsOfType(items, SEARCHABLE_TYPES).filter((item) =>
@@ -901,6 +901,8 @@ function SearchResultsTab({
                 actions={actionsByItem.get(item._id ?? "")}
                 onRoll={onRoll}
                 canRoll={canRoll}
+                onSaveOverride={onSaveOverride}
+                onClearOverride={onClearOverride}
               />
             </li>
           );
@@ -924,6 +926,8 @@ function SpellbookTab({
   actionsByItem,
   onRoll,
   canRoll,
+  onSaveOverride,
+  onClearOverride,
 }: {
   characterId: string;
   spellSlots: SpellSlots;
@@ -974,6 +978,8 @@ function SpellbookTab({
                     actions={actionsByItem.get(spell._id ?? "")}
                     onRoll={onRoll}
                     canRoll={canRoll}
+                    onSaveOverride={onSaveOverride}
+                    onClearOverride={onClearOverride}
                   />
                 </li>
               );

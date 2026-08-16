@@ -3,6 +3,8 @@ import type {
   CharacterListItem,
   CharacterView,
   ImportCharacterInput,
+  RollOverrides,
+  SetRollOverrideInput,
   SpellSlot,
   SpellSlotLevel,
   SpellSlots,
@@ -73,6 +75,7 @@ function toCharacterFull(character: CharacterWithPortrait): CharacterFull {
     portraitAssetId: character.portraitAssetId,
     currentHp: resolveCurrentHp(character),
     spellSlots: resolveSpellSlots(character),
+    rollOverrides: (character.rollOverrides as RollOverrides | null) ?? null,
     rawSystem: character.rawSystem,
     items: character.items,
     // Guardamos exactamente lo que genera deriveCharacterStats, así que el shape coincide con DerivedStats.
@@ -292,6 +295,31 @@ export async function updateSpellSlot(
   const character = await prisma.characterSheet.update({
     where: { id: existing.id },
     data: { spellSlots: nextSlots },
+    include: { portraitAsset: true },
+  });
+  return toCharacterFull(character);
+}
+
+/**
+ * Guarda (o borra, si `formula` es `null`) una fórmula de tirada corregida
+ * a mano — la clave ya viene formada por el cliente (ver `rollOverrideKey`
+ * en rollableActions.ts), aquí solo se mezcla en el mapa existente.
+ */
+export async function setRollOverride(
+  id: string,
+  input: SetRollOverrideInput,
+): Promise<CharacterFull> {
+  const existing = await getCharacterOrThrow(id);
+  const current = { ...((existing.rollOverrides as RollOverrides | null) ?? {}) };
+  if (input.formula === null) {
+    delete current[input.key];
+  } else {
+    current[input.key] = input.formula;
+  }
+
+  const character = await prisma.characterSheet.update({
+    where: { id: existing.id },
+    data: { rollOverrides: current },
     include: { portraitAsset: true },
   });
   return toCharacterFull(character);

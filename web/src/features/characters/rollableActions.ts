@@ -591,6 +591,20 @@ function buildRollDataBase(character: CharacterFull): Omit<RollData, "mod" | "it
  *   furtivo, Castigo Divino, Curar heridas...) — antes se ignoraban por
  *   completo (bug #1 del diagnóstico).
  */
+/**
+ * Clave de un override de fórmula guardado a mano (ver
+ * `character.rollOverrides`, `setRollOverride` en el servidor) — misma
+ * clave se usa para leer (aquí) y para escribir (los `EditableRollButton`
+ * con `onSave` en las 3 superficies de UI), así que vive aquí como fuente
+ * única de verdad del formato.
+ */
+export function rollOverrideKey(
+  action: { itemId: string; activityId: string },
+  field: "attack" | "damage" | "heal",
+): string {
+  return `${action.itemId}:${action.activityId}:${field}`;
+}
+
 export function getRollableActions(
   items: unknown,
   character: CharacterFull,
@@ -744,8 +758,28 @@ export function getRollableActions(
 
       const targetCount = resolveTargetCount(item, rollData);
 
+      // Un override guardado a mano (ver rollOverrideKey) pisa CUALQUIER
+      // cosa calculada arriba — es deliberado: el jugador ya revisó el
+      // hechizo/ataque y decidió que esta es la fórmula correcta.
+      const overrideItemId = item._id ?? activityId;
+      const overrides = character.rollOverrides;
+      if (overrides && attackFormula !== null) {
+        const saved = overrides[rollOverrideKey({ itemId: overrideItemId, activityId }, "attack")];
+        if (saved) attackFormula = saved;
+      }
+      if (overrides && damageFormula !== null) {
+        const saved =
+          overrides[
+            rollOverrideKey(
+              { itemId: overrideItemId, activityId },
+              kind === "heal" ? "heal" : "damage",
+            )
+          ];
+        if (saved) damageFormula = saved;
+      }
+
       actions.push({
-        itemId: item._id ?? activityId,
+        itemId: overrideItemId,
         activityId,
         itemName: item.name ?? "Sin nombre",
         activityName:

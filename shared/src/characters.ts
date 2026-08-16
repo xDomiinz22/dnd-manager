@@ -119,6 +119,19 @@ export const updateSpellSlotSchema = z
   });
 export type UpdateSpellSlotInput = z.infer<typeof updateSpellSlotSchema>;
 
+// Fórmulas de tirada corregidas/guardadas a mano — clave
+// "<itemId>:<activityId>:<attack|damage|heal>" (ver rollOverrideKey en
+// web/src/features/characters/rollableActions.ts), valor = la fórmula tal
+// cual. `formula: null` en el input borra esa clave del mapa.
+export const rollOverridesSchema = z.record(z.string(), z.string());
+export type RollOverrides = z.infer<typeof rollOverridesSchema>;
+
+export const setRollOverrideSchema = z.object({
+  key: z.string().min(1).max(200),
+  formula: z.string().trim().min(1).max(120).nullable(),
+});
+export type SetRollOverrideInput = z.infer<typeof setRollOverrideSchema>;
+
 export const characterFullSchema = z.object({
   id: z.string(),
   ownerId: z.string(),
@@ -135,6 +148,7 @@ export const characterFullSchema = z.object({
   portraitAssetId: z.string().nullable(),
   currentHp: z.number(),
   spellSlots: spellSlotsSchema,
+  rollOverrides: rollOverridesSchema.nullable(),
   rawSystem: z.unknown(),
   items: z.unknown(),
   derived: derivedStatsSchema,

@@ -4,6 +4,7 @@ import type {
   DuplicateCharacterInput,
   ImportCharacterInput,
   ImportCharacterMdInput,
+  SetRollOverrideInput,
   UpdateHpInput,
   UpdateSpellSlotInput,
 } from "@dnd-manager/shared";
@@ -112,6 +113,14 @@ export function useUpdateSpellSlot(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateSpellSlotInput) => charactersApi.updateSpellSlot(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: characterKey(id) }),
+  });
+}
+
+export function useSetRollOverride(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SetRollOverrideInput) => charactersApi.setRollOverride(id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: characterKey(id) }),
   });
 }

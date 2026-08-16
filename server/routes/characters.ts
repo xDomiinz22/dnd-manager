@@ -18,6 +18,7 @@ import {
   reassignOwnerHandler,
   resetGroupHpHandler,
   resetHpHandler,
+  setRollOverrideHandler,
   updateHpHandler,
   updateSpellSlotHandler,
   uploadCharacterImageHandler,
@@ -75,6 +76,12 @@ charactersRouter.patch(
   requireAuth,
   requireCharacterMasterOrOwner,
   updateSpellSlotHandler,
+);
+charactersRouter.patch(
+  "/characters/:id/roll-overrides",
+  requireAuth,
+  requireCharacterMasterOrOwner,
+  setRollOverrideHandler,
 );
 charactersRouter.delete(
   "/characters/:id",
