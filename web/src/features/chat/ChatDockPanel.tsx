@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ChatMessageDto, CharacterRosterEntry } from "@dnd-manager/shared";
+import type { ChatMessageDto, CharacterRosterEntry, GroupDetail } from "@dnd-manager/shared";
 import { useAuth } from "../../context/AuthContext";
 import { useGroupDetail } from "../groups/hooks";
 import {
@@ -160,8 +160,20 @@ export function ChatDockPanel({
   const gid = groupId ?? "";
   const { user } = useAuth();
 
-  const { data: group } = useGroupDetail(gid);
+  const { data: fetchedGroup } = useGroupDetail(gid);
   const { data: session } = useChatSession(gid);
+  // Un blip de red (o un reinicio del servidor de desarrollo) puede dejar
+  // `fetchedGroup` en `undefined` por un instante, aunque ya lo tuviéramos
+  // cargado. Sin este respaldo, el guard `if (!group) return null` de abajo
+  // desmontaría TODO el panel — perdiendo `rollCategory`/`manualSelectedId`
+  // (el personaje/categoría que el jugador tenía elegidos) y devolviendo de
+  // golpe a la vista de chat normal, aunque el propio grupo no haya cambiado
+  // realmente. Nos quedamos con el último grupo bueno mientras esperamos
+  // (mismo patrón de "ajustar estado durante el render" que `prevMobileOpen`
+  // más abajo — no un efecto, para no perder ni un render).
+  const [lastGroup, setLastGroup] = useState<GroupDetail | null>(null);
+  if (fetchedGroup && fetchedGroup !== lastGroup) setLastGroup(fetchedGroup);
+  const group = fetchedGroup ?? lastGroup;
   const { data: messages } = useChatMessages(gid, { enabled: !!groupId && !!session });
   const startSession = useStartSession(gid);
   const endSession = useEndSession(gid);
