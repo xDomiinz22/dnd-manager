@@ -346,7 +346,16 @@ export function ChatDockPanel({
       <div className="hidden sm:block">
         <button
           type="button"
-          onClick={() => setCollapsed(false)}
+          onClick={(e) => {
+            // Este botón vive fuera de panelRef a propósito (es la pestaña
+            // plegada, no el panel en sí). Sin stopPropagation, el mismo
+            // click que lo abre burbujea hasta el listener de "click fuera"
+            // de useCloseOnOutsideClick, que lo detecta como click FUERA del
+            // panel y lo vuelve a colapsar en el mismo tick — el chat nunca
+            // se quedaba abierto.
+            e.stopPropagation();
+            setCollapsed(false);
+          }}
           aria-label="Abrir chat"
           aria-hidden={!collapsed}
           tabIndex={collapsed ? 0 : -1}
