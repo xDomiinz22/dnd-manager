@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { flushSync } from "react-dom";
+import { MorphIcon } from "morphicons/react";
+import { Moon, Sun } from "lucide";
 import { getEffectiveTheme, setStoredTheme, type Theme } from "../../lib/theme";
-import type { AnimatedIconHandle } from "../icons/types";
-import MoonIcon from "../icons/moon-icon";
-import BrightnessDownIcon from "../icons/brightness-down-icon";
 
 /**
  * ¿El navegador soporta la View Transitions API? Firefox y Safari <18 no la
@@ -54,21 +53,36 @@ function circleClipPath(
  * primer pintado (ver el script inline en index.html), este componente solo
  * refleja/cambia esa elección desde el header.
  *
- * El cambio de tema en sí ya no es instantáneo: usa la View Transitions API
- * para expandir un círculo desde el propio botón hasta cubrir toda la
- * pantalla con la nueva paleta (mismo truco que el selector de tema de
- * GitHub/Vercel/magicui.design — este componente sigue de cerca la
- * implementación de magicui, que ya lidió con varias de estas trampas).
- * `document.startViewTransition` toma una foto del DOM antes y después del
- * callback que le pasamos — el `flushSync` es imprescindible porque si no,
- * React aplaza el cambio de estado a después de que la API ya haya hecho su
- * captura "after", y la transición saldría vacía (foto "antes" y "después"
- * idénticas). El propio recorte circular (`clipPath`) se anima aparte con
- * la Web Animations API sobre `::view-transition-new(root)`.
+ * Dos animaciones DISTINTAS, con orígenes distintos, que resulta que
+ * combinan bien porque comparten el mismo punto de partida (el botón):
+ *
+ * 1. El propio icono sol/luna hace un MORPH de verdad entre las dos formas
+ *    (morphicons/react + los datos de icono de "lucide", ver imports) — ya
+ *    no son dos SVG que se intercambian de golpe, es la misma silueta
+ *    deformándose de una a otra. `<MorphIcon icon={...}>` anima solo con
+ *    que cambie la prop `icon` (modo "uncontrolled" de la librería), así
+ *    que no hace falta ningún ref ni disparo manual — a diferencia de los
+ *    demás iconos de esta app (itshover.com), que si necesitan un
+ *    `startAnimation()` explícito.
+ *
+ * 2. El cambio de tema en sí (la paleta de toda la página) tampoco es
+ *    instantáneo: usa la View Transitions API para expandir un círculo
+ *    desde el propio botón hasta cubrir toda la pantalla con la nueva
+ *    paleta (mismo truco que el selector de tema de GitHub/Vercel/
+ *    magicui.design — este trozo sigue de cerca la implementación de
+ *    magicui, que ya lidió con varias de estas trampas).
+ *    `document.startViewTransition` toma una foto del DOM antes y después
+ *    del callback que le pasamos — el `flushSync` es imprescindible porque
+ *    si no, React aplaza el cambio de estado a después de que la API ya
+ *    haya hecho su captura "after", y la transición saldría vacía (foto
+ *    "antes" y "después" idénticas). El propio recorte circular
+ *    (`clipPath`) se anima aparte con la Web Animations API sobre
+ *    `::view-transition-new(root)` — mientras tanto, el icono sigue
+ *    morfando por su cuenta (rAF propio de morphicons, ver 1), visible a
+ *    través del círculo según va creciendo.
  */
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>(() => getEffectiveTheme());
-  const iconRef = useRef<AnimatedIconHandle>(null);
   // Evita solapar dos barridos si el usuario pulsa dos veces seguidas antes
   // de que termine el primero — un segundo `startViewTransition` a mitad de
   // otro es justo el tipo de carrera que produce cortes/saltos raros.
@@ -93,10 +107,6 @@ export function ThemeToggle() {
   function toggle(e: MouseEvent<HTMLButtonElement>) {
     if (isTransitioningRef.current) return;
     const next: Theme = theme === "dark" ? "light" : "dark";
-
-    // Feedback táctil del propio icono al pulsar — no solo al pasar el
-    // ratón por encima, para que también se vea en touch/teclado.
-    iconRef.current?.startAnimation();
 
     function commit() {
       setStoredTheme(next);
@@ -166,11 +176,7 @@ export function ThemeToggle() {
       title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
       className="flex h-9 w-9 items-center justify-center rounded-sm border border-rule text-ink-muted transition-colors hover:border-rule-strong hover:bg-parchment-deep hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
     >
-      {theme === "dark" ? (
-        <BrightnessDownIcon ref={iconRef} size={20} />
-      ) : (
-        <MoonIcon ref={iconRef} size={20} />
-      )}
+      <MorphIcon icon={theme === "dark" ? Sun : Moon} size={20} spring="smooth" />
     </button>
   );
 }
