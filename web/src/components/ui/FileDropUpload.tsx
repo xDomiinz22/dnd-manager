@@ -196,7 +196,7 @@ export function FileDropUpload({
           <div
             className={`flex items-center gap-3 rounded-sm border px-3 py-2.5 transition-colors ${
               state.status === "loaded"
-                ? "border-moss bg-[#E3E8D0]/40"
+                ? "border-moss bg-moss/10"
                 : isDragging
                   ? "border-oxblood bg-parchment-deep/60"
                   : "border-rule-strong bg-parchment"
@@ -215,12 +215,7 @@ export function FileDropUpload({
                   />
                 </div>
               ) : (
-                <p className="text-xs text-moss">
-                  Cargado · {formatBytes(state.fileSize)} —{" "}
-                  <label htmlFor={inputId} className="cursor-pointer underline hover:text-moss/80">
-                    cambiar archivo
-                  </label>
-                </p>
+                <p className="text-xs text-moss">Cargado · {formatBytes(state.fileSize)}</p>
               )}
             </div>
             {state.status === "loading" && (
