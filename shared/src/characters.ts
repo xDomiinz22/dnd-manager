@@ -48,14 +48,14 @@ export const derivedStatsSchema = z.object({
 export type DerivedStats = z.infer<typeof derivedStatsSchema>;
 
 export const importCharacterSchema = z.object({
-  md: z.string().min(1, "Pega el contenido del .md"),
+  md: z.string().min(1, "Arrastra o selecciona el archivo .md"),
   ownerId: z.string().optional(),
   portraitAssetId: z.string().optional(),
 });
 export type ImportCharacterInput = z.infer<typeof importCharacterSchema>;
 
 export const importCharacterMdSchema = z.object({
-  md: z.string().min(1, "Pega el contenido del .md"),
+  md: z.string().min(1, "Arrastra o selecciona el archivo .md"),
 });
 export type ImportCharacterMdInput = z.infer<typeof importCharacterMdSchema>;
 

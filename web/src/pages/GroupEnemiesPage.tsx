@@ -27,7 +27,7 @@ import { PortraitCircle } from "../components/character/PortraitCircle";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { TextField } from "../components/ui/TextField";
-import { FileDropTextArea } from "../components/ui/FileDropTextArea";
+import { FileDropUpload } from "../components/ui/FileDropUpload";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
@@ -285,7 +285,6 @@ function ImportEnemyForm({ groupId, onDone }: { groupId: string; onDone: () => v
   const importEnemy = useImportEnemy(groupId);
   const toast = useToast();
   const {
-    register,
     handleSubmit,
     setValue,
     formState: { errors },
@@ -306,14 +305,10 @@ function ImportEnemyForm({ groupId, onDone }: { groupId: string; onDone: () => v
 
   return (
     <Card as="form" onSubmit={handleSubmit(onSubmit)} noValidate className="mb-4">
-      <FileDropTextArea
-        label="Contenido del .md (export Foundry)"
-        rows={6}
-        className="font-mono text-xs"
-        placeholder={"---\ntitle: ...\n```Actor\n...\n```"}
+      <FileDropUpload
+        label="Ficha (export .md de Foundry)"
         error={errors.md?.message}
-        onFileDrop={(text) => setValue("md", text, { shouldValidate: true })}
-        {...register("md")}
+        onFileLoaded={(text) => setValue("md", text, { shouldValidate: true })}
       />
       <Button type="submit" isLoading={importEnemy.isPending} loadingText="Importando...">
         Importar
@@ -354,7 +349,6 @@ function EditEnemyPanel({
   });
   const { fields, append, remove } = useFieldArray({ control, name: "quickAttacks" });
   const {
-    register: registerMd,
     handleSubmit: handleSubmitMd,
     setValue: setMdValue,
     formState: { errors: mdErrors },
@@ -449,14 +443,10 @@ function EditEnemyPanel({
       </form>
 
       <form onSubmit={handleSubmitMd(onSubmitMd)} noValidate className="border-t border-rule pt-3">
-        <FileDropTextArea
+        <FileDropUpload
           label="Actualizar desde .md"
-          rows={4}
-          className="font-mono text-xs"
-          placeholder="Pega el nuevo contenido del .md"
           error={mdErrors.md?.message}
-          onFileDrop={(text) => setMdValue("md", text, { shouldValidate: true })}
-          {...registerMd("md")}
+          onFileLoaded={(text) => setMdValue("md", text, { shouldValidate: true })}
         />
         <Button type="submit" isLoading={importMd.isPending} loadingText="Actualizando...">
           Actualizar desde .md

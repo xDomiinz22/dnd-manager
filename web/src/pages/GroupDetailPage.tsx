@@ -29,7 +29,7 @@ import { PortraitCircle } from "../components/character/PortraitCircle";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { SelectField } from "../components/ui/SelectField";
-import { FileDropTextArea } from "../components/ui/FileDropTextArea";
+import { FileDropUpload } from "../components/ui/FileDropUpload";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
@@ -550,14 +550,10 @@ function ImportCharacterForm({ groupId, members, onDone }: ImportCharacterFormPr
         ))}
       </SelectField>
 
-      <FileDropTextArea
-        label="Contenido del .md (export Foundry)"
-        rows={6}
-        className="font-mono text-xs"
-        placeholder={"---\ntitle: ...\n```Actor\n...\n```"}
+      <FileDropUpload
+        label="Ficha (export .md de Foundry)"
         error={errors.md?.message}
-        onFileDrop={(text) => setValue("md", text, { shouldValidate: true })}
-        {...register("md")}
+        onFileLoaded={(text) => setValue("md", text, { shouldValidate: true })}
       />
 
       <Button type="submit" isLoading={importCharacter.isPending} loadingText="Importando...">
@@ -615,7 +611,6 @@ function UpdateCharacterMdForm({
   const importMd = useImportCharacterMd(characterId, groupId);
   const toast = useToast();
   const {
-    register,
     handleSubmit,
     setValue,
     formState: { errors },
@@ -636,15 +631,11 @@ function UpdateCharacterMdForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-3 border-t border-rule pt-3">
-      <FileDropTextArea
-        label="Nuevo contenido del .md"
+      <FileDropUpload
+        label="Nueva ficha (.md)"
         hideLabel
-        rows={5}
-        className="font-mono text-xs"
-        placeholder="Pega el nuevo contenido del .md"
         error={errors.md?.message}
-        onFileDrop={(text) => setValue("md", text, { shouldValidate: true })}
-        {...register("md")}
+        onFileLoaded={(text) => setValue("md", text, { shouldValidate: true })}
       />
       <Button type="submit" isLoading={importMd.isPending} loadingText="Actualizando...">
         Actualizar

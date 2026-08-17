@@ -34,13 +34,13 @@ export const updateEnemySchema = createEnemySchema.partial();
 export type UpdateEnemyInput = z.infer<typeof updateEnemySchema>;
 
 export const importEnemySchema = z.object({
-  md: z.string().min(1, "Pega el contenido del .md"),
+  md: z.string().min(1, "Arrastra o selecciona el archivo .md"),
   portraitAssetId: z.string().optional(),
 });
 export type ImportEnemyInput = z.infer<typeof importEnemySchema>;
 
 export const importEnemyMdSchema = z.object({
-  md: z.string().min(1, "Pega el contenido del .md"),
+  md: z.string().min(1, "Arrastra o selecciona el archivo .md"),
 });
 export type ImportEnemyMdInput = z.infer<typeof importEnemyMdSchema>;
 
