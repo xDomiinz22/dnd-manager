@@ -21,6 +21,7 @@ import { ConfirmPanel } from "../../components/ui/ConfirmPanel";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
 import type { AnimatedIconHandle } from "../../components/icons/types";
 import MessageCircleIcon from "../../components/icons/message-circle-icon";
+import SendIcon from "../../components/icons/send-icon";
 
 const COLLAPSED_STORAGE_KEY = "chatDock.collapsed";
 const SHEET_TRANSITION_MS = 200;
@@ -612,6 +613,15 @@ function ChatPanelContent({
   combatPanel,
   bottomMenu,
 }: ChatPanelContentProps) {
+  const sendIconRef = useRef<AnimatedIconHandle>(null);
+
+  function handleSubmit(e: React.FormEvent) {
+    // También al pulsar, no solo al pasar el ratón por encima — en móvil
+    // (donde se manda la mayoría de mensajes) nunca hay hover.
+    sendIconRef.current?.startAnimation();
+    onSend(e);
+  }
+
   if (!session) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
@@ -674,7 +684,7 @@ function ChatPanelContent({
 
       {bottomMenu}
 
-      <form onSubmit={onSend} className="flex items-end gap-2">
+      <form onSubmit={handleSubmit} className="flex items-end gap-2">
         <TextField
           label="Mensaje"
           hideLabel
@@ -684,8 +694,8 @@ function ChatPanelContent({
           onChange={(e) => onTextChange(e.target.value)}
           maxLength={500}
         />
-        <Button type="submit" isLoading={isSending} loadingText="...">
-          Enviar
+        <Button type="submit" isLoading={isSending} loadingText="..." aria-label="Enviar mensaje">
+          <SendIcon ref={sendIconRef} size={18} />
         </Button>
       </form>
     </div>
