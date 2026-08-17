@@ -241,6 +241,24 @@ body {
 }
 
 /*
+ * El causante de que el barrido se quedara "pillado a la mitad y luego
+ * saltara de golpe" en móvil: además de old/new, la API envuelve ambos en
+ * `::view-transition-group(root)` y le pone SU PROPIA animación por
+ * defecto (~0.25s) para reconciliar el tamaño/posición si la foto de
+ * "antes" y la de "después" miden distinto — cosa que en escritorio casi
+ * nunca pasa, pero en móvil es la norma: la barra de direcciones se
+ * pliega/despliega sola al interactuar cerca del borde superior (justo
+ * donde vive este botón), así que el viewport mide distinto entre la foto
+ * "antes" y la de "después". Esa animación de tamaño (con su propio
+ * timing, sin relación con los 500ms del clip-path) competía en paralelo
+ * con nuestro barrido — de ahí el efecto de doble animación desincronizada.
+ * Sin la animación del grupo, solo queda la nuestra.
+ */
+::view-transition-group(root) {
+  animation-duration: 0s;
+}
+
+/*
  * @3d-dice/dice-box crea su propio <canvas class="dice-box-canvas"> dentro
  * del contenedor que le pasamos (ver DiceOverlay.tsx) pero no trae CSS
  * propio importado — sin esto el canvas se queda a tamaño intrínseco 0x0 (su

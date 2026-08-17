@@ -19,6 +19,8 @@ import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { ConfirmPanel } from "../../components/ui/ConfirmPanel";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
+import type { AnimatedIconHandle } from "../../components/icons/types";
+import MessageCircleIcon from "../../components/icons/message-circle-icon";
 
 const COLLAPSED_STORAGE_KEY = "chatDock.collapsed";
 const SHEET_TRANSITION_MS = 200;
@@ -94,23 +96,6 @@ function peekPreview(message: ChatMessageDto): { top: string; bottom: string } {
     };
   }
   return { top: message.username, bottom: message.text ?? "" };
-}
-
-function ChatIcon({ className = "h-4 w-4" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={className}
-    >
-      <path
-        d="M3 5.5A1.5 1.5 0 0 1 4.5 4h11A1.5 1.5 0 0 1 17 5.5v6A1.5 1.5 0 0 1 15.5 13H10l-3.5 3v-3H4.5A1.5 1.5 0 0 1 3 11.5v-6Z"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 /**
@@ -220,6 +205,13 @@ export function ChatDockPanel({
   // explícitamente: `panelRef.current` ya no es null cuando está colapsado,
   // solo desplazado fuera de la pantalla.
   const panelRef = useRef<HTMLDivElement | null>(null);
+  // La pestaña plegada de escritorio y la barra/FAB de móvil son botones
+  // distintos (solo uno de los dos móviles llega a montarse a la vez, según
+  // haya mensaje previo o no) — cada uno necesita su propio ref para poder
+  // disparar la animación del icono también al pulsar, no solo al pasar el
+  // ratón (en móvil no hay "ratón" que dispare el hover nunca).
+  const desktopChatIconRef = useRef<AnimatedIconHandle>(null);
+  const mobileChatIconRef = useRef<AnimatedIconHandle>(null);
   useEffect(() => {
     const el = panelRef.current;
     if (!el || collapsed) {
@@ -366,6 +358,7 @@ export function ChatDockPanel({
             // panel y lo vuelve a colapsar en el mismo tick — el chat nunca
             // se quedaba abierto.
             e.stopPropagation();
+            desktopChatIconRef.current?.startAnimation();
             setCollapsed(false);
           }}
           aria-label="Abrir chat"
@@ -375,7 +368,7 @@ export function ChatDockPanel({
             collapsed ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
         >
-          <ChatIcon />
+          <MessageCircleIcon ref={desktopChatIconRef} size={16} />
           {session && (
             <span className="h-1.5 w-1.5 rounded-full bg-oxblood" aria-label="Sesión activa" />
           )}
@@ -415,13 +408,16 @@ export function ChatDockPanel({
           (session && lastMessage ? (
             <button
               type="button"
-              onClick={() => onMobileOpenChange(true)}
+              onClick={() => {
+                mobileChatIconRef.current?.startAnimation();
+                onMobileOpenChange(true);
+              }}
               aria-label="Abrir chat"
               style={{ bottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
               className="fixed inset-x-3 z-20 flex items-center gap-2 rounded-xl border border-rule-strong bg-parchment-panel px-2.5 py-2 text-left shadow-[0_4px_14px_-4px_rgba(0,0,0,0.3)]"
             >
               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-oxblood text-ivory">
-                <ChatIcon className="h-3.5 w-3.5" />
+                <MessageCircleIcon ref={mobileChatIconRef} size={14} />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-semibold text-oxblood">
@@ -441,12 +437,15 @@ export function ChatDockPanel({
           ) : (
             <button
               type="button"
-              onClick={() => onMobileOpenChange(true)}
+              onClick={() => {
+                mobileChatIconRef.current?.startAnimation();
+                onMobileOpenChange(true);
+              }}
               aria-label="Abrir chat"
               style={{ bottom: "calc(var(--player-bar-height, 0px) + 1rem)" }}
               className="fixed right-4 z-20 flex h-12 w-12 items-center justify-center rounded-full bg-oxblood text-ivory shadow-[0_4px_16px_-2px_rgba(0,0,0,0.4)]"
             >
-              <ChatIcon className="h-5 w-5" />
+              <MessageCircleIcon ref={mobileChatIconRef} size={20} />
             </button>
           ))}
 

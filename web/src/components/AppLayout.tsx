@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useLogout } from "../features/auth/hooks";
@@ -12,6 +12,8 @@ import { TempQueueLauncher } from "./music/TempQueueLauncher";
 import { BrandMark } from "./ui/BrandMark";
 import { Button } from "./ui/Button";
 import { ThemeToggle } from "./ui/ThemeToggle";
+import type { AnimatedIconHandle } from "./icons/types";
+import LogoutIcon from "./icons/logout-icon";
 
 type MobileSheet = "chat" | "queue" | null;
 
@@ -26,6 +28,7 @@ export function AppLayout() {
 function AppLayoutContent() {
   const { user } = useAuth();
   const logout = useLogout();
+  const logoutIconRef = useRef<AnimatedIconHandle>(null);
   const player = useAmbientPlayerContext();
   // Desestructurado a parte: el objeto `player` incluye `containerRef` (un
   // ref real) en su forma, y el analizador de `react-hooks/refs` (ESLint
@@ -70,11 +73,19 @@ function AppLayoutContent() {
           <ThemeToggle />
           <Button
             variant="secondary"
-            onClick={() => logout.mutate()}
+            onClick={() => {
+              // Feedback también al pulsar (no solo al pasar el ratón) para
+              // que touch/teclado vean la misma animación de la puerta.
+              logoutIconRef.current?.startAnimation();
+              logout.mutate();
+            }}
             isLoading={logout.isPending}
             loadingText="Saliendo..."
           >
-            Salir
+            <span className="inline-flex items-center gap-1.5">
+              <LogoutIcon ref={logoutIconRef} size={16} />
+              Salir
+            </span>
           </Button>
         </div>
       </header>
