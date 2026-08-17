@@ -233,6 +233,14 @@ body {
  * fundido cruzado superpuesto, dando un resultado sucio en vez de un
  * recorte limpio. `::view-transition-new(root)` queda así con opacidad 1
  * fija, listo para que el propio componente anime su `clip-path`.
+ *
+ * (Antes había aquí también una regla apagando la animación de
+ * `::view-transition-group(root)` para un fallo de la transición en móvil
+ * que se "cortaba" a mitad de camino — resultó ser la causa real, no el
+ * arreglo: quitarle su animación por defecto podía hacer que el navegador
+ * diera la transición entera por terminada en cuanto esa animación (ya a
+ * 0s) acababa, cortando de raíz la nuestra a medio barrer. El arreglo de
+ * verdad fueron los porcentajes en el propio ThemeToggle.tsx, ver ahí.)
  */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -241,21 +249,16 @@ body {
 }
 
 /*
- * El causante de que el barrido se quedara "pillado a la mitad y luego
- * saltara de golpe" en móvil: además de old/new, la API envuelve ambos en
- * `::view-transition-group(root)` y le pone SU PROPIA animación por
- * defecto (~0.25s) para reconciliar el tamaño/posición si la foto de
- * "antes" y la de "después" miden distinto — cosa que en escritorio casi
- * nunca pasa, pero en móvil es la norma: la barra de direcciones se
- * pliega/despliega sola al interactuar cerca del borde superior (justo
- * donde vive este botón), así que el viewport mide distinto entre la foto
- * "antes" y la de "después". Esa animación de tamaño (con su propio
- * timing, sin relación con los 500ms del clip-path) competía en paralelo
- * con nuestro barrido — de ahí el efecto de doble animación desincronizada.
- * Sin la animación del grupo, solo queda la nuestra.
+ * Fija el recorte de partida (círculo de radio 0 en el punto del click) por
+ * CSS puro, vía la custom property que pone ThemeToggle.tsx justo antes de
+ * llamar a `startViewTransition` — sin esto hay un hueco de uno o dos
+ * frames (más en un móvil con el hilo principal ocupado) entre que el
+ * navegador captura la foto del tema nuevo y que el `.animate()` en JS
+ * llega a ejecutarse, en el que se vería el tema nuevo a pantalla completa
+ * sin recortar todavía: un parpadeo justo antes de que arranque el barrido.
  */
-::view-transition-group(root) {
-  animation-duration: 0s;
+::view-transition-new(root) {
+  clip-path: var(--theme-vt-clip-from, none);
 }
 
 /*
