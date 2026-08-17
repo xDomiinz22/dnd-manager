@@ -33,6 +33,9 @@ import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
+import XIcon from "../components/icons/x-icon";
+import { MorphIcon } from "morphicons/react";
+import { Plus } from "lucide";
 
 const EMPTY_ENEMY: CreateEnemyInput = {
   name: "",
@@ -200,7 +203,7 @@ function QuickAttackFields({
               {...register(`quickAttacks.${index}.damageFormula` as const)}
             />
             <Button variant="danger" onClick={() => remove(index)}>
-              ×
+              <XIcon size={14} />
             </Button>
           </div>
         ))}
@@ -402,14 +405,15 @@ function EditEnemyPanel({
                 type="button"
                 onClick={() => deleteImage.mutate(img.id)}
                 aria-label="Borrar imagen"
-                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood text-xs text-ivory"
+                className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood text-ivory"
               >
-                ×
+                <XIcon size={12} />
               </button>
             </div>
           ))}
-          <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-sm border border-dashed border-rule-strong text-xl text-ink-muted hover:bg-parchment-deep">
-            +<input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+          <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-sm border border-dashed border-rule-strong text-ink-muted hover:bg-parchment-deep">
+            <MorphIcon icon={Plus} size={18} />
+            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
           </label>
         </div>
       </div>

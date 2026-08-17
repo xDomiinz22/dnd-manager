@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useCharacter } from "../../features/characters/hooks";
 import { useModalTransition } from "../../lib/useMountTransition";
 import { PortraitCircle } from "./PortraitCircle";
+import XIcon from "../icons/x-icon";
 
 const MODAL_TRANSITION_MS = 150;
 
@@ -60,7 +61,7 @@ export function CharacterProfileModal() {
           aria-label="Cerrar"
           className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
         >
-          ×
+          <XIcon size={16} />
         </button>
 
         {isLoading || !data ? (

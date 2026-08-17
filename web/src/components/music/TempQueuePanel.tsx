@@ -10,6 +10,7 @@ import type { MusicTrack } from "@dnd-manager/shared";
 import { useAmbientPlayerContext } from "../../features/music/AmbientPlayerContext";
 import { SwipeableRow } from "../ui/SwipeableRow";
 import { EmptyState } from "../ui/EmptyState";
+import XIcon from "../icons/x-icon";
 
 function GripIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
@@ -63,7 +64,7 @@ function TempQueueRow({ track, canReorder }: { track: MusicTrack; canReorder: bo
           aria-label={`Quitar ${track.title} de la cola`}
           className="shrink-0 text-ink-muted hover:text-ink"
         >
-          ×
+          <XIcon size={14} />
         </button>
       </SwipeableRow>
     </li>

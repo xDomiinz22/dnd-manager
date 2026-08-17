@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { JournalTreeNode } from "@dnd-manager/shared";
 import { EmptyState } from "../ui/EmptyState";
 import { normalizeSearch } from "../../lib/text";
+import XIcon from "../icons/x-icon";
 
 interface JournalTreeSidebarProps {
   title: string;
@@ -63,7 +64,7 @@ export function JournalTreeSidebar({
               aria-label="Limpiar búsqueda"
               className="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-ink"
             >
-              ×
+              <XIcon size={12} />
             </button>
           )}
         </div>

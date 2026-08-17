@@ -3,6 +3,7 @@ import { useAmbientPlayerContext } from "../../features/music/AmbientPlayerConte
 import { useCurrentGroupId } from "../../features/chat/useCurrentGroupId";
 import { useMountTransition } from "../../lib/useMountTransition";
 import { TempQueuePanel } from "./TempQueuePanel";
+import XIcon from "../icons/x-icon";
 
 const SHEET_TRANSITION_MS = 200;
 
@@ -94,7 +95,7 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
                 aria-label="Cerrar"
                 className="text-ink-muted hover:text-ink"
               >
-                ×
+                <XIcon size={14} />
               </button>
             </div>
             <TempQueuePanel />
@@ -145,7 +146,7 @@ export function TempQueueLauncher({ mobileOpen, onMobileOpenChange }: TempQueueL
                   aria-label="Cerrar"
                   className="text-ink-muted hover:text-ink"
                 >
-                  ×
+                  <XIcon size={14} />
                 </button>
               </div>
               <TempQueuePanel />

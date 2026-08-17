@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useModalTransition } from "../../lib/useMountTransition";
+import XIcon from "../icons/x-icon";
 
 const MODAL_TRANSITION_MS = 150;
 
@@ -53,7 +54,7 @@ export function ItemDetailModal({ title, descriptionHtml, onClose }: ItemDetailM
           aria-label="Cerrar"
           className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
         >
-          ×
+          <XIcon size={16} />
         </button>
         <h2 className="pr-8 font-display text-lg tracking-wide text-oxblood">{title}</h2>
         <div

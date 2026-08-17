@@ -34,6 +34,9 @@ import { CharacterImageManager } from "../components/character/CharacterImageMan
 import { ItemDetailModal } from "../components/character/ItemDetailModal";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
+import XIcon from "../components/icons/x-icon";
+import { MorphIcon } from "morphicons/react";
+import { Plus, Minus } from "lucide";
 import {
   ABILITY_FULL_LABELS,
   ABILITY_LABELS,
@@ -285,7 +288,7 @@ function FullCharacterSheet({ character }: { character: CharacterFull }) {
                 aria-label="Cerrar búsqueda"
                 className="text-ink-muted hover:text-ink"
               >
-                ×
+                <XIcon size={14} />
               </button>
             </div>
           ) : (
@@ -1088,7 +1091,7 @@ function SpellSlotStepper({
           aria-label={`Restar ${ariaLabel}`}
           className="flex h-5 w-5 items-center justify-center rounded-sm border border-rule-strong text-ink-muted hover:border-rule-strong hover:bg-parchment-deep hover:text-ink disabled:opacity-30"
         >
-          −
+          <MorphIcon icon={Minus} size={12} />
         </button>
         <span
           className="w-4 text-center text-sm text-ink"
@@ -1102,7 +1105,7 @@ function SpellSlotStepper({
           aria-label={`Sumar ${ariaLabel}`}
           className="flex h-5 w-5 items-center justify-center rounded-sm border border-rule-strong text-ink-muted hover:border-rule-strong hover:bg-parchment-deep hover:text-ink"
         >
-          +
+          <MorphIcon icon={Plus} size={12} />
         </button>
       </div>
     </div>

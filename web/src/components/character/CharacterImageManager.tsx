@@ -8,6 +8,8 @@ import {
 import { useModalTransition } from "../../lib/useMountTransition";
 import { Button } from "../ui/Button";
 import { toErrorMessage, useToast } from "../ui/Toast";
+import CheckedIcon from "../icons/checked-icon";
+import XIcon from "../icons/x-icon";
 
 const MODAL_TRANSITION_MS = 150;
 
@@ -120,7 +122,7 @@ function CharacterImageModal({
           aria-label="Cerrar"
           className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
         >
-          ×
+          <XIcon size={16} />
         </button>
 
         <h2 className="mb-3 font-display text-sm tracking-wide text-oxblood">
@@ -155,9 +157,9 @@ function CharacterImageModal({
                         type="button"
                         onClick={() => setConfirmingId(img.id)}
                         aria-label="Borrar imagen"
-                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-ivory opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+                        className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-ivory opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
                       >
-                        ×
+                        <XIcon size={12} />
                       </button>
                     )}
                     {confirmingId === img.id && (
@@ -169,18 +171,18 @@ function CharacterImageModal({
                             onClick={() => handleDelete(img.id)}
                             disabled={deleteImage.isPending}
                             aria-label="Confirmar borrado"
-                            className="flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-xs leading-none text-ivory hover:bg-oxblood disabled:opacity-50"
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-oxblood-dark text-ivory hover:bg-oxblood disabled:opacity-50"
                           >
-                            ✓
+                            <CheckedIcon size={12} />
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmingId(null)}
                             disabled={deleteImage.isPending}
                             aria-label="Cancelar"
-                            className="flex h-5 w-5 items-center justify-center rounded-full bg-parchment-panel text-xs leading-none text-ink hover:bg-parchment disabled:opacity-50"
+                            className="flex h-5 w-5 items-center justify-center rounded-full bg-parchment-panel text-ink hover:bg-parchment disabled:opacity-50"
                           >
-                            ×
+                            <XIcon size={12} />
                           </button>
                         </div>
                       </div>

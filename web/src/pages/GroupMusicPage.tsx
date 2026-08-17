@@ -48,6 +48,7 @@ import { SwipeableRow } from "../components/ui/SwipeableRow";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { PauseIcon, PlayIcon, ShuffleIcon } from "../components/ui/PlayerIcons";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
+import XIcon from "../components/icons/x-icon";
 
 export function GroupMusicPage() {
   const { id: groupId } = useParams<{ id: string }>();
@@ -617,9 +618,9 @@ function TrackRow({
                   type="button"
                   onClick={onToggleConfirm}
                   aria-label={`Borrar ${track.title}`}
-                  className="flex h-6 w-6 items-center justify-center rounded-sm text-base leading-none text-oxblood-dark hover:bg-parchment-deep/60"
+                  className="flex h-6 w-6 items-center justify-center rounded-sm text-oxblood-dark hover:bg-parchment-deep/60"
                 >
-                  ×
+                  <XIcon size={14} />
                 </button>
                 {isConfirming && (
                   <MiniConfirmPopover

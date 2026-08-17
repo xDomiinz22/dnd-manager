@@ -25,6 +25,7 @@ import {
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { Button } from "../../components/ui/Button";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
+import XIcon from "../../components/icons/x-icon";
 
 interface CombatPanelProps {
   groupId: string;
@@ -419,7 +420,7 @@ function EffectBadges({
               className="text-ink-muted hover:text-oxblood"
               aria-label={`Quitar ${effect.name}`}
             >
-              ×
+              <XIcon size={11} />
             </button>
           )}
         </span>

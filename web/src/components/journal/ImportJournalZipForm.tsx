@@ -8,6 +8,7 @@ import { useImportGroupJournal } from "../../features/journal/hooks";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { toErrorMessage, useToast } from "../ui/Toast";
+import TriangleAlertIcon from "../icons/triangle-alert-icon";
 
 export function ImportJournalZipForm({ groupId, onDone }: { groupId: string; onDone: () => void }) {
   const importJournal = useImportGroupJournal(groupId);
@@ -40,8 +41,11 @@ export function ImportJournalZipForm({ groupId, onDone }: { groupId: string; onD
 
   return (
     <Card className="mb-4">
-      <p className="mb-3 text-sm text-oxblood">
-        ⚠ Importar reemplaza por completo el diario de grupo actual (no se puede deshacer).
+      <p className="mb-3 flex items-start gap-1.5 text-sm text-oxblood">
+        <TriangleAlertIcon size={16} className="mt-0.5 shrink-0" />
+        <span>
+          Importar reemplaza por completo el diario de grupo actual (no se puede deshacer).
+        </span>
       </p>
 
       {!confirmDestroy ? (

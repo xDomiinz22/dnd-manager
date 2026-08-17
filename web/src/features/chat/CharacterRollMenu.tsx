@@ -16,6 +16,7 @@ import { ResourceAmountButton } from "../characters/ResourceAmountButton";
 import { EditableRollButton } from "../characters/EditableRollButton";
 import { PortraitCircle } from "../../components/character/PortraitCircle";
 import { toErrorMessage, useToast } from "../../components/ui/Toast";
+import XIcon from "../../components/icons/x-icon";
 import {
   ABILITY_FULL_LABELS,
   ABILITY_LABELS,
@@ -213,7 +214,7 @@ export function CharacterActionsPanel({
   onApplyDetectedEffect?: (effect: DetectedItemEffect) => void;
   /** `false` cuando `character` en realidad es un enemigo disfrazado de
    * `CharacterFull` (ver CombatPanel.tsx) — no hay fila de personaje real
-   * donde guardar un override, así que se omiten los iconos 💾/↺. */
+   * donde guardar un override, así que se omiten los iconos de guardar/deshacer. */
   canPersistOverrides?: boolean;
   /** Clase Tailwind del contenedor con scroll — `flex-1 overflow-y-auto` (por
    * defecto, sigue el alto disponible del cajón de chat) o un `max-h-*
@@ -278,7 +279,7 @@ export function CharacterActionsPanel({
               aria-label="Cerrar búsqueda"
               className="text-ink-muted hover:text-ink"
             >
-              ×
+              <XIcon size={14} />
             </button>
           </div>
         ) : (

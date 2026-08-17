@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useCloseOnOutsideClick } from "../../lib/useCloseOnOutsideClick";
+import CheckedIcon from "../icons/checked-icon";
+import XIcon from "../icons/x-icon";
 
 interface MiniConfirmPopoverProps {
   message: string;
@@ -53,7 +55,7 @@ export function MiniConfirmPopover({
           aria-label="Cancelar"
           className="flex h-6 w-6 items-center justify-center rounded-sm text-ink-muted transition-colors hover:bg-parchment-deep/60 hover:text-ink disabled:opacity-50"
         >
-          ✕
+          <XIcon size={13} />
         </button>
         <button
           type="button"
@@ -62,7 +64,7 @@ export function MiniConfirmPopover({
           aria-label="Confirmar borrado"
           className="flex h-6 w-6 items-center justify-center rounded-sm bg-oxblood-dark text-xs text-ivory transition-colors hover:bg-oxblood disabled:opacity-50"
         >
-          {isLoading ? "…" : "✓"}
+          {isLoading ? "…" : <CheckedIcon size={13} />}
         </button>
       </div>
     </div>

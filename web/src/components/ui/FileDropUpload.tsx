@@ -1,4 +1,5 @@
 import { useId, useRef, useState, type DragEvent } from "react";
+import XIcon from "../icons/x-icon";
 
 interface FileDropUploadProps {
   label: string;
@@ -229,7 +230,7 @@ export function FileDropUpload({
               aria-label="Quitar archivo"
               className="shrink-0 text-ink-muted hover:text-ink"
             >
-              ×
+              <XIcon size={14} />
             </button>
           </div>
         )}

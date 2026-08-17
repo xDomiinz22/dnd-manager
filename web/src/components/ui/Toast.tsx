@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import XIcon from "../icons/x-icon";
 
 type ToastKind = "success" | "error" | "info";
 
@@ -101,7 +102,7 @@ function ToastEntry({ toast, onDismiss }: { toast: ToastItem; onDismiss: () => v
           aria-label="Cerrar notificación"
           className="shrink-0 text-current opacity-70 hover:opacity-100"
         >
-          ×
+          <XIcon size={14} />
         </button>
       </div>
     </div>

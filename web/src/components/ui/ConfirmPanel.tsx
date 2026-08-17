@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "./Button";
+import TriangleAlertIcon from "../icons/triangle-alert-icon";
 
 interface ConfirmPanelProps {
   message: string;
@@ -55,7 +56,10 @@ export function ConfirmPanel({
     >
       <div className="overflow-hidden">
         <div className={`mt-3 border-t border-rule pt-3 ${className}`}>
-          <p className="mb-3 text-sm text-oxblood">⚠ {message}</p>
+          <p className="mb-3 flex items-start gap-1.5 text-sm text-oxblood">
+            <TriangleAlertIcon size={16} className="mt-0.5 shrink-0" />
+            <span>{message}</span>
+          </p>
           <div className="flex gap-2">
             <Button
               variant="danger"

@@ -22,6 +22,7 @@ import { toErrorMessage, useToast } from "../../components/ui/Toast";
 import type { AnimatedIconHandle } from "../../components/icons/types";
 import MessageCircleIcon from "../../components/icons/message-circle-icon";
 import SendIcon from "../../components/icons/send-icon";
+import XIcon from "../../components/icons/x-icon";
 
 const COLLAPSED_STORAGE_KEY = "chatDock.collapsed";
 const SHEET_TRANSITION_MS = 200;
@@ -391,7 +392,7 @@ export function ChatDockPanel({
               aria-label="Plegar chat"
               className="text-ink-muted hover:text-ink"
             >
-              ×
+              <XIcon size={16} />
             </button>
           </div>
           <div
@@ -477,7 +478,7 @@ export function ChatDockPanel({
                   aria-label="Cerrar"
                   className="text-ink-muted hover:text-ink"
                 >
-                  ×
+                  <XIcon size={16} />
                 </button>
               </div>
               <div className="flex min-h-0 flex-1 flex-col px-4 py-3">

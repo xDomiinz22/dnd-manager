@@ -1,4 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import type { AnimatedIconHandle } from "../../components/icons/types";
+import PenIcon from "../../components/icons/pen-icon";
+import SaveIcon from "../../components/icons/save-icon";
+import ArrowBackUpIcon from "../../components/icons/arrow-back-up-icon";
 
 /**
  * Envuelve cualquier botón de tirada (ataque/daño/curación, ya sea fijo o
@@ -26,11 +30,12 @@ export function EditableRollButton({
   formula: string;
   onRoll: (formula: string) => void;
   renderButton: (formula: string, onClick: () => void) => ReactNode;
-  /** Persiste `formula` en el servidor — pinta un icono 💾 durante la edición. */
+  /** Persiste `formula` en el servidor — pinta el icono de guardar (SaveIcon) durante la edición. */
   onSave?: (formula: string) => void;
-  /** Borra cualquier override guardado y vuelve al cálculo automático — un
-   * icono ↺ siempre visible cuando esta prop está presente (idempotente, no
-   * hace falta saber si hay algo guardado ahora mismo). */
+  /** Borra cualquier override guardado y vuelve al cálculo automático — el
+   * icono de deshacer (ArrowBackUpIcon) está siempre visible cuando esta prop
+   * está presente (idempotente, no hace falta saber si hay algo guardado
+   * ahora mismo). */
   onClearSaved?: () => void;
 }) {
   // `override` es `null` mientras no se haya tocado nada — en ese estado se
@@ -43,6 +48,9 @@ export function EditableRollButton({
   const [showExtraDice, setShowExtraDice] = useState(false);
   const [extraDiceValue, setExtraDiceValue] = useState("");
   const effectiveFormula = override ?? formula;
+  const editIconRef = useRef<AnimatedIconHandle>(null);
+  const saveIconRef = useRef<AnimatedIconHandle>(null);
+  const resetIconRef = useRef<AnimatedIconHandle>(null);
 
   function handleReset() {
     setOverride(null);
@@ -84,14 +92,15 @@ export function EditableRollButton({
           <button
             type="button"
             onClick={() => {
+              saveIconRef.current?.startAnimation();
               onSave(effectiveFormula);
               setIsEditing(false);
             }}
-            className="text-[0.7rem] text-ink-muted hover:text-oxblood"
+            className="text-ink-muted hover:text-oxblood"
             aria-label="Guardar esta fórmula"
             title="Guardar esta fórmula — se usará siempre a partir de ahora"
           >
-            💾
+            <SaveIcon ref={saveIconRef} size={13} />
           </button>
         )}
       </span>
@@ -103,12 +112,15 @@ export function EditableRollButton({
       {renderButton(effectiveFormula, () => onRoll(effectiveFormula))}
       <button
         type="button"
-        onClick={() => setIsEditing(true)}
-        className="px-0.5 text-[0.7rem] text-ink-muted hover:text-oxblood"
+        onClick={() => {
+          editIconRef.current?.startAnimation();
+          setIsEditing(true);
+        }}
+        className="px-0.5 text-ink-muted hover:text-oxblood"
         aria-label="Editar fórmula a mano"
         title="Editar la fórmula a mano (p.ej. si la descripción dice algo distinto)"
       >
-        ✏️
+        <PenIcon ref={editIconRef} size={13} />
       </button>
       <button
         type="button"
@@ -122,12 +134,15 @@ export function EditableRollButton({
       {(override !== null || onClearSaved) && (
         <button
           type="button"
-          onClick={handleReset}
-          className="px-0.5 text-[0.7rem] text-ink-muted hover:text-oxblood"
+          onClick={() => {
+            resetIconRef.current?.startAnimation();
+            handleReset();
+          }}
+          className="px-0.5 text-ink-muted hover:text-oxblood"
           aria-label="Volver al cálculo automático"
           title="Descartar la fórmula manual y volver al cálculo automático"
         >
-          ↺
+          <ArrowBackUpIcon ref={resetIconRef} size={13} />
         </button>
       )}
 

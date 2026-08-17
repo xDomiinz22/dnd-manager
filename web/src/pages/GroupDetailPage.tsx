@@ -35,6 +35,7 @@ import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
+import DotsVerticalIcon from "../components/icons/dots-vertical-icon";
 
 // Igual que en DiceOverlay.tsx: color de partida si el Master no ha elegido otro.
 const DEFAULT_DICE_COLOR = "#6B1620";
@@ -460,9 +461,9 @@ function MemberMenu({
         aria-haspopup="menu"
         aria-expanded={visible}
         aria-label={`Más opciones para ${member.username}`}
-        className="flex h-7 w-7 items-center justify-center rounded-sm text-lg leading-none text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
+        className="flex h-7 w-7 items-center justify-center rounded-sm text-ink-muted hover:bg-parchment-deep/60 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oxblood"
       >
-        ⋮
+        <DotsVerticalIcon size={16} />
       </button>
       <div
         role="menu"

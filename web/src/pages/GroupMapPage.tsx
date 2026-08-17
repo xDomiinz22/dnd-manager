@@ -41,6 +41,9 @@ import { ChapterHeading } from "../components/ui/ChapterHeading";
 import { ConfirmPanel } from "../components/ui/ConfirmPanel";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import { toErrorMessage, useToast } from "../components/ui/Toast";
+import XIcon from "../components/icons/x-icon";
+import { MorphIcon } from "morphicons/react";
+import { Plus, Minus } from "lucide";
 
 function flattenJournalPages(nodes: JournalTreeNode[], depth = 0): { id: string; label: string }[] {
   return nodes.flatMap((node) => [
@@ -539,17 +542,17 @@ function MapZoomControls() {
         type="button"
         onClick={() => zoomIn()}
         aria-label="Ampliar"
-        className={`${ZOOM_BUTTON_CLASSES} text-lg`}
+        className={ZOOM_BUTTON_CLASSES}
       >
-        +
+        <MorphIcon icon={Plus} size={16} />
       </button>
       <button
         type="button"
         onClick={() => zoomOut()}
         aria-label="Reducir"
-        className={`${ZOOM_BUTTON_CLASSES} text-lg`}
+        className={ZOOM_BUTTON_CLASSES}
       >
-        −
+        <MorphIcon icon={Minus} size={16} />
       </button>
       <button
         type="button"
@@ -810,7 +813,7 @@ function PinPopup({
           aria-label="Cerrar"
           className="shrink-0 text-ink-muted hover:text-ink"
         >
-          ×
+          <XIcon size={14} />
         </button>
       </div>
       {pin.journalPageId && (
