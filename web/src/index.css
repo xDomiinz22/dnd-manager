@@ -227,6 +227,20 @@ body {
 }
 
 /*
+ * Interruptor de tema (ver ThemeToggle.tsx): apaga el crossfade que la View
+ * Transitions API aplica por defecto a `::view-transition-old/new(root)` —
+ * sin esto, el barrido circular que anima `ThemeToggle` competiría con un
+ * fundido cruzado superpuesto, dando un resultado sucio en vez de un
+ * recorte limpio. `::view-transition-new(root)` queda así con opacidad 1
+ * fija, listo para que el propio componente anime su `clip-path`.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/*
  * @3d-dice/dice-box crea su propio <canvas class="dice-box-canvas"> dentro
  * del contenedor que le pasamos (ver DiceOverlay.tsx) pero no trae CSS
  * propio importado — sin esto el canvas se queda a tamaño intrínseco 0x0 (su
